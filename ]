@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
 
@@ -27,7 +28,50 @@ var helloCmd = &cobra.Command{
 
 		rootKey2, _ := bech32.EncodeFromBase256("root_xsk", decoded)
 		fmt.Println("Encoded again:", rootKey2)
+
+		kp, _ := NewKeyPair()
+
+		fmt.Println("New key pair", kp)
+
+		message := []byte{0xFF, 0x00}
+		sig := kp.Sign(message)
+		verified := kp.Verify(message, sig)
+
+		fmt.Println("Signature and state: ", sig, verified)
 	},
+}
+
+type KeyPair struct {
+	Priv      []byte
+	Pub       []byte
+	ChainCode []byte
+}
+
+func NewKeyPair() (KeyPair, error) {
+	kp := KeyPair{Priv: make([]byte, 32), Pub: make([]byte, 32)}
+
+	pub, priv, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		return KeyPair{}, nil
+	}
+
+	copy(kp.Pub, pub)
+	copy(kp.Priv, priv[:32])
+
+	return kp, nil
+}
+
+func (kp *KeyPair) Sign(message []byte) []byte {
+	priv := make([]byte, 64)
+
+	copy(priv[:32], kp.Priv)
+	copy(priv[32:], kp.Pub)
+
+	return ed25519.Sign(ed25519.PrivateKey(priv), message)
+}
+
+func (kp *KeyPair) Verify(message, sig []byte) bool {
+	return ed25519.Verify(kp.Pub, message, sig)
 }
 
 func init() {
