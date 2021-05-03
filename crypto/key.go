@@ -1,15 +1,39 @@
 package crypto
 
 import (
-	"crypto/ed25519"
 	"crypto/sha256"
+	"crypto/sha512"
 	"fmt"
+
+	"github.com/echovl/ed25519"
+	"github.com/tyler-smith/go-bip39"
+	"golang.org/x/crypto/pbkdf2"
 )
 
 type KeyPair struct {
 	Priv      []byte
 	Pub       []byte
 	ChainCode []byte
+}
+
+// XPriv includes the 32 byte chain code
+type XPriv []byte
+type XPub []byte
+
+func GenerateMasterKey(entropy []byte, password string) XPriv {
+	xpriv := pbkdf2.Key([]byte(password), entropy, 4096, 96, sha512.New)
+
+	xpriv[0] &= 0xf8
+	xpriv[31] = (xpriv[31] & 0x1f) | 0x40
+
+	return xpriv
+}
+
+func GenerateMnemonic(entropy []byte) (string, error) {
+	if l := len(entropy); l != 20 {
+		return "", fmt.Errorf("crypto: bad entropy size %d", l)
+	}
+	return bip39.NewMnemonic(entropy)
 }
 
 func NewKeyPair() (KeyPair, error) {
@@ -37,14 +61,6 @@ func NewKeyPair() (KeyPair, error) {
 
 		return kp, nil
 	}
-}
-
-func (kp *KeyPair) Derive(index uint32) (KeyPair, error) {
-	ckp := KeyPair{}
-
-	deriveChildPrivateKey(*kp, index)
-
-	return ckp, nil
 }
 
 func (kp *KeyPair) Sign(message []byte) []byte {

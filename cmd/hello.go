@@ -4,8 +4,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/echovl/bech32"
 	"github.com/spf13/cobra"
-	"github.com/stakecore/cardano-wallet-go/internal/bech32"
 )
 
 // helloCmd represents the hello command

@@ -1,6 +1,6 @@
 package main
 
-import "github.com/stakecore/cardano-wallet-go/cmd"
+import "github.com/echovl/cardano-wallet/cmd"
 
 func main() {
 	cmd.Execute()
