@@ -3,42 +3,49 @@ package crypto
 import (
 	"crypto/hmac"
 	"crypto/sha512"
-	"fmt"
+
+	"github.com/echovl/ed25519"
 )
 
-func DerivePrivateKey(xpriv XPriv, index uint32) (XPriv, error) {
-	zmac := hmac.New(sha512.New, xpriv[64:])
-	ccmac := hmac.New(sha512.New, xpriv[64:])
+func DeriveChildSigningKey(xsk XSigningKey, index uint32) XSigningKey {
+	xpriv := xsk[:64]
+	chainCode := xsk[64:]
+	zmac := hmac.New(sha512.New, chainCode)
+	ccmac := hmac.New(sha512.New, chainCode)
 
 	sindex := serializeIndex(index)
 	if isHardenedDerivation(index) {
-		fmt.Printf("hardened!")
 		zmac.Write([]byte{0x0})
-		zmac.Write(xpriv[:64])
+		zmac.Write(xpriv)
 		zmac.Write(sindex)
 		ccmac.Write([]byte{0x1})
-		ccmac.Write(xpriv[:64])
+		ccmac.Write(xpriv)
 		ccmac.Write(sindex)
 	} else {
+		pub := ed25519.PublicKeyFrom(ed25519.ExtendedPrivateKey(xpriv))
+		zmac.Write([]byte{0x2})
+		zmac.Write(pub)
+		zmac.Write(sindex)
+		ccmac.Write([]byte{0x3})
+		ccmac.Write(pub)
+		ccmac.Write(sindex)
 	}
-
 	z := zmac.Sum(nil)
 	zl := z[:32]
-	zr := z[32:]
+	zr := z[32:64]
 
-	kl := add28Mul8(xpriv[:32], zl)
-	kr := addMod256(xpriv[32:64], zr)
+	kl := add28Mul8(xsk[:32], zl)
+	kr := addMod256(xsk[32:64], zr)
 
 	cc := ccmac.Sum(nil)
 	cc = cc[32:]
 
-	childXpriv := make([]byte, 96)
+	cxsk := make([]byte, 96)
+	copy(cxsk[:32], kl)
+	copy(cxsk[32:64], kr)
+	copy(cxsk[64:], cc)
 
-	copy(childXpriv[:32], kl)
-	copy(childXpriv[32:64], kr)
-	copy(childXpriv[64:], cc)
-
-	return childXpriv, nil
+	return cxsk
 }
 
 func deriveChildPublicKey(kp KeyPair, index uint32) ([]byte, error) {
@@ -64,7 +71,7 @@ func add28Mul8(x, y []byte) []byte {
 	}
 	for i, xi := range x[28:32] {
 		r := uint16(xi) + carry
-		out[i] = byte(r & 0xff)
+		out[i+28] = byte(r & 0xff)
 		carry = r >> 8
 	}
 
@@ -77,7 +84,7 @@ func addMod256(x, y []byte) []byte {
 
 	for i, xi := range x[:32] {
 		r := uint16(xi) + uint16(y[i]) + carry
-		out[i] = byte(r & 0xff)
+		out[i] = byte(r)
 		carry = r >> 8
 
 	}
