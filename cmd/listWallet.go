@@ -17,48 +17,38 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/echovl/cardano-wallet/db"
-	"github.com/echovl/cardano-wallet/wallet"
 	"github.com/spf13/cobra"
 )
 
-// walletCmd represents the wallet command
-var walletCmd = &cobra.Command{
-	Use:   "wallet [wallet-name]",
-	Short: "Creates a brand new wallet",
-	Args:  cobra.ExactArgs(1),
+// listWalletCmd represents the listWallet command
+var listWalletCmd = &cobra.Command{
+	Use:   "wallet",
+	Short: "A brief description of your command",
 	Run: func(cmd *cobra.Command, args []string) {
-		password, _ := cmd.Flags().GetString("password")
-		mnemonic, _ := cmd.Flags().GetStringSlice("mnemonic")
+		bdb := db.NewBadgerDB()
+		defer bdb.Close()
 
-		if len(mnemonic) == 0 {
-			w, mnemonic, _ := wallet.AddWallet(args[0], password)
+		wallets := bdb.GetWallets()
 
-			bdb := db.NewBadgerDB()
-			bdb.SaveWallet(w)
-			defer bdb.Close()
-
-			fmt.Printf("mnemonic: %v\n", mnemonic)
-		} else {
-			wallet.RestoreWallet(strings.Join(mnemonic, " "), password)
+		fmt.Printf("%-15v %-9v %-9v\n", "ID", "NAME", "ADDRESS")
+		for _, v := range wallets {
+			fmt.Printf("%-15v %-9v %-9v\n", v.ID, v.Name, len(v.Keys()))
 		}
 	},
 }
 
 func init() {
-	newCmd.AddCommand(walletCmd)
+	listCmd.AddCommand(listWalletCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// walletCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// listWalletCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// walletCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	walletCmd.Flags().StringP("password", "p", "", "Password to create or restore the wallet")
-	walletCmd.Flags().StringSliceP("mnemonic", "m", nil, "Mnemonic to restore the wallet")
+	// listWalletCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

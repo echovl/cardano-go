@@ -48,10 +48,6 @@ func DeriveChildSigningKey(xsk XSigningKey, index uint32) XSigningKey {
 	return cxsk
 }
 
-func deriveChildPublicKey(kp KeyPair, index uint32) ([]byte, error) {
-	return []byte{}, nil
-}
-
 func serializeIndex(index uint32) []byte {
 	return []byte{byte(index), byte(index >> 8), byte(index >> 16), byte(index >> 24)}
 }

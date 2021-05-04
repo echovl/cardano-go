@@ -5,6 +5,7 @@ import (
 
 	"github.com/echovl/bech32"
 	"github.com/echovl/cardano-wallet/crypto"
+	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/tyler-smith/go-bip39"
 )
 
@@ -17,36 +18,46 @@ const (
 )
 
 type keyPair struct {
-	xsk crypto.XSigningKey
-	xvk crypto.XVerificationKey
+	Xsk crypto.XSigningKey
+	Xvk crypto.XVerificationKey
 }
 
 type keyPairChain struct {
-	root   keyPair
-	childs []keyPair
+	Root   keyPair
+	Childs []keyPair
 }
 
+type WalletID string
+
 type Wallet struct {
-	ID            string
+	ID            WalletID
 	Name          string
-	externalChain keyPairChain
+	ExternalChain keyPairChain
 	internalChain keyPairChain
 	stakeChain    keyPairChain
 }
 
+func (w *Wallet) Keys() []crypto.XVerificationKey {
+	xvks := make([]crypto.XVerificationKey, len(w.ExternalChain.Childs))
+	for i, kp := range w.ExternalChain.Childs {
+		xvks[i] = kp.Xvk
+	}
+	return xvks
+}
+
+func NewWalletID() WalletID {
+	id, _ := gonanoid.Generate("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", 10)
+	return WalletID("wl_" + id)
+}
+
 // AddWallet creates a brand new wallet using a secure entropy and password.
 // This function will return a new wallet with its corresponding 24 word mnemonic
-func AddWallet(password string) (*Wallet, string, error) {
-	wallet := Wallet{Name: "test", ID: "wallet1"}
-
+func AddWallet(name, password string) (*Wallet, string, error) {
+	wallet := Wallet{Name: name, ID: NewWalletID()}
 	entropy := newEntropy(entropySizeInBits)
-	mnemonic, err := crypto.GenerateMnemonic(entropy)
-	if err != nil {
-		return nil, "", err
-	}
+	mnemonic := crypto.GenerateMnemonic(entropy)
 
 	rootXsk := crypto.GenerateMasterKey(entropy, password)
-	fmt.Println(bech32.EncodeFromBase256("root_xsk", rootXsk))
 	purposeXsk := crypto.DeriveChildSigningKey(rootXsk, purposeIndex)
 	coinXsk := crypto.DeriveChildSigningKey(purposeXsk, coinTypeIndex)
 	accountXsk := crypto.DeriveChildSigningKey(coinXsk, accountIndex)
@@ -54,9 +65,9 @@ func AddWallet(password string) (*Wallet, string, error) {
 
 	addr0Xsk := crypto.DeriveChildSigningKey(chainXsk, 0)
 
-	wallet.externalChain = keyPairChain{
-		root:   keyPair{chainXsk, chainXsk.XVerificationKey()},
-		childs: []keyPair{{addr0Xsk, addr0Xsk.XVerificationKey()}},
+	wallet.ExternalChain = keyPairChain{
+		Root:   keyPair{chainXsk, chainXsk.XVerificationKey()},
+		Childs: []keyPair{{addr0Xsk, addr0Xsk.XVerificationKey()}},
 	}
 
 	return &wallet, mnemonic, nil
@@ -84,9 +95,9 @@ func RestoreWallet(mnemonic, password string) (*Wallet, error) {
 
 	addr0Xsk := crypto.DeriveChildSigningKey(chainXsk, 0)
 
-	wallet.externalChain = keyPairChain{
-		root:   keyPair{chainXsk, chainXsk.XVerificationKey()},
-		childs: []keyPair{{addr0Xsk, addr0Xsk.XVerificationKey()}},
+	wallet.ExternalChain = keyPairChain{
+		Root:   keyPair{chainXsk, chainXsk.XVerificationKey()},
+		Childs: []keyPair{{addr0Xsk, addr0Xsk.XVerificationKey()}},
 	}
 
 	return &wallet, nil

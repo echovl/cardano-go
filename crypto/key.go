@@ -2,7 +2,6 @@ package crypto
 
 import (
 	"crypto/sha512"
-	"fmt"
 
 	"github.com/echovl/ed25519"
 	"github.com/tyler-smith/go-bip39"
@@ -24,11 +23,12 @@ func GenerateMasterKey(entropy []byte, password string) XSigningKey {
 	return key
 }
 
-func GenerateMnemonic(entropy []byte) (string, error) {
+func GenerateMnemonic(entropy []byte) string {
 	if l := len(entropy); l != 20 {
-		return "", fmt.Errorf("crypto: bad entropy size %d", l)
+		panic("crypto: bad entropy size")
 	}
-	return bip39.NewMnemonic(entropy)
+	mnemonic, _ := bip39.NewMnemonic(entropy)
+	return mnemonic
 }
 
 func (xsk *XSigningKey) XVerificationKey() XVerificationKey {
