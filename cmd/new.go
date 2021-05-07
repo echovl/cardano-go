@@ -22,7 +22,7 @@ import (
 // newCmd represents the new command
 var newCmd = &cobra.Command{
 	Use:   "new",
-	Short: "A brief description of your command",
+	Short: "Create wallets and addresses",
 }
 
 func init() {

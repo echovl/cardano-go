@@ -17,38 +17,48 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/echovl/cardano-wallet/db"
+	"github.com/echovl/cardano-wallet/wallet"
 	"github.com/spf13/cobra"
 )
 
-// listWalletCmd represents the listWallet command
-var listWalletCmd = &cobra.Command{
-	Use:   "wallet",
-	Short: "A brief description of your command",
+// walletCmd represents the wallet command
+var walletCmd = &cobra.Command{
+	Use:   "wallet [wallet-name]",
+	Short: "Create or restore a wallet",
+	Long: `Create or restore a wallet. If the mnemonic flag is present 
+it will restore a wallet using the mnemonic and password.`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		password, _ := cmd.Flags().GetString("password")
+		mnemonic, _ := cmd.Flags().GetStringSlice("mnemonic")
 		bdb := db.NewBadgerDB()
 		defer bdb.Close()
 
-		wallets := bdb.GetWallets()
+		if len(mnemonic) == 0 {
+			_, mnemonic, _ := wallet.AddWallet(args[0], password, bdb)
 
-		fmt.Printf("%-15v %-9v %-9v\n", "ID", "NAME", "ADDRESS")
-		for _, v := range wallets {
-			fmt.Printf("%-15v %-9v %-9v\n", v.ID, v.Name, len(v.Keys()))
+			fmt.Printf("mnemonic: %v\n", mnemonic)
+		} else {
+			wallet.RestoreWallet(strings.Join(mnemonic, " "), password, bdb)
 		}
 	},
 }
 
 func init() {
-	listCmd.AddCommand(listWalletCmd)
+	newCmd.AddCommand(walletCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// listWalletCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// walletCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// listWalletCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// walletCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	walletCmd.Flags().StringP("password", "p", "", "A list of mnemonic words")
+	walletCmd.Flags().StringSliceP("mnemonic", "m", nil, "Password to lock and protect the wallet")
 }
