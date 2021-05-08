@@ -10,7 +10,7 @@ Clone the repository using `git clone`
 $ git clone https://github.com/echovl/cardano-wallet.git
 ```
 
-Then compile the source code and install the binary
+Compile the source code and install the executable
 
 ```
 $ make && sudo make install
@@ -18,17 +18,17 @@ $ make && sudo make install
 
 ## Getting started
 
-First create a new wallet and generate your mnemonic
+First create a new wallet and generate your mnemonic squence:
 
 ```
 $ cardano-wallet new wallet myWallet -p simplePassword
 mnemonic: banner capital gift plate worth sand pass canvas pave decade pig borrow cruel lunar arena
 ```
 
-If you already have a wallet you can restore it running this command:
+If you already have a wallet you can restore it using a mnemonic and password:running this command:
 
 ```
-cardano-wallet new wallet restoredWallet -m=talent,risk,require,split,leave,script,panel,slight,entire,soap,chase,pill,grant,laugh,fringe -p simplePassword
+$ cardano-wallet new wallet restoredWallet -m=talent,risk,require,split,leave,script,panel,slight,entire,soap,chase,pill,grant,laugh,fringe -p simplePassword
 ```
 
 You can inspect your wallets using the `list` command:
