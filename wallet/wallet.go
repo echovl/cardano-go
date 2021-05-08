@@ -33,14 +33,6 @@ type Wallet struct {
 	db            WalletDB
 }
 
-func (w *Wallet) Keys() []crypto.XVerificationKey {
-	xvks := make([]crypto.XVerificationKey, len(w.ExternalChain.Childs))
-	for i, kp := range w.ExternalChain.Childs {
-		xvks[i] = kp.Xvk
-	}
-	return xvks
-}
-
 // GenerateAddress generates a new payment address and adds it to the wallet.
 func (w *Wallet) GenerateAddress(network NetworkType) (Address, error) {
 	chain := w.ExternalChain
@@ -78,6 +70,7 @@ func NewWalletID() WalletID {
 // This function will return a new wallet with its corresponding 24 word mnemonic
 func AddWallet(name, password string, db WalletDB) (*Wallet, string, error) {
 	entropy := newEntropy(entropySizeInBits)
+	fmt.Println(entropy)
 	mnemonic := crypto.GenerateMnemonic(entropy)
 
 	wallet := newWallet(entropy, password)

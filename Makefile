@@ -11,4 +11,7 @@ test:
 	$(GOTEST) ./...
 
 testcov:
-	$(GOTEST) ./... -cover
+	$(GOTEST) ./... -coverprofile coverage.out
+
+opencov:
+	go tool cover -html coverage.out
