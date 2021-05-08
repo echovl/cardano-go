@@ -7,10 +7,7 @@ import (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "cardano-wallet",
-	Short: "A CLI application to manage deterministic cardano wallets",
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	Short: "cardano-wallet is a CLI application to manage wallets in Cardano.",
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

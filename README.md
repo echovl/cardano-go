@@ -1,3 +1,41 @@
-# Cardano Wallet CLI
+# cardano-wallet
 
-StakeCore cardano wallet cli using golang
+A simple Cardano wallet CLI written in Go.
+
+# Installation from source
+
+Clone the repository using `git clone`
+
+```
+$ git clone https://github.com/echovl/cardano-wallet.git
+```
+
+Then compile the source code and install the binary
+
+```
+$ make && sudo make install
+```
+
+# Getting started
+
+First create a new wallet and generate your mnemonic
+
+```
+$ cardano-wallet new wallet myWallet
+mnemonic: banner capital gift plate worth sand pass canvas pave decade pig borrow cruel lunar arena
+```
+
+You can inspect your wallets using the `list` command:
+
+```
+$ cardano-wallet list wallet
+ID              NAME      ADDRESS
+wl_uu4FmZvNYG   myWallet  1
+```
+
+By default a new wallet is created with one payment address, you can create more addresses running the following command:
+
+```
+$ cardano-wallet new address wl_uu4FmZvNYG
+New address addr_test1vz8vyz6pk6hwgwqz239rcyk52e659aefa8g08amm80tq8ag9eng6q
+```
