@@ -1,11 +1,14 @@
 GOBUILD = go build
 GOTEST = go test
 
-adaw:
+cardano-wallet:
 	$(GOBUILD) -o ./build/cardano-wallet main.go
 
 install:
 	@mv ./build/cardano-wallet /usr/bin/
 
 test:
-	go test ./...
+	$(GOTEST) ./...
+
+testcov:
+	$(GOTEST) ./... -cover

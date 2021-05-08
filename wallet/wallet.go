@@ -41,7 +41,8 @@ func (w *Wallet) Keys() []crypto.XVerificationKey {
 	return xvks
 }
 
-func (w *Wallet) NewAddress() (Address, error) {
+// GenerateAddress generates a new payment address and adds it to the wallet.
+func (w *Wallet) GenerateAddress(network NetworkType) (Address, error) {
 	chain := w.ExternalChain
 	index := uint32(len(chain.Childs))
 	xsk := crypto.DeriveChildSigningKey(chain.Root.Xsk, index)
@@ -51,13 +52,14 @@ func (w *Wallet) NewAddress() (Address, error) {
 		w.db.SaveWallet(w)
 	}
 
-	return newEnterpriseAddress(xsk.XVerificationKey(), Testnet)
+	return newEnterpriseAddress(xsk.XVerificationKey(), network)
 }
 
-func (w *Wallet) Addresses() ([]Address, error) {
+// AddAddresses returns all wallet's addresss.
+func (w *Wallet) Addresses(network NetworkType) ([]Address, error) {
 	addresses := make([]Address, len(w.ExternalChain.Childs))
 	for i, kp := range w.ExternalChain.Childs {
-		addr, err := newEnterpriseAddress(kp.Xvk, Testnet)
+		addr, err := newEnterpriseAddress(kp.Xvk, network)
 		if err != nil {
 			return nil, err
 		}
@@ -69,58 +71,32 @@ func (w *Wallet) Addresses() ([]Address, error) {
 
 func NewWalletID() WalletID {
 	id, _ := gonanoid.Generate(walleIDAlphabet, 10)
-	return WalletID("wl_" + id)
+	return WalletID("wallet_" + id)
 }
 
 // AddWallet creates a brand new wallet using a secure entropy and password.
 // This function will return a new wallet with its corresponding 24 word mnemonic
 func AddWallet(name, password string, db WalletDB) (*Wallet, string, error) {
-	wallet := Wallet{Name: name, ID: NewWalletID()}
 	entropy := newEntropy(entropySizeInBits)
 	mnemonic := crypto.GenerateMnemonic(entropy)
 
-	rootXsk := crypto.GenerateMasterKey(entropy, password)
-	purposeXsk := crypto.DeriveChildSigningKey(rootXsk, purposeIndex)
-	coinXsk := crypto.DeriveChildSigningKey(purposeXsk, coinTypeIndex)
-	accountXsk := crypto.DeriveChildSigningKey(coinXsk, accountIndex)
-	chainXsk := crypto.DeriveChildSigningKey(accountXsk, externalChainIndex)
+	wallet := newWallet(entropy, password)
+	wallet.Name = name
+	db.SaveWallet(wallet)
 
-	addr0Xsk := crypto.DeriveChildSigningKey(chainXsk, 0)
-
-	wallet.ExternalChain = keyPairChain{
-		Root:   keyPair{chainXsk, chainXsk.XVerificationKey()},
-		Childs: []keyPair{{addr0Xsk, addr0Xsk.XVerificationKey()}},
-	}
-
-	db.SaveWallet(&wallet)
-
-	return &wallet, mnemonic, nil
+	return wallet, mnemonic, nil
 }
 
 func RestoreWallet(mnemonic, password string, db WalletDB) (*Wallet, error) {
-	wallet := Wallet{Name: "test", ID: NewWalletID()}
-
 	entropy, err := bip39.EntropyFromMnemonic(mnemonic)
 	if err != nil {
 		return nil, err
 	}
 
-	rootXsk := crypto.GenerateMasterKey(entropy, password)
-	purposeXsk := crypto.DeriveChildSigningKey(rootXsk, purposeIndex)
-	coinXsk := crypto.DeriveChildSigningKey(purposeXsk, coinTypeIndex)
-	accountXsk := crypto.DeriveChildSigningKey(coinXsk, accountIndex)
-	chainXsk := crypto.DeriveChildSigningKey(accountXsk, externalChainIndex)
+	wallet := newWallet(entropy, password)
+	db.SaveWallet(wallet)
 
-	addr0Xsk := crypto.DeriveChildSigningKey(chainXsk, 0)
-
-	wallet.ExternalChain = keyPairChain{
-		Root:   keyPair{chainXsk, chainXsk.XVerificationKey()},
-		Childs: []keyPair{{addr0Xsk, addr0Xsk.XVerificationKey()}},
-	}
-
-	db.SaveWallet(&wallet)
-
-	return &wallet, nil
+	return wallet, nil
 }
 
 func GetWallets(db WalletDB) []Wallet {
@@ -139,4 +115,23 @@ func GetWallet(id WalletID, db WalletDB) (*Wallet, error) {
 		}
 	}
 	return nil, fmt.Errorf("wallet %v not found", id)
+}
+
+func newWallet(entropy []byte, password string) *Wallet {
+	wallet := &Wallet{ID: NewWalletID()}
+
+	rootXsk := crypto.GenerateMasterKey(entropy, password)
+	purposeXsk := crypto.DeriveChildSigningKey(rootXsk, purposeIndex)
+	coinXsk := crypto.DeriveChildSigningKey(purposeXsk, coinTypeIndex)
+	accountXsk := crypto.DeriveChildSigningKey(coinXsk, accountIndex)
+	chainXsk := crypto.DeriveChildSigningKey(accountXsk, externalChainIndex)
+
+	addr0Xsk := crypto.DeriveChildSigningKey(chainXsk, 0)
+
+	wallet.ExternalChain = keyPairChain{
+		Root:   newKeyPairFromXsk(chainXsk),
+		Childs: []keyPair{newKeyPairFromXsk(addr0Xsk)},
+	}
+
+	return wallet
 }

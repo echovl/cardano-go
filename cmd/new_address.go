@@ -14,6 +14,12 @@ var addressCmd = &cobra.Command{
 	Short: "Create a new address",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		useTestnet, err := cmd.Flags().GetBool("testnet")
+		network := wallet.Mainnet
+		if useTestnet {
+			network = wallet.Testnet
+		}
+
 		walletID := wallet.WalletID(args[0])
 		bdb := db.NewBadgerDB()
 		defer bdb.Close()
@@ -23,7 +29,7 @@ var addressCmd = &cobra.Command{
 			return err
 		}
 
-		addr, err := w.NewAddress()
+		addr, err := w.GenerateAddress(network)
 		if err != nil {
 			return err
 		}
@@ -36,4 +42,5 @@ var addressCmd = &cobra.Command{
 
 func init() {
 	newCmd.AddCommand(addressCmd)
+	addressCmd.Flags().Bool("testnet", false, "Use testnet network")
 }

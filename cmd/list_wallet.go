@@ -33,23 +33,13 @@ var listWalletCmd = &cobra.Command{
 
 		wallets := wallet.GetWallets(bdb)
 
-		fmt.Printf("%-15v %-9v %-9v\n", "ID", "NAME", "ADDRESS")
+		fmt.Printf("%-18v %-9v %-9v\n", "ID", "NAME", "ADDRESS")
 		for _, v := range wallets {
-			fmt.Printf("%-15v %-9v %-9v\n", v.ID, v.Name, len(v.Keys()))
+			fmt.Printf("%-18v %-9v %-9v\n", v.ID, v.Name, len(v.Keys()))
 		}
 	},
 }
 
 func init() {
 	listCmd.AddCommand(listWalletCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// listWalletCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// listWalletCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

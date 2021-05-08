@@ -28,10 +28,19 @@ func newEnterpriseAddress(xvk crypto.XVerificationKey, network NetworkType) (Add
 	addressBytes[0] = header
 	copy(addressBytes[1:], paymentHash)
 
-	address, err := bech32.EncodeFromBase256("addr_test", addressBytes)
+	hrp := getHrp(network)
+	address, err := bech32.EncodeFromBase256(hrp, addressBytes)
 	if err != nil {
 		return "", err
 	}
 
 	return Address(address), nil
+}
+
+func getHrp(network NetworkType) string {
+	if network == Testnet {
+		return "addr_test"
+	} else {
+		return "addr"
+	}
 }

@@ -15,6 +15,12 @@ var listAddressCmd = &cobra.Command{
 	Short: "Print a list of known wallet's addresses",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		useTestnet, err := cmd.Flags().GetBool("testnet")
+		network := wallet.Mainnet
+		if useTestnet {
+			network = wallet.Testnet
+		}
+
 		walletID := wallet.WalletID(args[0])
 		bdb := db.NewBadgerDB()
 		defer bdb.Close()
@@ -23,7 +29,7 @@ var listAddressCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		addresses, err := w.Addresses()
+		addresses, err := w.Addresses(network)
 		fmt.Printf("%-25v %-9v\n", "PATH", "ADDRESS")
 		for i, addr := range addresses {
 			fmt.Printf("%-25v %-9v\n", "m/1852'/1815'/0'/0/"+strconv.Itoa(i), addr)
@@ -35,4 +41,5 @@ var listAddressCmd = &cobra.Command{
 
 func init() {
 	listCmd.AddCommand(listAddressCmd)
+	listAddressCmd.Flags().Bool("testnet", false, "Use testnet network")
 }
