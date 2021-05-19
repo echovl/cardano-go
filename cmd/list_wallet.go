@@ -10,8 +10,9 @@ import (
 
 // listWalletCmd represents the listWallet command
 var listWalletCmd = &cobra.Command{
-	Use:   "wallet",
-	Short: "Print a list of known wallets",
+	Use:     "list-wallets",
+	Short:   "Print a list of known wallets",
+	Aliases: []string{"lww"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		bdb := db.NewBadgerDB()
 		defer bdb.Close()
@@ -31,5 +32,5 @@ var listWalletCmd = &cobra.Command{
 }
 
 func init() {
-	listCmd.AddCommand(listWalletCmd)
+	rootCmd.AddCommand(listWalletCmd)
 }

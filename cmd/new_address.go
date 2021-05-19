@@ -8,11 +8,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// addressCmd represents the address command
-var addressCmd = &cobra.Command{
-	Use:   "address [wallet-id]",
-	Short: "Create a new address",
-	Args:  cobra.ExactArgs(1),
+// newAddressCmd represents the address command
+var newAddressCmd = &cobra.Command{
+	Use:     "new-address [wallet-id]",
+	Short:   "Create a new address",
+	Args:    cobra.ExactArgs(1),
+	Aliases: []string{"newa"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		useTestnet, err := cmd.Flags().GetBool("testnet")
 		network := wallet.Mainnet
@@ -41,6 +42,6 @@ var addressCmd = &cobra.Command{
 }
 
 func init() {
-	newCmd.AddCommand(addressCmd)
-	addressCmd.Flags().Bool("testnet", false, "Use testnet network")
+	rootCmd.AddCommand(newAddressCmd)
+	newAddressCmd.Flags().Bool("testnet", false, "Use testnet network")
 }

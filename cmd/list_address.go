@@ -11,9 +11,10 @@ import (
 
 // listAddressCmd represents the listAddress command
 var listAddressCmd = &cobra.Command{
-	Use:   "address [wallet-id]",
-	Short: "Print a list of known wallet's addresses",
-	Args:  cobra.ExactArgs(1),
+	Use:     "list-address [wallet-id]",
+	Short:   "Print a list of known wallet's addresses",
+	Aliases: []string{"lsa"},
+	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		useTestnet, err := cmd.Flags().GetBool("testnet")
 		network := wallet.Mainnet
@@ -40,6 +41,6 @@ var listAddressCmd = &cobra.Command{
 }
 
 func init() {
-	listCmd.AddCommand(listAddressCmd)
+	rootCmd.AddCommand(listAddressCmd)
 	listAddressCmd.Flags().Bool("testnet", false, "Use testnet network")
 }

@@ -9,13 +9,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// walletCmd represents the wallet command
-var walletCmd = &cobra.Command{
-	Use:   "wallet [wallet-name]",
+// newWalletCmd represents the wallet command
+var newWalletCmd = &cobra.Command{
+	Use:   "new-wallet [wallet-name]",
 	Short: "Create or restore a wallet",
 	Long: `Create or restore a wallet. If the mnemonic flag is present 
 it will restore a wallet using the mnemonic and password.`,
-	Args: cobra.ExactArgs(1),
+	Aliases: []string{"neww"},
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		password, _ := cmd.Flags().GetString("password")
 		mnemonic, _ := cmd.Flags().GetStringSlice("mnemonic")
@@ -33,8 +34,8 @@ it will restore a wallet using the mnemonic and password.`,
 }
 
 func init() {
-	newCmd.AddCommand(walletCmd)
+	rootCmd.AddCommand(newWalletCmd)
 
-	walletCmd.Flags().StringP("password", "p", "", "A list of mnemonic words")
-	walletCmd.Flags().StringSliceP("mnemonic", "m", nil, "Password to lock and protect the wallet")
+	newWalletCmd.Flags().StringP("password", "p", "", "A list of mnemonic words")
+	newWalletCmd.Flags().StringSliceP("mnemonic", "m", nil, "Password to lock and protect the wallet")
 }
