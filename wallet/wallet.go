@@ -110,6 +110,10 @@ func GetWallet(id WalletID, db WalletDB) (*Wallet, error) {
 	return nil, fmt.Errorf("wallet %v not found", id)
 }
 
+func DeleteWallet(id WalletID, db WalletDB) error {
+	return db.DeleteWallet(id)
+}
+
 func newWallet(entropy []byte, password string) *Wallet {
 	wallet := &Wallet{ID: NewWalletID()}
 

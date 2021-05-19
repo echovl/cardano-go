@@ -12,7 +12,7 @@ import (
 var listWalletCmd = &cobra.Command{
 	Use:     "list-wallets",
 	Short:   "Print a list of known wallets",
-	Aliases: []string{"lww"},
+	Aliases: []string{"lsw"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		bdb := db.NewBadgerDB()
 		defer bdb.Close()

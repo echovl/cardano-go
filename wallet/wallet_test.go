@@ -72,6 +72,11 @@ func (db *MockDB) GetWallets() []Wallet {
 	return []Wallet{}
 }
 
+func (db *MockDB) DeleteWallet(id WalletID) error {
+	db.calls++
+	return nil
+}
+
 func TestAddWallet(t *testing.T) {
 	for _, testVector := range testVectors {
 		db := &MockDB{}
@@ -194,6 +199,15 @@ func TestGenerateAddress(t *testing.T) {
 		if db.calls != 1 {
 			t.Errorf("invalid db calls:\ngot: %v\nwant: %v", db.calls, 1)
 		}
+	}
+}
+
+func TestDeleteWallet(t *testing.T) {
+	db := &MockDB{}
+	DeleteWallet("", db)
+
+	if db.calls != 1 {
+		t.Errorf("invalid db calls:\ngot: %v\nwant: %v", db.calls, 1)
 	}
 }
 

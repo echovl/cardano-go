@@ -60,3 +60,11 @@ func (bdb *BadgerDB) GetWallets() []wallet.Wallet {
 	})
 	return wallets
 }
+
+func (bdb *BadgerDB) DeleteWallet(id wallet.WalletID) error {
+	err := bdb.db.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(id))
+	})
+
+	return err
+}
