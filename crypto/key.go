@@ -24,10 +24,10 @@ func GenerateMasterKey(entropy []byte, password string) XSigningKey {
 }
 
 func GenerateMnemonic(entropy []byte) string {
-	if l := len(entropy); l != 20 {
-		panic("crypto: bad entropy size")
+	mnemonic, err := bip39.NewMnemonic(entropy)
+	if err != nil {
+		panic(err)
 	}
-	mnemonic, _ := bip39.NewMnemonic(entropy)
 	return mnemonic
 }
 

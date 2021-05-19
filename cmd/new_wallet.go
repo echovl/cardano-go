@@ -27,7 +27,7 @@ it will restore a wallet using the mnemonic and password.`,
 
 			fmt.Printf("mnemonic: %v\n", mnemonic)
 		} else {
-			wallet.RestoreWallet(strings.Join(mnemonic, " "), password, bdb)
+			wallet.RestoreWallet(args[0], strings.Join(mnemonic, " "), password, bdb)
 		}
 	},
 }

@@ -1,15 +1,58 @@
 package wallet
 
-import "testing"
+import (
+	"testing"
 
-const (
-	wallet1Password         = "cardano"
-	wallet1Mnemonic         = "pulse bomb sad rib provide impulse farm situate fix sea museum camp another life mountain"
-	wallet1Address0 Address = "addr1v9fm439vlcjdt6qac3dusatryyj6nnzy7erjqycpcczmrqcxtya36"
-	wallet1Address1 Address = "addr1vy6je4u34akzmta256y5svfmqlqfaahr37qpwtprzyu968g48s5x7"
+	"github.com/echovl/bech32"
+	"github.com/tyler-smith/go-bip39"
 )
 
-var wallet1Entropy = []byte{173, 131, 38, 246, 220, 122, 206, 228, 84, 206, 77, 88, 24, 62, 70, 144, 96, 153, 2, 164}
+type TestVector struct {
+	mnemonic     string
+	rootXsk      string
+	addrXsk0     string
+	addrXvk0     string
+	addrXsk1     string
+	addrXvk1     string
+	paymentAddr0 Address
+	paymentAddr1 Address
+}
+
+var testVectors = []TestVector{
+	// 15 words
+	{
+		mnemonic:     "art forum devote street sure rather head chuckle guard poverty release quote oak craft enemy",
+		rootXsk:      "root_xsk1hretan5mml3tq2p0twkhq4tz4jvka7m2l94kfr6yghkyfar6m9wppc7h9unw6p65y23kakzct3695rs32z7vaw3r2lg9scmfj8ec5du3ufydu5yuquxcz24jlkjhsc9vsa4ufzge9s00fn398svhacse5sh85djs",
+		addrXsk0:     "addr_xsk1fzgcl9km0mve2jwe8qxve364w6te9vpddhwpw5g8wnjlupmmm9wxpdda6jaglx7smwl6qd5xuzjcweeq8ykp0wg9hng4pg6eumwx2t90swaed7ehsa6j86qsw3fnl4thtemsng6vukmz6ddf3cnd4sfkzu74xjqg",
+		addrXvk0:     "addr_xvk1fz009r4f0aceaemksezlca9cz8p8rewhaurvyvgg2ndnq9vwj3w6lqamjman0pm4y05pqazn8l2hwhnhpx35eedk9566nr3xmtqnv9ccm4zyu",
+		addrXsk1:     "addr_xsk1lq2ylz7fhsn0dfmul2pe833cdwvjnvux9uaxuzaz50gs7pnmm9wq343uh5cpfs87tgh9saa86un8e2l266rsge0c5qsmtaud5r64ctndwkyth8q07fgusyr3fldhn6lgd5tat5cmcdzvfzhtd0cpsleuxg3sakhv",
+		addrXvk1:     "addr_xvk1y3r70ejyadsaplez83p7uhy8p6l08a5sjl860kszevxu0jaxcwmx6avghwwqluj3eqg8zn7m0847smgh6hf3hs6ycj9wk6lsrplncvsxqj6wd",
+		paymentAddr0: "addr_test1vpu5vlrf4xkxv2qpwngf6cjhtw542ayty80v8dyr49rf5eg57c2qv",
+		paymentAddr1: "addr_test1vq0a2lgc2e0r597dr983jrf5ns4hxz027u8n7wlcsjcw4ks96yjys",
+	},
+	// 18 words
+	{
+		mnemonic:     "churn shaft spoon second erode useless thrive burst group seed element sign scrub buffalo jelly grace neck useless",
+		rootXsk:      "root_xsk1az4qjp85qunj75m8krdvdygmv6u4ceqj8vnwaf38wfd69ycksa0fwt7n0cfp5zwmht9u0j9dzxxnfssjmkh4vn3dwxvddsle6m2vkm8q8p7addwq8y7q3s3eekd3ate40rfr6rpjakctcn2p54cpr3kjmy2hdej2",
+		addrXsk0:     "addr_xsk17zj2lhjk379klp40xfzsad0yzygqe45uaggnkzf4ld3emgsksa00ftq88fnfjxg245kjjqcukyjfg4lwmf3r2qqymyyqennch3y8llyg0d629pdx0pp0l69lerjz75kxmk5e6cr2d82kafp7a25y0qy5fvj06w0u",
+		addrXvk0:     "addr_xvk1fwgdh5vv6akdc3rjpeq57xxq4lc9m84xcrt6q827mq7u20wuw54gs7m552z6v7zzll5tlj8y9afvdhdfn4sx56w4d6jra64gg7qfgjc8e8sau",
+		addrXsk1:     "addr_xsk1wz99hznmt96crxthcmnxqttaul6caq4hv5jwttd5lly2mfsksa08q68skn2ggclu6vf40phx3wnj4e8fvxed6at8xxekwa49rg4c3ec8kp2nwcxfw6sgxphzckg5v0dausldvya0w6jy5k3cxwrqdjsthqls7zxn",
+		addrXvk1:     "addr_xvk135hqmkaqydnxnq6wmjkkhasvwjprpnqnzsrwwes6mql45enlcsqs0vz4xasvja4qsvrw93v3gc7mmep76cf67a4yffdrsvuxqm9qhwqlvnay5",
+		paymentAddr0: "addr_test1vptvyjfjvs7wdn583rv3th3fvf9fauv5f6gylkhh5k245zcdjvdac",
+		paymentAddr1: "addr_test1vr3nq3kyg9c9t4nn6a5zymz3at3zsmcr9lkqxghxh5v822gcu7ava",
+	},
+	// 21 words
+	{
+		mnemonic:     "draft ability female child jump maid roof hurt below live topple paper exclude ordinary coach churn sunset emerge blame ketchup much",
+		rootXsk:      "root_xsk17zqw352yj02seytp9apunec55722k93crtplq8chgpfh7cx33dg4v2x3wpyhd9chhkknzhprztumrystkpfl5nyhyeuq0gnwf76r39u9l9q3z40hgf5jv6xn8unr5acs3yy8fxg35v5xjsw4kwvf5zfkvcn57fle",
+		addrXsk0:     "addr_xsk1fz8tz0pdda8la0aqhadnzctw0p48zwygkgf4xyar2jjljm733dgkprs4sj8cxfwv9xtfddpdfvjlap0hhg9gd37pr0tp7ue48mh9cnfyy68k52f88z5vghezam30c3pcue6aewl4mqul6nvassxlenh3eqh822k2",
+		addrXvk0:     "addr_xvk1x4dme9s2f5xxn77wgjhggqh73r6syy4nvjcdjklnaqrh48f6desjgf50dg5jww9gc30j9mhzl3zr3en4mjaltkpel4xempqdln80rjq5grmc7",
+		addrXsk1:     "addr_xsk18peu0v64maghaa87jvu0txdkftvznq7he2yhntk8eem56mk33dgl2rwt8kmhcgdytr6fjn0t4cdf6sr3xud67yhwnjhzyghgu294f6v0fcfzqlactzd8cf5m4tpu7yyn5x58dx6q00d362j6e06g88phjglns3p5",
+		addrXvk1:     "addr_xvk1ndtepmpg06x9nskfasvr50mue356e4rqlvuzf8jjcj6n48feexsg7nsjyplmsky60snfh2kreugf8gdgw6d5q77mr5494jl5swwr0ysprauul",
+		paymentAddr0: "addr_test1vz83dnlqqtdrlct4kz3f7d07d59w6p4yrtlr62340yklhaqrrykc7",
+		paymentAddr1: "addr_test1vzr08acccp7s3l9cppvptz7jyflejkkuma2k06vx4vjrcqsl4gkk5",
+	},
+}
 
 type MockDB struct {
 	calls int
@@ -30,77 +73,131 @@ func (db *MockDB) GetWallets() []Wallet {
 }
 
 func TestAddWallet(t *testing.T) {
-	db := &MockDB{}
-	newEntropy = func(bitSize int) []byte {
-		return wallet1Entropy
-	}
+	for _, testVector := range testVectors {
+		db := &MockDB{}
 
-	w, mnemonic, err := AddWallet("test", wallet1Password, db)
-	if err != nil {
-		t.Error(err)
-	}
+		newEntropy = func(bitSize int) []byte {
+			entropy, err := bip39.EntropyFromMnemonic(testVector.mnemonic)
+			if err != nil {
+				t.Error(err)
+			}
+			return entropy
+		}
 
-	addresses, err := w.Addresses(Mainnet)
-	if err != nil {
-		t.Error(err)
-	}
+		w, mnemonic, err := AddWallet("test", "", db)
+		if err != nil {
+			t.Error(err)
+		}
 
-	if mnemonic != wallet1Mnemonic {
-		t.Errorf("invalid mnemonic:\ngot: %v\nwant: %v", mnemonic, wallet1Mnemonic)
-	}
+		addrXsk0 := bech32From("addr_xsk", w.ExternalChain.Childs[0].Xsk)
+		addrXvk0 := bech32From("addr_xvk", w.ExternalChain.Childs[0].Xvk)
 
-	if addresses[0] != wallet1Address0 {
-		t.Errorf("invalid address:\ngot: %v\nwant: %v", addresses[0], wallet1Address0)
-	}
+		if addrXsk0 != testVector.addrXsk0 {
+			t.Errorf("invalid addrXsk0 :\ngot: %v\nwant: %v", addrXsk0, testVector.addrXsk0)
+		}
 
-	if db.calls != 1 {
-		t.Errorf("invalid address:\ngot: %v\nwant: %v", db.calls, 1)
+		if addrXvk0 != testVector.addrXvk0 {
+			t.Errorf("invalid addrXvk0 :\ngot: %v\nwant: %v", addrXvk0, testVector.addrXvk0)
+		}
+
+		addresses, err := w.Addresses(Testnet)
+		if err != nil {
+			t.Error(err)
+		}
+
+		if mnemonic != testVector.mnemonic {
+			t.Errorf("invalid mnemonic:\ngot: %v\nwant: %v", mnemonic, testVector.mnemonic)
+		}
+
+		if addresses[0] != testVector.paymentAddr0 {
+			t.Errorf("invalid paymentAddr0:\ngot: %v\nwant: %v", addresses[0], testVector.paymentAddr0)
+		}
+
+		if db.calls != 1 {
+			t.Errorf("invalid db calls:\ngot: %v\nwant: %v", db.calls, 1)
+		}
 	}
 }
 
 func TestRestoreWallet(t *testing.T) {
-	db := &MockDB{}
-	newEntropy = func(bitSize int) []byte {
-		return wallet1Entropy
-	}
+	for _, testVector := range testVectors {
+		db := &MockDB{}
 
-	w, err := RestoreWallet(wallet1Mnemonic, wallet1Password, db)
-	if err != nil {
-		t.Error(err)
-	}
+		w, err := RestoreWallet("", testVector.mnemonic, "", db)
+		if err != nil {
+			t.Error(err)
+		}
 
-	addresses, err := w.Addresses(Mainnet)
-	if err != nil {
-		t.Error(err)
-	}
+		addrXsk0 := bech32From("addr_xsk", w.ExternalChain.Childs[0].Xsk)
+		addrXvk0 := bech32From("addr_xvk", w.ExternalChain.Childs[0].Xvk)
 
-	if addresses[0] != wallet1Address0 {
-		t.Errorf("invalid address:\ngot: %v\nwant: %v", addresses[0], wallet1Address0)
-	}
+		if addrXsk0 != testVector.addrXsk0 {
+			t.Errorf("invalid addrXsk0 :\ngot: %v\nwant: %v", addrXsk0, testVector.addrXsk0)
+		}
 
-	if db.calls != 1 {
-		t.Errorf("invalid db calls:\ngot: %v\nwant: %v", db.calls, 1)
+		if addrXvk0 != testVector.addrXvk0 {
+			t.Errorf("invalid addrXvk0 :\ngot: %v\nwant: %v", addrXvk0, testVector.addrXvk0)
+		}
+
+		addresses, err := w.Addresses(Testnet)
+		if err != nil {
+			t.Error(err)
+		}
+
+		if addresses[0] != testVector.paymentAddr0 {
+			t.Errorf("invalid paymentAddr0:\ngot: %v\nwant: %v", addresses[0], testVector.paymentAddr0)
+		}
+
+		if db.calls != 1 {
+			t.Errorf("invalid db calls:\ngot: %v\nwant: %v", db.calls, 1)
+		}
 	}
 }
 
 func TestGenerateAddress(t *testing.T) {
-	db := &MockDB{}
-	newEntropy = func(bitSize int) []byte {
-		return wallet1Entropy
-	}
+	for _, testVector := range testVectors {
+		db := &MockDB{}
 
-	w, _, err := AddWallet("test", wallet1Password, db)
-	if err != nil {
-		t.Error(err)
-	}
+		newEntropy = func(bitSize int) []byte {
+			entropy, err := bip39.EntropyFromMnemonic(testVector.mnemonic)
+			if err != nil {
+				t.Error(err)
+			}
+			return entropy
+		}
 
-	addr1, err := w.GenerateAddress(Mainnet)
+		w, _, err := AddWallet("test", "", db)
+		if err != nil {
+			t.Error(err)
+		}
 
-	if addr1 != wallet1Address1 {
-		t.Errorf("invalid address:\ngot: %v\nwant: %v", addr1, wallet1Address1)
-	}
+		paymentAddr1, err := w.GenerateAddress(Testnet)
+		if err != nil {
+			t.Error(err)
+		}
 
-	if db.calls != 1 {
-		t.Errorf("invalid db calls:\ngot: %v\nwant: %v", db.calls, 1)
+		addrXsk1 := bech32From("addr_xsk", w.ExternalChain.Childs[1].Xsk)
+		addrXvk1 := bech32From("addr_xvk", w.ExternalChain.Childs[1].Xvk)
+
+		if addrXsk1 != testVector.addrXsk1 {
+			t.Errorf("invalid addrXsk1 :\ngot: %v\nwant: %v", addrXsk1, testVector.addrXsk1)
+		}
+
+		if addrXvk1 != testVector.addrXvk1 {
+			t.Errorf("invalid addrXvk1 :\ngot: %v\nwant: %v", addrXvk1, testVector.addrXvk1)
+		}
+
+		if paymentAddr1 != testVector.paymentAddr1 {
+			t.Errorf("invalid paymentAddr1:\ngot: %v\nwant: %v", paymentAddr1, testVector.paymentAddr1)
+		}
+
+		if db.calls != 1 {
+			t.Errorf("invalid db calls:\ngot: %v\nwant: %v", db.calls, 1)
+		}
 	}
+}
+
+func bech32From(hrp string, bytes []byte) string {
+	enc, _ := bech32.EncodeFromBase256(hrp, bytes)
+	return enc
 }

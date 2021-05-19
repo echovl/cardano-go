@@ -13,7 +13,7 @@ const (
 	purposeIndex       uint32 = 1852 + 0x80000000
 	coinTypeIndex      uint32 = 1815 + 0x80000000
 	accountIndex       uint32 = 0x80000000
-	externalChainIndex uint32 = 0x80000000
+	externalChainIndex uint32 = 0x0
 	walleIDAlphabet           = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 )
 
@@ -70,7 +70,6 @@ func NewWalletID() WalletID {
 // This function will return a new wallet with its corresponding 24 word mnemonic
 func AddWallet(name, password string, db WalletDB) (*Wallet, string, error) {
 	entropy := newEntropy(entropySizeInBits)
-	fmt.Println(entropy)
 	mnemonic := crypto.GenerateMnemonic(entropy)
 
 	wallet := newWallet(entropy, password)
@@ -80,13 +79,14 @@ func AddWallet(name, password string, db WalletDB) (*Wallet, string, error) {
 	return wallet, mnemonic, nil
 }
 
-func RestoreWallet(mnemonic, password string, db WalletDB) (*Wallet, error) {
+func RestoreWallet(name, mnemonic, password string, db WalletDB) (*Wallet, error) {
 	entropy, err := bip39.EntropyFromMnemonic(mnemonic)
 	if err != nil {
 		return nil, err
 	}
 
 	wallet := newWallet(entropy, password)
+	wallet.Name = name
 	db.SaveWallet(wallet)
 
 	return wallet, nil
