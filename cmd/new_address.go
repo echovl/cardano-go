@@ -1,9 +1,8 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/echovl/cardano-wallet/db"
+	"github.com/echovl/cardano-wallet/logger"
 	"github.com/echovl/cardano-wallet/wallet"
 	"github.com/spf13/cobra"
 )
@@ -34,8 +33,7 @@ var newAddressCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-
-		fmt.Println("New address", addr)
+		logger.Infow("New address created", "wallet", w.ID, "address", addr)
 
 		return nil
 	},

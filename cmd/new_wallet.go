@@ -5,11 +5,11 @@ import (
 	"strings"
 
 	"github.com/echovl/cardano-wallet/db"
+	"github.com/echovl/cardano-wallet/logger"
 	"github.com/echovl/cardano-wallet/wallet"
 	"github.com/spf13/cobra"
 )
 
-// newWalletCmd represents the wallet command
 var newWalletCmd = &cobra.Command{
 	Use:   "new-wallet [wallet-name]",
 	Short: "Create or restore a wallet",
@@ -24,7 +24,8 @@ it will restore a wallet using the mnemonic and password.`,
 		defer bdb.Close()
 
 		if len(mnemonic) == 0 {
-			_, mnemonic, _ := wallet.AddWallet(args[0], password, bdb)
+			w, mnemonic, _ := wallet.AddWallet(args[0], password, bdb)
+			logger.Infow("New wallet created", "wallet", w.ID)
 
 			fmt.Printf("mnemonic: %v\n", mnemonic)
 		} else {

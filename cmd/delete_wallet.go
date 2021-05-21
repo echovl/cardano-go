@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/echovl/cardano-wallet/db"
+	"github.com/echovl/cardano-wallet/logger"
 	"github.com/echovl/cardano-wallet/wallet"
 	"github.com/spf13/cobra"
 )
@@ -17,6 +18,7 @@ var deleteWalletCmd = &cobra.Command{
 		defer bdb.Close()
 
 		walletId := wallet.WalletID(args[0])
+		logger.Infof("Wallet removed", "wallet", walletId)
 		return wallet.DeleteWallet(walletId, bdb)
 	},
 }
