@@ -1,53 +1,68 @@
 package cmd
 
 import (
+	"encoding/hex"
 	"encoding/json"
-	"log"
+	"io/ioutil"
 
-	"github.com/echovl/cardano-wallet/crypto"
+	"github.com/echovl/cardano-wallet/db"
 	"github.com/echovl/cardano-wallet/wallet"
+	"github.com/fxamacker/cbor/v2"
 	"github.com/spf13/cobra"
 )
 
-// txCmd represents the tx command
+type TxJson struct {
+	Type        string `json:"type"`
+	Description string `json:"description"`
+	CborHex     string `json:"cborHex"`
+}
+
 var txCmd = &cobra.Command{
 	Use:   "tx",
-	Short: "tx build demo",
+	Short: "tx build example",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		builder := wallet.NewTxBuilder(wallet.ProtocolParams{MinFeeA: 44, MinFeeB: 155381})
-
-		xsk := crypto.XSigningKey([]byte{
-			0, 237, 225, 96, 167, 183, 203, 122, 22, 221, 248, 249, 240, 177, 80, 198, 37, 204, 119, 73, 45, 226, 57, 58, 224, 185, 85, 164, 227, 173, 70, 79, 64, 243, 101, 168, 111, 20, 206, 86, 113, 111, 154, 66, 61, 66, 101, 117, 174, 0, 15, 171, 123, 21, 98, 174, 13, 161, 244, 47, 97, 95, 134, 20, 123, 37, 73, 112, 113, 60, 207, 51, 101, 180, 225, 3, 55, 95, 172, 17, 167, 252, 67, 207, 55, 165, 12, 169, 149, 158, 67, 195, 223, 250, 251, 230,
-		})
-		xvk := xsk.XVerificationKey()
-		txId := []byte{
-			23, 43, 54, 23,
-			23, 43, 54, 23,
-			23, 43, 54, 23,
-			23, 43, 54, 23,
-			23, 43, 54, 23,
-			23, 43, 54, 23,
-			23, 43, 54, 23,
-			23, 43, 54, 23,
+		badger := db.NewBadgerDB()
+		walletId := wallet.WalletID("wallet_8TPxCbfRyD")
+		w, err := wallet.GetWallet(walletId, badger)
+		if err != nil {
+			return err
 		}
 
-		builder.AddInput(xvk, txId, 0, 10*1e6)
-		builder.AddOutput("addr1v8fykcd00h5l49qyeq6r0s86mvyl6wug9jwuz8dpyv69tpc9wyn2g", 5*1e6)
-		builder.SetTtl(100)
-		err := builder.AddFee("addr1v8fykcd00h5l49qyeq6r0s86mvyl6wug9jwuz8dpyv69tpc9wyn2g")
+		builder := wallet.NewTxBuilder(wallet.ProtocolParams{MinFeeA: 44, MinFeeB: 155381})
+
+		xsk := w.ExternalChain.Childs[0].Xsk
+		xvk := xsk.XVerificationKey()
+
+		addresses, _ := w.Addresses(wallet.Testnet)
+		txId, _ := hex.DecodeString("03c5301b0b739d867f49576d8a81690a354fdf917853044d53ccb432228e9c9d")
+		utxoIndex := uint64(0)
+		utxoAmount := uint64(1000 * 1e6)
+		ttl := uint64(37224254)
+
+		toAddress := wallet.Address("addr_test1vr228vewyrhp9ewkrnr7ju2heh6ja905mc23hv03f4r5a4ssjdkds")
+		amountToSend := uint64(5 * 1e6)
+
+		// Build transaction
+		builder.AddInput(xvk, txId, utxoIndex, utxoAmount)
+		builder.AddOutput(toAddress, amountToSend)
+		builder.SetTtl(ttl)
+		err = builder.AddFee(addresses[0])
 		if err != nil {
 			return err
 		}
 		builder.Sign(xsk)
 
 		tx := builder.Build()
+		txCborBytes, _ := cbor.Marshal(tx)
 
-		log.Println("body: ", pretty(tx.Body))
-		log.Println("witness: ", pretty(tx.WitnessSet))
-
-		txValid := xvk.Verify(tx.Body.Bytes(), tx.WitnessSet.VKeyWitnessSet[0].Signature)
-
-		log.Println("transaction is valid?", txValid)
+		// Tx json following cardano-cli format
+		txJson := TxJson{
+			Type:        "Tx MaryEra",
+			Description: "",
+			CborHex:     hex.EncodeToString(txCborBytes),
+		}
+		txJsonBytes, _ := json.Marshal(txJson)
+		ioutil.WriteFile("tx_signed.json", txJsonBytes, 770)
 
 		return nil
 	},

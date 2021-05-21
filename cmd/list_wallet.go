@@ -26,7 +26,6 @@ var listWalletCmd = &cobra.Command{
 				return err
 			}
 			fmt.Printf("%-18v %-9v %-9v\n", w.ID, w.Name, len(addresses))
-			fmt.Println(w.ExternalChain.Childs[0].Xsk)
 		}
 		return nil
 	},
