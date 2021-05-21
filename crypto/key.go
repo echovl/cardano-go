@@ -8,11 +8,21 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
-// XSigningKey is the extended private key appended with the chain code
+// XSigningKey is the extended private key (64 bytes) appended with the chain code (32 bytes)
 type XSigningKey []byte
 
-// XVerificationKey is the public key appended with the chain code
+func (xsk *XSigningKey) Sign(message []byte) []byte {
+	pk := ed25519.ExtendedPrivateKey((*xsk)[:64])
+	return ed25519.SignExtended(pk, message)
+}
+
+// XVerificationKey is the public key (32 bytes) appended with the chain code (32 bytes)
 type XVerificationKey []byte
+
+func (xvk *XVerificationKey) Verify(message, signature []byte) bool {
+	pk := ed25519.PublicKey((*xvk)[:32])
+	return ed25519.Verify(pk, message, signature)
+}
 
 func GenerateMasterKey(entropy []byte, password string) XSigningKey {
 	key := pbkdf2.Key([]byte(password), entropy, 4096, 96, sha512.New)

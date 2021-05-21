@@ -20,12 +20,13 @@ var listWalletCmd = &cobra.Command{
 		wallets := wallet.GetWallets(bdb)
 
 		fmt.Printf("%-18v %-9v %-9v\n", "ID", "NAME", "ADDRESS")
-		for _, v := range wallets {
-			addresses, err := v.Addresses(wallet.Mainnet)
+		for _, w := range wallets {
+			addresses, err := w.Addresses(wallet.Mainnet)
 			if err != nil {
 				return err
 			}
-			fmt.Printf("%-18v %-9v %-9v\n", v.ID, v.Name, len(addresses))
+			fmt.Printf("%-18v %-9v %-9v\n", w.ID, w.Name, len(addresses))
+			fmt.Println(w.ExternalChain.Childs[0].Xsk)
 		}
 		return nil
 	},

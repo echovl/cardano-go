@@ -14,6 +14,14 @@ const (
 type NetworkType byte
 type Address string
 
+func (addr *Address) Bytes() []byte {
+	_, bytes, err := bech32.DecodeToBase256(string(*addr))
+	if err != nil {
+		panic(err)
+	}
+	return bytes
+}
+
 func newEnterpriseAddress(xvk crypto.XVerificationKey, network NetworkType) (Address, error) {
 	addressBytes := make([]byte, 29)
 	header := 0x60 | (byte(network) & 0xFF)
