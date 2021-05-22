@@ -2,16 +2,16 @@ package wallet
 
 import "github.com/echovl/cardano-wallet/crypto"
 
-type keyPair struct {
+type KeyPair struct {
 	Xsk crypto.XSigningKey
 	Xvk crypto.XVerificationKey
 }
 
-type keyPairChain struct {
-	Root   keyPair
-	Childs []keyPair
+type KeyPairChain struct {
+	Root   KeyPair
+	Childs []KeyPair
 }
 
-func newKeyPairFromXsk(xsk crypto.XSigningKey) keyPair {
-	return keyPair{xsk, xsk.XVerificationKey()}
+func newKeyPairFromXsk(xsk crypto.XSigningKey) KeyPair {
+	return KeyPair{xsk, xsk.XVerificationKey()}
 }

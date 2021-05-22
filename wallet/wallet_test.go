@@ -93,6 +93,7 @@ func TestAddWallet(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+		w.SetNetwork(Testnet)
 
 		addrXsk0 := bech32From("addr_xsk", w.ExternalChain.Childs[0].Xsk)
 		addrXvk0 := bech32From("addr_xvk", w.ExternalChain.Childs[0].Xvk)
@@ -105,7 +106,7 @@ func TestAddWallet(t *testing.T) {
 			t.Errorf("invalid addrXvk0 :\ngot: %v\nwant: %v", addrXvk0, testVector.addrXvk0)
 		}
 
-		addresses := w.Addresses(Testnet)
+		addresses := w.Addresses()
 
 		if mnemonic != testVector.mnemonic {
 			t.Errorf("invalid mnemonic:\ngot: %v\nwant: %v", mnemonic, testVector.mnemonic)
@@ -129,6 +130,7 @@ func TestRestoreWallet(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+		w.SetNetwork(Testnet)
 
 		addrXsk0 := bech32From("addr_xsk", w.ExternalChain.Childs[0].Xsk)
 		addrXvk0 := bech32From("addr_xvk", w.ExternalChain.Childs[0].Xvk)
@@ -141,7 +143,7 @@ func TestRestoreWallet(t *testing.T) {
 			t.Errorf("invalid addrXvk0 :\ngot: %v\nwant: %v", addrXvk0, testVector.addrXvk0)
 		}
 
-		addresses := w.Addresses(Testnet)
+		addresses := w.Addresses()
 
 		if addresses[0] != testVector.paymentAddr0 {
 			t.Errorf("invalid paymentAddr0:\ngot: %v\nwant: %v", addresses[0], testVector.paymentAddr0)
@@ -169,8 +171,9 @@ func TestGenerateAddress(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+		w.SetNetwork(Testnet)
 
-		paymentAddr1 := w.GenerateAddress(Testnet)
+		paymentAddr1 := w.GenerateAddress()
 
 		addrXsk1 := bech32From("addr_xsk", w.ExternalChain.Childs[1].Xsk)
 		addrXvk1 := bech32From("addr_xvk", w.ExternalChain.Childs[1].Xvk)
@@ -214,6 +217,10 @@ func (prov *MockProvider) QueryTip() (NodeTip, error) {
 	return NodeTip{}, nil
 }
 
+func (prov *MockProvider) SubmitTx(tx Transaction) error {
+	return nil
+}
+
 func TestWalletBalance(t *testing.T) {
 	db := &MockDB{}
 	provider := &MockProvider{utxos: []Utxo{{Amount: 100}, {Amount: 33}}}
@@ -221,8 +228,10 @@ func TestWalletBalance(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	w.SetNetwork(Testnet)
+	w.SetProvider(provider)
 
-	got, err := w.Balance(provider, Testnet)
+	got, err := w.Balance()
 	if err != nil {
 		t.Error(err)
 	}

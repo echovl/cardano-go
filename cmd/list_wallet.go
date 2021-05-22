@@ -24,7 +24,8 @@ var listWalletCmd = &cobra.Command{
 
 		fmt.Printf("%-18v %-9v %-9v\n", "ID", "NAME", "ADDRESS")
 		for _, w := range wallets {
-			addresses := w.Addresses(wallet.Mainnet)
+			w.SetNetwork(wallet.Testnet)
+			addresses := w.Addresses()
 			fmt.Printf("%-18v %-9v %-9v\n", w.ID, w.Name, len(addresses))
 		}
 		return nil

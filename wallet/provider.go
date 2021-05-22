@@ -16,4 +16,5 @@ type NodeTip struct {
 type Provider interface {
 	QueryUtxos(Address) ([]Utxo, error)
 	QueryTip() (NodeTip, error)
+	SubmitTx(Transaction) error
 }

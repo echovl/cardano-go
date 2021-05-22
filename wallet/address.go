@@ -6,12 +6,13 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
+type Network byte
+
 const (
-	Testnet NetworkType = 0
-	Mainnet NetworkType = 1
+	Testnet Network = 0
+	Mainnet Network = 1
 )
 
-type NetworkType byte
 type Address string
 
 func (addr *Address) Bytes() []byte {
@@ -22,7 +23,7 @@ func (addr *Address) Bytes() []byte {
 	return bytes
 }
 
-func newEnterpriseAddress(xvk crypto.XVerificationKey, network NetworkType) Address {
+func newEnterpriseAddress(xvk crypto.XVerificationKey, network Network) Address {
 	addressBytes := make([]byte, 29)
 	header := 0x60 | (byte(network) & 0xFF)
 	hash, err := blake2b.New(224/8, nil)
@@ -45,7 +46,7 @@ func newEnterpriseAddress(xvk crypto.XVerificationKey, network NetworkType) Addr
 	return Address(address)
 }
 
-func getHrp(network NetworkType) string {
+func getHrp(network Network) string {
 	if network == Testnet {
 		return "addr_test"
 	} else {
