@@ -16,6 +16,11 @@ Compile the source code and install the executable
 $ make && sudo make install
 ```
 
+## Dependencies
+
+For balance and transfer commands `cardano-node` and `cardano-cli` are required. 
+You can install them using this guide https://docs.cardano.org/projects/cardano-node/en/latest/getting-started/install.html
+
 ## Getting started
 
 First create a new wallet and generate your mnemonic squence:
@@ -44,4 +49,12 @@ By default a new wallet is created with one payment address, you can create more
 ```
 $ cardano-wallet new-address wl_uu4FmZvNYG
 New address addr_test1vz8vyz6pk6hwgwqz239rcyk52e659aefa8g08amm80tq8ag9eng6q
+```
+
+You can get your balance:
+
+```
+$ cardano-wallet balance wallet_WGejugqca4 --testnet
+ASSET                     AMOUNT
+Lovelace                  1000000000
 ```
