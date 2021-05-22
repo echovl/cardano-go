@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -34,7 +35,6 @@ func (cli *NodeCli) QueryUtxos(address wallet.Address) ([]wallet.Utxo, error) {
 		if err != nil {
 			break
 		}
-
 		if counter >= 2 {
 			args := strings.Fields(line)
 			if len(args) < 4 {
@@ -87,6 +87,7 @@ func runCommand(cmd string, arg ...string) (*bytes.Buffer, error) {
 	out := &bytes.Buffer{}
 	command := exec.Command(cmd, arg...)
 	command.Stdout = out
+	command.Stderr = os.Stderr
 
 	err := command.Run()
 	if err != nil {

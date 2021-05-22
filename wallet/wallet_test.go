@@ -202,6 +202,37 @@ func TestDeleteWallet(t *testing.T) {
 	}
 }
 
+type MockProvider struct {
+	utxos []Utxo
+}
+
+func (prov *MockProvider) QueryUtxos(addr Address) ([]Utxo, error) {
+	return prov.utxos, nil
+}
+
+func (prov *MockProvider) QueryTip() (NodeTip, error) {
+	return NodeTip{}, nil
+}
+
+func TestWalletBalance(t *testing.T) {
+	db := &MockDB{}
+	provider := &MockProvider{utxos: []Utxo{{Amount: 100}, {Amount: 33}}}
+	w, _, err := AddWallet("test", "", db)
+	if err != nil {
+		t.Error(err)
+	}
+
+	got, err := w.Balance(provider, Testnet)
+	if err != nil {
+		t.Error(err)
+	}
+	want := uint64(133)
+
+	if got != want {
+		t.Errorf("invalid balance :\ngot: %v\nwant: %v", got, want)
+	}
+}
+
 func bech32From(hrp string, bytes []byte) string {
 	enc, _ := bech32.EncodeFromBase256(hrp, bytes)
 	return enc
