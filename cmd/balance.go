@@ -3,8 +3,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/echovl/cardano-wallet/db"
-	"github.com/echovl/cardano-wallet/provider"
 	"github.com/echovl/cardano-wallet/wallet"
 	"github.com/spf13/cobra"
 )
@@ -22,16 +20,14 @@ var balanceCmd = &cobra.Command{
 		}
 
 		id := wallet.WalletID(args[0])
-		badger := db.NewBadgerDB()
-		provider := &provider.NodeCli{}
 
-		w, err := wallet.GetWallet(id, badger)
+		w, err := wallet.GetWallet(id, DefaultDb)
 		if err != nil {
 			return err
 		}
 
 		w.SetNetwork(network)
-		w.SetProvider(provider)
+		w.SetProvider(DefaultProvider)
 
 		balance, err := w.Balance()
 		fmt.Printf("%-25v %-9v\n", "ASSET", "AMOUNT")

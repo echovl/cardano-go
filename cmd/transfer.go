@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"github.com/echovl/cardano-wallet/db"
-	"github.com/echovl/cardano-wallet/provider"
 	"github.com/echovl/cardano-wallet/wallet"
 	"github.com/spf13/cobra"
 )
@@ -21,16 +19,13 @@ var transferCmd = &cobra.Command{
 			return err
 		}
 
-		badger := db.NewBadgerDB()
-		provider := &provider.NodeCli{}
-
-		w, err := wallet.GetWallet(senderId, badger)
+		w, err := wallet.GetWallet(senderId, DefaultDb)
 		if err != nil {
 			return err
 		}
 
 		w.SetNetwork(wallet.Testnet)
-		w.SetProvider(provider)
+		w.SetProvider(DefaultProvider)
 
 		err = w.Transfer(receiver, amountToTransfer)
 

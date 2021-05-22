@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"github.com/echovl/cardano-wallet/db"
 	"github.com/echovl/cardano-wallet/logger"
 	"github.com/echovl/cardano-wallet/wallet"
 	"github.com/spf13/cobra"
@@ -14,12 +13,9 @@ var deleteWalletCmd = &cobra.Command{
 	Aliases: []string{"delw"},
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		bdb := db.NewBadgerDB()
-		defer bdb.Close()
-
 		walletId := wallet.WalletID(args[0])
 		logger.Infof("Wallet removed", "wallet", walletId)
-		return wallet.DeleteWallet(walletId, bdb)
+		return wallet.DeleteWallet(walletId, DefaultDb)
 	},
 }
 

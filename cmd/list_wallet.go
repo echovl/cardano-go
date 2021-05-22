@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/echovl/cardano-wallet/db"
 	"github.com/echovl/cardano-wallet/wallet"
 	"github.com/spf13/cobra"
 )
@@ -14,10 +13,7 @@ var listWalletCmd = &cobra.Command{
 	Short:   "Print a list of known wallets",
 	Aliases: []string{"lsw"},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		bdb := db.NewBadgerDB()
-		defer bdb.Close()
-
-		wallets, err := wallet.GetWallets(bdb)
+		wallets, err := wallet.GetWallets(DefaultDb)
 		if err != nil {
 			return err
 		}

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/echovl/cardano-wallet/db"
 	"github.com/echovl/cardano-wallet/logger"
 	"github.com/echovl/cardano-wallet/wallet"
 	"github.com/spf13/cobra"
@@ -20,16 +19,14 @@ it will restore a wallet using the mnemonic and password.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		password, _ := cmd.Flags().GetString("password")
 		mnemonic, _ := cmd.Flags().GetStringSlice("mnemonic")
-		bdb := db.NewBadgerDB()
-		defer bdb.Close()
 
 		if len(mnemonic) == 0 {
-			w, mnemonic, _ := wallet.AddWallet(args[0], password, bdb)
+			w, mnemonic, _ := wallet.AddWallet(args[0], password, DefaultDb)
 			logger.Infow("New wallet created", "wallet", w.ID)
 
 			fmt.Printf("mnemonic: %v\n", mnemonic)
 		} else {
-			wallet.RestoreWallet(args[0], strings.Join(mnemonic, " "), password, bdb)
+			wallet.RestoreWallet(args[0], strings.Join(mnemonic, " "), password, DefaultDb)
 		}
 	},
 }

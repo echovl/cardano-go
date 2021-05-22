@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"github.com/echovl/cardano-wallet/db"
 	"github.com/echovl/cardano-wallet/logger"
 	"github.com/echovl/cardano-wallet/wallet"
 	"github.com/spf13/cobra"
@@ -21,10 +20,7 @@ var newAddressCmd = &cobra.Command{
 		}
 
 		walletID := wallet.WalletID(args[0])
-		bdb := db.NewBadgerDB()
-		defer bdb.Close()
-
-		w, err := wallet.GetWallet(walletID, bdb)
+		w, err := wallet.GetWallet(walletID, DefaultDb)
 		if err != nil {
 			return err
 		}
