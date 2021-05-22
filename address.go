@@ -1,8 +1,8 @@
-package wallet
+package cardano
 
 import (
 	"github.com/echovl/bech32"
-	"github.com/echovl/cardano-wallet/crypto"
+	"github.com/echovl/cardano-go/crypto"
 	"golang.org/x/crypto/blake2b"
 )
 

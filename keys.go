@@ -1,6 +1,6 @@
-package wallet
+package cardano
 
-import "github.com/echovl/cardano-wallet/crypto"
+import "github.com/echovl/cardano-go/crypto"
 
 type KeyPair struct {
 	Xsk crypto.XSigningKey

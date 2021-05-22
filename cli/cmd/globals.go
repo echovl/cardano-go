@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/echovl/cardano-wallet/db"
-	"github.com/echovl/cardano-wallet/node"
+	"github.com/echovl/cardano-go/db"
+	"github.com/echovl/cardano-go/node"
 )
 
 var DefaultCardanoNode = &node.CardanoCli{}

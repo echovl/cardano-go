@@ -1,10 +1,10 @@
-package wallet
+package cardano
 
 import (
 	"fmt"
 	"strconv"
 
-	"github.com/echovl/cardano-wallet/crypto"
+	"github.com/echovl/cardano-go/crypto"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/tyler-smith/go-bip39"
 )

@@ -1,8 +1,7 @@
 package cmd
 
 import (
-	"github.com/echovl/cardano-wallet/logger"
-	"github.com/echovl/cardano-wallet/wallet"
+	"github.com/echovl/cardano-go"
 	"github.com/spf13/cobra"
 )
 
@@ -14,21 +13,19 @@ var newAddressCmd = &cobra.Command{
 	Aliases: []string{"newa"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		useTestnet, err := cmd.Flags().GetBool("testnet")
-		network := wallet.Mainnet
+		network := cardano.Mainnet
 		if useTestnet {
-			network = wallet.Testnet
+			network = cardano.Testnet
 		}
 
-		walletID := wallet.WalletID(args[0])
-		w, err := wallet.GetWallet(walletID, DefaultDb)
+		walletID := cardano.WalletID(args[0])
+		w, err := cardano.GetWallet(walletID, DefaultDb)
 		if err != nil {
 			return err
 		}
 
 		w.SetNetwork(network)
-
-		addr := w.GenerateAddress()
-		logger.Infow("New address created", "wallet", w.ID, "address", addr)
+		w.GenerateAddress()
 
 		return nil
 	},

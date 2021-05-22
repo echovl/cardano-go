@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/echovl/cardano-wallet/wallet"
+	"github.com/echovl/cardano-go"
 	"github.com/spf13/cobra"
 )
 
@@ -16,13 +16,13 @@ var listAddressCmd = &cobra.Command{
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		useTestnet, err := cmd.Flags().GetBool("testnet")
-		network := wallet.Mainnet
+		network := cardano.Mainnet
 		if useTestnet {
-			network = wallet.Testnet
+			network = cardano.Testnet
 		}
 
-		walletID := wallet.WalletID(args[0])
-		w, err := wallet.GetWallet(walletID, DefaultDb)
+		walletID := cardano.WalletID(args[0])
+		w, err := cardano.GetWallet(walletID, DefaultDb)
 		if err != nil {
 			return err
 		}

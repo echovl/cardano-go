@@ -1,4 +1,4 @@
-module github.com/echovl/cardano-wallet
+module github.com/echovl/cardano-go
 
 go 1.16
 
