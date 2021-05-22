@@ -33,6 +33,23 @@ type Wallet struct {
 	db            WalletDB
 }
 
+// Balance returns the total lovelace amount of the wallet.
+func (w *Wallet) Balance(provider Provider, network NetworkType) (uint64, error) {
+	var balance uint64
+	addresses := w.Addresses(network)
+	for _, addr := range addresses {
+		utxos, err := provider.QueryUtxos(addr)
+		if err != nil {
+			return 0, nil
+		}
+		for _, utxo := range utxos {
+			balance += utxo.Amount
+		}
+	}
+
+	return balance, nil
+}
+
 // GenerateAddress generates a new payment address and adds it to the wallet.
 func (w *Wallet) GenerateAddress(network NetworkType) Address {
 	chain := w.ExternalChain
