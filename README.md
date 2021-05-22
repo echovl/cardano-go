@@ -1,6 +1,6 @@
-# cardano-wallet
+# cardano-go
 
-A simple Cardano wallet CLI written in Go.
+cardano-go is both a library for creating go applicactions that interact with the Cardano Blockchain as well as a CLI to manage Cardano Wallets.
 
 ## Installation from source
 
