@@ -24,12 +24,16 @@ var balanceCmd = &cobra.Command{
 		id := wallet.WalletID(args[0])
 		badger := db.NewBadgerDB()
 		provider := &provider.NodeCli{}
+
 		w, err := wallet.GetWallet(id, badger)
 		if err != nil {
 			return err
 		}
 
-		balance, err := w.Balance(provider, network)
+		w.SetNetwork(network)
+		w.SetProvider(provider)
+
+		balance, err := w.Balance()
 		fmt.Printf("%-25v %-9v\n", "ASSET", "AMOUNT")
 		fmt.Printf("%-25v %-9v\n", "Lovelace", balance)
 		return err

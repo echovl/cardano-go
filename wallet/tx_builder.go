@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/echovl/cardano-wallet/crypto"
+	"github.com/echovl/cardano-wallet/logger"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -40,18 +41,25 @@ type TxBuilder struct {
 	outputs        []TxBuilderOutput
 	ttl            uint64
 	fee            uint64
-	vkeys          []crypto.XVerificationKey
-	pkeys          []crypto.XSigningKey
+	vkeys          map[string]crypto.XVerificationKey
+	pkeys          map[string]crypto.XSigningKey
 }
 
 func NewTxBuilder(protocolParams ProtocolParams) *TxBuilder {
-	return &TxBuilder{protocolParams: protocolParams}
+	return &TxBuilder{
+		protocolParams: protocolParams,
+		vkeys:          map[string]crypto.XVerificationKey{},
+		pkeys:          map[string]crypto.XSigningKey{},
+	}
 }
 
 func (builder *TxBuilder) AddInput(xvk crypto.XVerificationKey, txId TxId, index, amount uint64) {
 	input := TxBuilderInput{input: TransactionInput{ID: txId.Bytes(), Index: index}, amount: amount}
 	builder.inputs = append(builder.inputs, input)
-	builder.vkeys = append(builder.vkeys, xvk)
+
+	vkeyHashBytes := blake2b.Sum256(xvk)
+	vkeyHashString := hex.EncodeToString(vkeyHashBytes[:])
+	builder.vkeys[vkeyHashString] = xvk
 }
 
 func (builder *TxBuilder) AddOutput(address Address, amount uint64) {
@@ -94,14 +102,14 @@ func (builder *TxBuilder) AddFee(address Address) error {
 			if change > minAda {
 				builder.AddOutput(address, change)
 				builder.SetFee(newFee)
-				log.Println("Adding change output")
+				logger.Infow("Adding change output")
 			} else {
-				builder.SetFee(minFee)
-				log.Println("Burning remaining change")
+				builder.SetFee(minFee + change)
+				logger.Infow("Burning remaining change")
 			}
 		} else {
-			builder.SetFee(minFee)
-			log.Println("Burning remaining change")
+			builder.SetFee(minFee + change)
+			logger.Infow("Burning remaining change")
 		}
 
 	} else if inputAmount == outputWithFeeAmount {
@@ -157,7 +165,9 @@ func (builder *TxBuilder) calculateFee(tx *Transaction) uint64 {
 }
 
 func (builder *TxBuilder) Sign(xsk crypto.XSigningKey) {
-	builder.pkeys = append(builder.pkeys, xsk)
+	pkeyHashBytes := blake2b.Sum256(xsk)
+	pkeyHashString := hex.EncodeToString(pkeyHashBytes[:])
+	builder.pkeys[pkeyHashString] = xsk
 }
 
 func (builder *TxBuilder) Build() Transaction {

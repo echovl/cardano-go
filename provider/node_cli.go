@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 
 	"github.com/echovl/cardano-wallet/wallet"
@@ -20,6 +20,11 @@ type CliTip struct {
 	Slot  uint64
 	Block uint64
 	Era   string
+}
+type CliTx struct {
+	Type        string `json:"type"`
+	Description string `json:"description"`
+	CborHex     string `json:"cborHex"`
 }
 
 func (cli *NodeCli) QueryUtxos(address wallet.Address) ([]wallet.Utxo, error) {
@@ -42,11 +47,11 @@ func (cli *NodeCli) QueryUtxos(address wallet.Address) ([]wallet.Utxo, error) {
 			}
 
 			txId := wallet.TxId(args[0])
-			index, err := parseUint64(args[1])
+			index, err := wallet.ParseUint64(args[1])
 			if err != nil {
 				return nil, err
 			}
-			amount, err := parseUint64(args[2])
+			amount, err := wallet.ParseUint64(args[2])
 			if err != nil {
 				return nil, err
 			}
@@ -83,6 +88,33 @@ func (cli *NodeCli) QueryTip() (wallet.NodeTip, error) {
 	}, nil
 }
 
+func (cli *NodeCli) SubmitTx(tx wallet.Transaction) error {
+	const txFileName = "txsigned.temp"
+	txPayload := CliTx{
+		Type:        "Tx MaryEra",
+		Description: "",
+		CborHex:     tx.CborHex(),
+	}
+
+	txPayloadJson, err := json.Marshal(txPayload)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(txFileName, txPayloadJson, 777)
+	if err != nil {
+		return err
+	}
+
+	out, err := runCommand("cardano-cli", "transaction", "submit", "--tx-file", txFileName, "--testnet-magic", "1097911063")
+
+	fmt.Println(out.String())
+
+	err = os.Remove(txFileName)
+
+	return err
+}
+
 func runCommand(cmd string, arg ...string) (*bytes.Buffer, error) {
 	out := &bytes.Buffer{}
 	command := exec.Command(cmd, arg...)
@@ -95,12 +127,4 @@ func runCommand(cmd string, arg ...string) (*bytes.Buffer, error) {
 	}
 
 	return out, nil
-}
-
-func parseUint64(s string) (uint64, error) {
-	parsed, err := strconv.ParseUint(s, 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return parsed, nil
 }

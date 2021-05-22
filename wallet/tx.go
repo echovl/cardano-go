@@ -1,7 +1,10 @@
 package wallet
 
 import (
+	"encoding/hex"
+
 	"github.com/fxamacker/cbor/v2"
+	"golang.org/x/crypto/blake2b"
 )
 
 type ProtocolParams struct {
@@ -25,6 +28,15 @@ func (tx *Transaction) Bytes() []byte {
 		panic(err)
 	}
 	return bytes
+}
+
+func (tx *Transaction) CborHex() string {
+	return hex.EncodeToString(tx.Bytes())
+}
+
+func (tx *Transaction) ID() TxId {
+	txHash := blake2b.Sum256(tx.Body.Bytes())
+	return TxId(hex.EncodeToString(txHash[:]))
 }
 
 type TransactionWitnessSet struct {

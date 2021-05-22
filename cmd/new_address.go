@@ -29,7 +29,9 @@ var newAddressCmd = &cobra.Command{
 			return err
 		}
 
-		addr := w.GenerateAddress(network)
+		w.SetNetwork(network)
+
+		addr := w.GenerateAddress()
 		logger.Infow("New address created", "wallet", w.ID, "address", addr)
 
 		return nil

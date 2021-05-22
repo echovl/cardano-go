@@ -30,7 +30,8 @@ var listAddressCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		addresses := w.Addresses(network)
+		w.SetNetwork(network)
+		addresses := w.Addresses()
 		fmt.Printf("%-25v %-9v\n", "PATH", "ADDRESS")
 		for i, addr := range addresses {
 			fmt.Printf("%-25v %-9v\n", "m/1852'/1815'/0'/0/"+strconv.Itoa(i), addr)
