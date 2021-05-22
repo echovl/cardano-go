@@ -1,13 +1,11 @@
-package wallet
+package cardano
 
 import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 
-	"github.com/echovl/cardano-wallet/crypto"
-	"github.com/echovl/cardano-wallet/logger"
+	"github.com/echovl/cardano-go/crypto"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -102,19 +100,19 @@ func (builder *TxBuilder) AddFee(address Address) error {
 			if change > minAda {
 				builder.AddOutput(address, change)
 				builder.SetFee(newFee)
-				logger.Infow("Adding change output")
+				//logger.Infow("Adding change output")
 			} else {
 				builder.SetFee(minFee + change)
-				logger.Infow("Burning remaining change")
+				//logger.Infow("Burning remaining change")
 			}
 		} else {
 			builder.SetFee(minFee + change)
-			logger.Infow("Burning remaining change")
+			//logger.Infow("Burning remaining change")
 		}
 
 	} else if inputAmount == outputWithFeeAmount {
 		builder.SetFee(minFee)
-		log.Println("No remaining change")
+		//log.Infow("No remaining change")
 	} else {
 		return fmt.Errorf("Insuficient input in transaction")
 	}

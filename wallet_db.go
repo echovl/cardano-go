@@ -1,4 +1,4 @@
-package wallet
+package cardano
 
 type WalletDB interface {
 	SaveWallet(*Wallet) error

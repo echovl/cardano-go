@@ -1,4 +1,4 @@
-package wallet
+package cardano
 
 import (
 	"testing"

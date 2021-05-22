@@ -3,25 +3,25 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/echovl/cardano-wallet/wallet"
+	"github.com/echovl/cardano-go"
 	"github.com/spf13/cobra"
 )
 
 var balanceCmd = &cobra.Command{
-	Use:     "balance [wallet-id]",
-	Short:   "Get wallet's balance",
+	Use:     "balance [cardano.id]",
+	Short:   "Get cardano.s balance",
 	Aliases: []string{"bal"},
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		useTestnet, err := cmd.Flags().GetBool("testnet")
-		network := wallet.Mainnet
+		network := cardano.Mainnet
 		if useTestnet {
-			network = wallet.Testnet
+			network = cardano.Testnet
 		}
 
-		id := wallet.WalletID(args[0])
+		id := cardano.WalletID(args[0])
 
-		w, err := wallet.GetWallet(id, DefaultDb)
+		w, err := cardano.GetWallet(id, DefaultDb)
 		if err != nil {
 			return err
 		}

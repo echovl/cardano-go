@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/dgraph-io/badger/v3"
-	"github.com/echovl/cardano-wallet/wallet"
+	"github.com/echovl/cardano-go"
 )
 
 type BadgerDB struct {
@@ -25,7 +25,7 @@ func (bdb *BadgerDB) Close() {
 	bdb.db.Close()
 }
 
-func (bdb *BadgerDB) SaveWallet(w *wallet.Wallet) error {
+func (bdb *BadgerDB) SaveWallet(w *cardano.Wallet) error {
 	walletBuffer := &bytes.Buffer{}
 	json.NewEncoder(walletBuffer).Encode(w)
 
@@ -39,8 +39,8 @@ func (bdb *BadgerDB) SaveWallet(w *wallet.Wallet) error {
 	return nil
 }
 
-func (bdb *BadgerDB) GetWallets() ([]wallet.Wallet, error) {
-	wallets := []wallet.Wallet{}
+func (bdb *BadgerDB) GetWallets() ([]cardano.Wallet, error) {
+	wallets := []cardano.Wallet{}
 	err := bdb.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
@@ -52,7 +52,7 @@ func (bdb *BadgerDB) GetWallets() ([]wallet.Wallet, error) {
 				return err
 			}
 
-			wallet := wallet.Wallet{}
+			wallet := cardano.Wallet{}
 			json.NewDecoder(bytes.NewBuffer(value)).Decode(&wallet)
 			wallets = append(wallets, wallet)
 		}
@@ -65,7 +65,7 @@ func (bdb *BadgerDB) GetWallets() ([]wallet.Wallet, error) {
 	return wallets, nil
 }
 
-func (bdb *BadgerDB) DeleteWallet(id wallet.WalletID) error {
+func (bdb *BadgerDB) DeleteWallet(id cardano.WalletID) error {
 	err := bdb.db.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(id))
 	})

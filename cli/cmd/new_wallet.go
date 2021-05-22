@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/echovl/cardano-wallet/logger"
-	"github.com/echovl/cardano-wallet/wallet"
+	"github.com/echovl/cardano-go"
 	"github.com/spf13/cobra"
 )
 
@@ -21,12 +20,10 @@ it will restore a wallet using the mnemonic and password.`,
 		mnemonic, _ := cmd.Flags().GetStringSlice("mnemonic")
 
 		if len(mnemonic) == 0 {
-			w, mnemonic, _ := wallet.AddWallet(args[0], password, DefaultDb)
-			logger.Infow("New wallet created", "wallet", w.ID)
-
+			_, mnemonic, _ := cardano.AddWallet(args[0], password, DefaultDb)
 			fmt.Printf("mnemonic: %v\n", mnemonic)
 		} else {
-			wallet.RestoreWallet(args[0], strings.Join(mnemonic, " "), password, DefaultDb)
+			cardano.RestoreWallet(args[0], strings.Join(mnemonic, " "), password, DefaultDb)
 		}
 	},
 }

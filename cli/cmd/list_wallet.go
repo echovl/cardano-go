@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/echovl/cardano-wallet/wallet"
+	"github.com/echovl/cardano-go"
 	"github.com/spf13/cobra"
 )
 
@@ -13,14 +13,14 @@ var listWalletCmd = &cobra.Command{
 	Short:   "Print a list of known wallets",
 	Aliases: []string{"lsw"},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		wallets, err := wallet.GetWallets(DefaultDb)
+		wallets, err := cardano.GetWallets(DefaultDb)
 		if err != nil {
 			return err
 		}
 
 		fmt.Printf("%-18v %-9v %-9v\n", "ID", "NAME", "ADDRESS")
 		for _, w := range wallets {
-			w.SetNetwork(wallet.Testnet)
+			w.SetNetwork(cardano.Testnet)
 			addresses := w.Addresses()
 			fmt.Printf("%-18v %-9v %-9v\n", w.ID, w.Name, len(addresses))
 		}

@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/echovl/cardano-wallet/wallet"
+	"github.com/echovl/cardano-go"
 )
 
 type CardanoCli struct{}
@@ -27,14 +27,14 @@ type CardanoCliTx struct {
 	CborHex     string `json:"cborHex"`
 }
 
-func (cli *CardanoCli) QueryUtxos(address wallet.Address) ([]wallet.Utxo, error) {
+func (cli *CardanoCli) QueryUtxos(address cardano.Address) ([]cardano.Utxo, error) {
 	out, err := runCommand("cardano-cli", "query", "utxo", "--address", string(address), "--testnet-magic", "1097911063")
 	if err != nil {
 		return nil, err
 	}
 
 	counter := 0
-	utxos := []wallet.Utxo{}
+	utxos := []cardano.Utxo{}
 	for {
 		line, err := out.ReadString(byte('\n'))
 		if err != nil {
@@ -46,17 +46,17 @@ func (cli *CardanoCli) QueryUtxos(address wallet.Address) ([]wallet.Utxo, error)
 				return nil, fmt.Errorf("malformed cli response")
 			}
 
-			txId := wallet.TxId(args[0])
-			index, err := wallet.ParseUint64(args[1])
+			txId := cardano.TxId(args[0])
+			index, err := cardano.ParseUint64(args[1])
 			if err != nil {
 				return nil, err
 			}
-			amount, err := wallet.ParseUint64(args[2])
+			amount, err := cardano.ParseUint64(args[2])
 			if err != nil {
 				return nil, err
 			}
 
-			utxos = append(utxos, wallet.Utxo{
+			utxos = append(utxos, cardano.Utxo{
 				TxId:    txId,
 				Index:   index,
 				Amount:  amount,
@@ -69,26 +69,26 @@ func (cli *CardanoCli) QueryUtxos(address wallet.Address) ([]wallet.Utxo, error)
 	return utxos, nil
 }
 
-func (cli *CardanoCli) QueryTip() (wallet.NodeTip, error) {
+func (cli *CardanoCli) QueryTip() (cardano.NodeTip, error) {
 	out, err := runCommand("cardano-cli", "query", "tip", "--testnet-magic", "1097911063")
 	if err != nil {
-		return wallet.NodeTip{}, err
+		return cardano.NodeTip{}, err
 	}
 
 	cliTip := &CardanoCliTip{}
 	err = json.Unmarshal(out.Bytes(), cliTip)
 	if err != nil {
-		return wallet.NodeTip{}, err
+		return cardano.NodeTip{}, err
 	}
 
-	return wallet.NodeTip{
+	return cardano.NodeTip{
 		Epoch: cliTip.Epoch,
 		Block: cliTip.Block,
 		Slot:  cliTip.Slot,
 	}, nil
 }
 
-func (cli *CardanoCli) SubmitTx(tx wallet.Transaction) error {
+func (cli *CardanoCli) SubmitTx(tx cardano.Transaction) error {
 	const txFileName = "txsigned.temp"
 	txPayload := CardanoCliTx{
 		Type:        "Tx MaryEra",
