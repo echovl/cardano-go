@@ -22,12 +22,12 @@ func (addr *Address) Bytes() []byte {
 	return bytes
 }
 
-func newEnterpriseAddress(xvk crypto.XVerificationKey, network NetworkType) (Address, error) {
+func newEnterpriseAddress(xvk crypto.XVerificationKey, network NetworkType) Address {
 	addressBytes := make([]byte, 29)
 	header := 0x60 | (byte(network) & 0xFF)
 	hash, err := blake2b.New(224/8, nil)
 	if err != nil {
-		return "", err
+		panic(err)
 	}
 
 	hash.Write(xvk[:32])
@@ -39,10 +39,10 @@ func newEnterpriseAddress(xvk crypto.XVerificationKey, network NetworkType) (Add
 	hrp := getHrp(network)
 	address, err := bech32.EncodeFromBase256(hrp, addressBytes)
 	if err != nil {
-		return "", err
+		panic(err)
 	}
 
-	return Address(address), nil
+	return Address(address)
 }
 
 func getHrp(network NetworkType) string {

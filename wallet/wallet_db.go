@@ -2,7 +2,7 @@ package wallet
 
 type WalletDB interface {
 	SaveWallet(*Wallet) error
-	GetWallets() []Wallet
+	GetWallets() ([]Wallet, error)
 	DeleteWallet(WalletID) error
 	Close()
 }

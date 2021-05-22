@@ -67,9 +67,9 @@ func (db *MockDB) Close() {
 	db.calls++
 }
 
-func (db *MockDB) GetWallets() []Wallet {
+func (db *MockDB) GetWallets() ([]Wallet, error) {
 	db.calls++
-	return []Wallet{}
+	return []Wallet{}, nil
 }
 
 func (db *MockDB) DeleteWallet(id WalletID) error {
@@ -105,10 +105,7 @@ func TestAddWallet(t *testing.T) {
 			t.Errorf("invalid addrXvk0 :\ngot: %v\nwant: %v", addrXvk0, testVector.addrXvk0)
 		}
 
-		addresses, err := w.Addresses(Testnet)
-		if err != nil {
-			t.Error(err)
-		}
+		addresses := w.Addresses(Testnet)
 
 		if mnemonic != testVector.mnemonic {
 			t.Errorf("invalid mnemonic:\ngot: %v\nwant: %v", mnemonic, testVector.mnemonic)
@@ -144,10 +141,7 @@ func TestRestoreWallet(t *testing.T) {
 			t.Errorf("invalid addrXvk0 :\ngot: %v\nwant: %v", addrXvk0, testVector.addrXvk0)
 		}
 
-		addresses, err := w.Addresses(Testnet)
-		if err != nil {
-			t.Error(err)
-		}
+		addresses := w.Addresses(Testnet)
 
 		if addresses[0] != testVector.paymentAddr0 {
 			t.Errorf("invalid paymentAddr0:\ngot: %v\nwant: %v", addresses[0], testVector.paymentAddr0)
@@ -176,10 +170,7 @@ func TestGenerateAddress(t *testing.T) {
 			t.Error(err)
 		}
 
-		paymentAddr1, err := w.GenerateAddress(Testnet)
-		if err != nil {
-			t.Error(err)
-		}
+		paymentAddr1 := w.GenerateAddress(Testnet)
 
 		addrXsk1 := bech32From("addr_xsk", w.ExternalChain.Childs[1].Xsk)
 		addrXvk1 := bech32From("addr_xvk", w.ExternalChain.Childs[1].Xvk)

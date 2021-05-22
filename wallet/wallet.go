@@ -34,7 +34,7 @@ type Wallet struct {
 }
 
 // GenerateAddress generates a new payment address and adds it to the wallet.
-func (w *Wallet) GenerateAddress(network NetworkType) (Address, error) {
+func (w *Wallet) GenerateAddress(network NetworkType) Address {
 	chain := w.ExternalChain
 	index := uint32(len(chain.Childs))
 	xsk := crypto.DeriveChildSigningKey(chain.Root.Xsk, index)
@@ -48,17 +48,13 @@ func (w *Wallet) GenerateAddress(network NetworkType) (Address, error) {
 }
 
 // AddAddresses returns all wallet's addresss.
-func (w *Wallet) Addresses(network NetworkType) ([]Address, error) {
+func (w *Wallet) Addresses(network NetworkType) []Address {
 	addresses := make([]Address, len(w.ExternalChain.Childs))
 	for i, kp := range w.ExternalChain.Childs {
-		addr, err := newEnterpriseAddress(kp.Xvk, network)
-		if err != nil {
-			return nil, err
-		}
-		addresses[i] = addr
+		addresses[i] = newEnterpriseAddress(kp.Xvk, network)
 	}
 
-	return addresses, nil
+	return addresses
 }
 
 func NewWalletID() WalletID {
@@ -74,7 +70,10 @@ func AddWallet(name, password string, db WalletDB) (*Wallet, string, error) {
 
 	wallet := newWallet(entropy, password)
 	wallet.Name = name
-	db.SaveWallet(wallet)
+	err := db.SaveWallet(wallet)
+	if err != nil {
+		return nil, "", err
+	}
 
 	return wallet, mnemonic, nil
 }
@@ -87,26 +86,36 @@ func RestoreWallet(name, mnemonic, password string, db WalletDB) (*Wallet, error
 
 	wallet := newWallet(entropy, password)
 	wallet.Name = name
-	db.SaveWallet(wallet)
+	err = db.SaveWallet(wallet)
+	if err != nil {
+		return nil, err
+	}
 
 	return wallet, nil
 }
 
-func GetWallets(db WalletDB) []Wallet {
-	wallets := db.GetWallets()
+func GetWallets(db WalletDB) ([]Wallet, error) {
+	wallets, err := db.GetWallets()
+	if err != nil {
+		return nil, err
+	}
 	for i := range wallets {
 		wallets[i].db = db
 	}
-	return wallets
+	return wallets, nil
 }
 
 func GetWallet(id WalletID, db WalletDB) (*Wallet, error) {
-	wallets := GetWallets(db)
+	wallets, err := GetWallets(db)
+	if err != nil {
+		return nil, err
+	}
 	for _, w := range wallets {
 		if w.ID == id {
 			return &w, nil
 		}
 	}
+
 	return nil, fmt.Errorf("wallet %v not found", id)
 }
 

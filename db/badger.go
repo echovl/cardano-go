@@ -39,9 +39,9 @@ func (bdb *BadgerDB) SaveWallet(w *wallet.Wallet) error {
 	return nil
 }
 
-func (bdb *BadgerDB) GetWallets() []wallet.Wallet {
+func (bdb *BadgerDB) GetWallets() ([]wallet.Wallet, error) {
 	wallets := []wallet.Wallet{}
-	bdb.db.View(func(txn *badger.Txn) error {
+	err := bdb.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
 
@@ -58,7 +58,11 @@ func (bdb *BadgerDB) GetWallets() []wallet.Wallet {
 		}
 		return nil
 	})
-	return wallets
+	if err != nil {
+		return nil, err
+	}
+
+	return wallets, nil
 }
 
 func (bdb *BadgerDB) DeleteWallet(id wallet.WalletID) error {

@@ -17,14 +17,14 @@ var listWalletCmd = &cobra.Command{
 		bdb := db.NewBadgerDB()
 		defer bdb.Close()
 
-		wallets := wallet.GetWallets(bdb)
+		wallets, err := wallet.GetWallets(bdb)
+		if err != nil {
+			return err
+		}
 
 		fmt.Printf("%-18v %-9v %-9v\n", "ID", "NAME", "ADDRESS")
 		for _, w := range wallets {
-			addresses, err := w.Addresses(wallet.Mainnet)
-			if err != nil {
-				return err
-			}
+			addresses := w.Addresses(wallet.Mainnet)
 			fmt.Printf("%-18v %-9v %-9v\n", w.ID, w.Name, len(addresses))
 		}
 		return nil
