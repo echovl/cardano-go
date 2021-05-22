@@ -25,7 +25,7 @@ var transferCmd = &cobra.Command{
 		}
 
 		w.SetNetwork(wallet.Testnet)
-		w.SetProvider(DefaultProvider)
+		w.SetNode(DefaultCardanoNode)
 
 		err = w.Transfer(receiver, amountToTransfer)
 

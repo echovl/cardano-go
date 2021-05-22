@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"github.com/echovl/cardano-wallet/db"
-	"github.com/echovl/cardano-wallet/provider"
+	"github.com/echovl/cardano-wallet/node"
 )
 
-var DefaultProvider = &provider.NodeCli{}
+var DefaultCardanoNode = &node.CardanoCli{}
 var DefaultDb = db.NewBadgerDB()

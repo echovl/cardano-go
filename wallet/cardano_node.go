@@ -13,7 +13,7 @@ type NodeTip struct {
 	Slot  uint64
 }
 
-type Provider interface {
+type CardanoNode interface {
 	QueryUtxos(Address) ([]Utxo, error)
 	QueryTip() (NodeTip, error)
 	SubmitTx(Transaction) error

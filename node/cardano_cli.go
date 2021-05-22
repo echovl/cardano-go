@@ -1,4 +1,4 @@
-package provider
+package node
 
 import (
 	"bytes"
@@ -12,22 +12,22 @@ import (
 	"github.com/echovl/cardano-wallet/wallet"
 )
 
-type NodeCli struct{}
+type CardanoCli struct{}
 
-type CliTip struct {
+type CardanoCliTip struct {
 	Epoch uint64
 	Hash  string
 	Slot  uint64
 	Block uint64
 	Era   string
 }
-type CliTx struct {
+type CardanoCliTx struct {
 	Type        string `json:"type"`
 	Description string `json:"description"`
 	CborHex     string `json:"cborHex"`
 }
 
-func (cli *NodeCli) QueryUtxos(address wallet.Address) ([]wallet.Utxo, error) {
+func (cli *CardanoCli) QueryUtxos(address wallet.Address) ([]wallet.Utxo, error) {
 	out, err := runCommand("cardano-cli", "query", "utxo", "--address", string(address), "--testnet-magic", "1097911063")
 	if err != nil {
 		return nil, err
@@ -69,13 +69,13 @@ func (cli *NodeCli) QueryUtxos(address wallet.Address) ([]wallet.Utxo, error) {
 	return utxos, nil
 }
 
-func (cli *NodeCli) QueryTip() (wallet.NodeTip, error) {
+func (cli *CardanoCli) QueryTip() (wallet.NodeTip, error) {
 	out, err := runCommand("cardano-cli", "query", "tip", "--testnet-magic", "1097911063")
 	if err != nil {
 		return wallet.NodeTip{}, err
 	}
 
-	cliTip := &CliTip{}
+	cliTip := &CardanoCliTip{}
 	err = json.Unmarshal(out.Bytes(), cliTip)
 	if err != nil {
 		return wallet.NodeTip{}, err
@@ -88,9 +88,9 @@ func (cli *NodeCli) QueryTip() (wallet.NodeTip, error) {
 	}, nil
 }
 
-func (cli *NodeCli) SubmitTx(tx wallet.Transaction) error {
+func (cli *CardanoCli) SubmitTx(tx wallet.Transaction) error {
 	const txFileName = "txsigned.temp"
-	txPayload := CliTx{
+	txPayload := CardanoCliTx{
 		Type:        "Tx MaryEra",
 		Description: "",
 		CborHex:     tx.CborHex(),
@@ -107,8 +107,7 @@ func (cli *NodeCli) SubmitTx(tx wallet.Transaction) error {
 	}
 
 	out, err := runCommand("cardano-cli", "transaction", "submit", "--tx-file", txFileName, "--testnet-magic", "1097911063")
-
-	fmt.Println(out.String())
+	fmt.Print(out.String())
 
 	err = os.Remove(txFileName)
 

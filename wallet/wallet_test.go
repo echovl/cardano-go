@@ -229,7 +229,7 @@ func TestWalletBalance(t *testing.T) {
 		t.Error(err)
 	}
 	w.SetNetwork(Testnet)
-	w.SetProvider(provider)
+	w.SetNode(provider)
 
 	got, err := w.Balance()
 	if err != nil {

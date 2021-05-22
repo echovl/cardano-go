@@ -32,12 +32,12 @@ type Wallet struct {
 	internalChain KeyPairChain
 	stakeChain    KeyPairChain
 	db            WalletDB
-	provider      Provider
+	node          CardanoNode
 	network       Network
 }
 
-func (w *Wallet) SetProvider(p Provider) {
-	w.provider = p
+func (w *Wallet) SetNode(p CardanoNode) {
+	w.node = p
 }
 
 func (w *Wallet) SetNetwork(net Network) {
@@ -94,7 +94,7 @@ func (w *Wallet) Transfer(receiver Address, amount uint64) error {
 	builder.AddOutput(receiver, amount)
 
 	// Calculate and set ttl
-	tip, err := w.provider.QueryTip()
+	tip, err := w.node.QueryTip()
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func (w *Wallet) Transfer(receiver Address, amount uint64) error {
 
 	fmt.Println(pretty(tx))
 
-	err = w.provider.SubmitTx(tx)
+	err = w.node.SubmitTx(tx)
 
 	return err
 }
@@ -138,7 +138,7 @@ func (w *Wallet) findUtxos() ([]Utxo, error) {
 	addresses := w.Addresses()
 	walletUtxos := []Utxo{}
 	for _, addr := range addresses {
-		addrUtxos, err := w.provider.QueryUtxos(addr)
+		addrUtxos, err := w.node.QueryUtxos(addr)
 		if err != nil {
 			return nil, err
 		}

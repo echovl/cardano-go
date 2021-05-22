@@ -27,7 +27,7 @@ var balanceCmd = &cobra.Command{
 		}
 
 		w.SetNetwork(network)
-		w.SetProvider(DefaultProvider)
+		w.SetNode(DefaultCardanoNode)
 
 		balance, err := w.Balance()
 		fmt.Printf("%-25v %-9v\n", "ASSET", "AMOUNT")
