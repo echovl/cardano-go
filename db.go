@@ -7,7 +7,7 @@ import (
 type DB interface {
 	SaveWallet(*Wallet) error
 	GetWallets() ([]*Wallet, error)
-	DeleteWallet(WalletID) error
+	DeleteWallet(string) error
 	Close()
 }
 
@@ -65,7 +65,7 @@ func (bdb *badgerDB) GetWallets() ([]*Wallet, error) {
 	return wallets, nil
 }
 
-func (bdb *badgerDB) DeleteWallet(id WalletID) error {
+func (bdb *badgerDB) DeleteWallet(id string) error {
 	err := bdb.db.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(id))
 	})

@@ -13,6 +13,7 @@ const (
 	Mainnet Network = 1
 )
 
+// Address is the bech32 representation of a cardano address
 type Address string
 
 // Bytes returns the byte slice representation of the address.
@@ -24,7 +25,7 @@ func (addr *Address) Bytes() []byte {
 	return bytes
 }
 
-func newEnterpriseAddress(xvk crypto.XVerificationKey, network Network) Address {
+func newEnterpriseAddress(xvk crypto.ExtendedVerificationKey, network Network) Address {
 	addressBytes := make([]byte, 29)
 	header := 0x60 | (byte(network) & 0xFF)
 	hash, err := blake2b.New(224/8, nil)
@@ -47,8 +48,8 @@ func newEnterpriseAddress(xvk crypto.XVerificationKey, network Network) Address 
 	return Address(address)
 }
 
-// NewAddressFromBech32 creates an Address from a bech32 encoded string.
-func NewAddressFromBech32(addr string) (Address, error) {
+// Bech32ToAddress creates an Address from a bech32 encoded string.
+func Bech32ToAddress(addr string) (Address, error) {
 	_, _, err := bech32.DecodeToBase256(addr)
 	if err != nil {
 		return "", err
@@ -56,8 +57,8 @@ func NewAddressFromBech32(addr string) (Address, error) {
 	return Address(addr), nil
 }
 
-// NewAddressFromBytes creates an Address from a byte slice.
-func NewAddressFromBytes(addr []byte, network Network) (Address, error) {
+// BytesToAddress creates an Address from a byte slice.
+func BytesToAddress(addr []byte, network Network) (Address, error) {
 	encoded, err := bech32.EncodeFromBase256(getHrp(network), addr)
 	if err != nil {
 		return "", nil

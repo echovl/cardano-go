@@ -28,19 +28,19 @@ type txBuilder struct {
 	outputs  []txBuilderOutput
 	ttl      uint64
 	fee      uint64
-	vkeys    map[string]crypto.XVerificationKey
-	pkeys    map[string]crypto.XSigningKey
+	vkeys    map[string]crypto.ExtendedVerificationKey
+	pkeys    map[string]crypto.ExtendedSigningKey
 }
 
 func newTxBuilder(protocol protocolParams) *txBuilder {
 	return &txBuilder{
 		protocol: protocol,
-		vkeys:    map[string]crypto.XVerificationKey{},
-		pkeys:    map[string]crypto.XSigningKey{},
+		vkeys:    map[string]crypto.ExtendedVerificationKey{},
+		pkeys:    map[string]crypto.ExtendedSigningKey{},
 	}
 }
 
-func (builder *txBuilder) AddInput(xvk crypto.XVerificationKey, txId transactionID, index, amount uint64) {
+func (builder *txBuilder) AddInput(xvk crypto.ExtendedVerificationKey, txId transactionID, index, amount uint64) {
 	input := txBuilderInput{input: transactionInput{ID: txId.Bytes(), Index: index}, amount: amount}
 	builder.inputs = append(builder.inputs, input)
 
@@ -110,7 +110,7 @@ func (builder *txBuilder) AddFee(address Address) error {
 }
 
 func (builder *txBuilder) calculateMinFee() uint64 {
-	fakeXSigningKey := crypto.GenerateMasterKey([]byte{
+	fakeXSigningKey := crypto.NewExtendedSigningKey([]byte{
 		0x0c, 0xcb, 0x74, 0xf3, 0x6b, 0x7d, 0xa1, 0x64, 0x9a, 0x81, 0x44, 0x67, 0x55, 0x22, 0xd4, 0xd8, 0x09, 0x7c, 0x64, 0x12,
 	}, "")
 
@@ -118,7 +118,7 @@ func (builder *txBuilder) calculateMinFee() uint64 {
 
 	witnessSet := transactionWitnessSet{}
 	for _, vkey := range builder.vkeys {
-		witness := vkeyWitness{VKey: fakeXSigningKey.XVerificationKey()[:32], Signature: fakeXSigningKey.Sign(vkey)}
+		witness := vkeyWitness{VKey: fakeXSigningKey.ExtendedVerificationKey()[:32], Signature: fakeXSigningKey.Sign(vkey)}
 		witnessSet.VKeyWitnessSet = append(witnessSet.VKeyWitnessSet, witness)
 	}
 
@@ -151,7 +151,7 @@ func (builder *txBuilder) calculateFee(tx *transaction) uint64 {
 	return builder.protocol.MinFeeA*txLength + builder.protocol.MinFeeB
 }
 
-func (builder *txBuilder) Sign(xsk crypto.XSigningKey) {
+func (builder *txBuilder) Sign(xsk crypto.ExtendedSigningKey) {
 	pkeyHashBytes := blake2b.Sum256(xsk)
 	pkeyHashString := hex.EncodeToString(pkeyHashBytes[:])
 	builder.pkeys[pkeyHashString] = xsk
@@ -166,7 +166,7 @@ func (builder *txBuilder) Build() transaction {
 	witnessSet := transactionWitnessSet{}
 	for _, pkey := range builder.pkeys {
 		txHash := blake2b.Sum256(body.Bytes())
-		publicKey := pkey.XVerificationKey()[:32]
+		publicKey := pkey.ExtendedVerificationKey()[:32]
 		signature := pkey.Sign(txHash[:])
 		witness := vkeyWitness{VKey: publicKey, Signature: signature}
 

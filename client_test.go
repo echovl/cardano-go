@@ -71,7 +71,7 @@ func (db *MockDB) GetWallets() ([]*Wallet, error) {
 	return []*Wallet{}, nil
 }
 
-func (db *MockDB) DeleteWallet(id WalletID) error {
+func (db *MockDB) DeleteWallet(id string) error {
 	db.calls++
 	return nil
 }
@@ -95,8 +95,8 @@ func TestCreateWallet(t *testing.T) {
 		}
 		w.SetNetwork(Testnet)
 
-		addrXsk0 := bech32From("addr_xsk", w.externalChain.Childs[0].Xsk)
-		addrXvk0 := bech32From("addr_xvk", w.externalChain.Childs[0].Xvk)
+		addrXsk0 := bech32From("addr_xsk", w.keys[0])
+		addrXvk0 := bech32From("addr_xvk", w.keys[0].ExtendedVerificationKey())
 
 		if addrXsk0 != testVector.addrXsk0 {
 			t.Errorf("invalid addrXsk0 :\ngot: %v\nwant: %v", addrXsk0, testVector.addrXsk0)
@@ -129,8 +129,8 @@ func TestRestoreWallet(t *testing.T) {
 		}
 		w.SetNetwork(Testnet)
 
-		addrXsk0 := bech32From("addr_xsk", w.externalChain.Childs[0].Xsk)
-		addrXvk0 := bech32From("addr_xvk", w.externalChain.Childs[0].Xvk)
+		addrXsk0 := bech32From("addr_xsk", w.keys[0])
+		addrXvk0 := bech32From("addr_xvk", w.keys[0].ExtendedVerificationKey())
 
 		if addrXsk0 != testVector.addrXsk0 {
 			t.Errorf("invalid addrXsk0 :\ngot: %v\nwant: %v", addrXsk0, testVector.addrXsk0)

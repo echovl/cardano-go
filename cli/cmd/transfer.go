@@ -14,13 +14,13 @@ var transferCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := cardano.NewClient()
 		defer client.Close()
-		senderId := cardano.WalletID(args[0])
+		senderId := args[0]
 		receiver := cardano.Address(args[2])
 		amount, err := cardano.ParseUint64(args[1])
 		if err != nil {
 			return err
 		}
-		w, err := client.GetWallet(senderId)
+		w, err := client.Wallet(senderId)
 		if err != nil {
 			return err
 		}

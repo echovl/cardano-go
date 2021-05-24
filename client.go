@@ -14,8 +14,9 @@ type Client struct {
 	socketPath string
 }
 
-// NewClient builds a new Client using the Cardano Cli as a default connection
-// to the Cardano Blockhain.
+// NewClient builds a new Client using cardano-cli as the default connection
+// to the Blockhain.
+//
 // It uses BadgerDB as the default Wallet storage.
 func NewClient(opts ...Options) *Client {
 	client := &Client{node: newCli()}
@@ -37,7 +38,7 @@ func (c *Client) Close() {
 // returning a Wallet with its corresponding 24 word mnemonic
 func (c *Client) CreateWallet(name, password string) (*Wallet, string, error) {
 	entropy := newEntropy(entropySizeInBits)
-	mnemonic := crypto.GenerateMnemonic(entropy)
+	mnemonic := crypto.Mnemonic(entropy)
 	wallet := newWallet(name, password, entropy)
 	wallet.node = c.node
 	err := c.db.SaveWallet(wallet)
@@ -68,8 +69,8 @@ func (c *Client) SaveWallet(w *Wallet) error {
 	return c.db.SaveWallet(w)
 }
 
-// GetWallets returns all the Wallets currently saved in the Client's storage.
-func (c *Client) GetWallets() ([]*Wallet, error) {
+// Wallets returns the list of Wallets currently saved in the Client's storage.
+func (c *Client) Wallets() ([]*Wallet, error) {
 	wallets, err := c.db.GetWallets()
 	if err != nil {
 		return nil, err
@@ -80,9 +81,9 @@ func (c *Client) GetWallets() ([]*Wallet, error) {
 	return wallets, nil
 }
 
-// GetWallet returns a Wallet with the given id from the Client's storage.
-func (c *Client) GetWallet(id WalletID) (*Wallet, error) {
-	wallets, err := c.GetWallets()
+// Wallet returns a Wallet with the given id from the Client's storage.
+func (c *Client) Wallet(id string) (*Wallet, error) {
+	wallets, err := c.Wallets()
 	if err != nil {
 		return nil, err
 	}
@@ -95,6 +96,6 @@ func (c *Client) GetWallet(id WalletID) (*Wallet, error) {
 }
 
 // DeleteWallet removes a Wallet with the given id from the Client's storage.
-func (c *Client) DeleteWallet(id WalletID) error {
+func (c *Client) DeleteWallet(id string) error {
 	return c.db.DeleteWallet(id)
 }

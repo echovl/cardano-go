@@ -8,23 +8,23 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
-// XSigningKey is the extended private key (64 bytes) appended with the chain code (32 bytes)
-type XSigningKey []byte
+// ExtendedSigningKey is the extended private key (64 bytes) appended with the chain code (32 bytes)
+type ExtendedSigningKey []byte
 
-func (xsk *XSigningKey) Sign(message []byte) []byte {
+func (xsk *ExtendedSigningKey) Sign(message []byte) []byte {
 	pk := ed25519.ExtendedPrivateKey((*xsk)[:64])
 	return ed25519.SignExtended(pk, message)
 }
 
-// XVerificationKey is the public key (32 bytes) appended with the chain code (32 bytes)
-type XVerificationKey []byte
+// ExtendedVerificationKey is the public key (32 bytes) appended with the chain code (32 bytes)
+type ExtendedVerificationKey []byte
 
-func (xvk *XVerificationKey) Verify(message, signature []byte) bool {
+func (xvk *ExtendedVerificationKey) Verify(message, signature []byte) bool {
 	pk := ed25519.PublicKey((*xvk)[:32])
 	return ed25519.Verify(pk, message, signature)
 }
 
-func GenerateMasterKey(entropy []byte, password string) XSigningKey {
+func NewExtendedSigningKey(entropy []byte, password string) ExtendedSigningKey {
 	key := pbkdf2.Key([]byte(password), entropy, 4096, 96, sha512.New)
 
 	key[0] &= 0xf8
@@ -33,7 +33,7 @@ func GenerateMasterKey(entropy []byte, password string) XSigningKey {
 	return key
 }
 
-func GenerateMnemonic(entropy []byte) string {
+func Mnemonic(entropy []byte) string {
 	mnemonic, err := bip39.NewMnemonic(entropy)
 	if err != nil {
 		panic(err)
@@ -41,7 +41,7 @@ func GenerateMnemonic(entropy []byte) string {
 	return mnemonic
 }
 
-func (xsk *XSigningKey) XVerificationKey() XVerificationKey {
+func (xsk *ExtendedSigningKey) ExtendedVerificationKey() ExtendedVerificationKey {
 	xvk := make([]byte, 64)
 	pk := ed25519.PublicKeyFrom(ed25519.ExtendedPrivateKey((*xsk)[:64]))
 	cc := (*xsk)[64:]

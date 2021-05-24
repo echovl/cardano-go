@@ -7,7 +7,7 @@ import (
 	"github.com/echovl/ed25519"
 )
 
-func DeriveChildSigningKey(xsk XSigningKey, index uint32) XSigningKey {
+func DeriveChildSigningKey(xsk ExtendedSigningKey, index uint32) ExtendedSigningKey {
 	xpriv := xsk[:64]
 	chainCode := xsk[64:]
 	zmac := hmac.New(sha512.New, chainCode)

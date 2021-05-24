@@ -19,21 +19,13 @@ const (
 	walleIDAlphabet           = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 )
 
-var newEntropy = func(bitSize int) []byte {
-	entropy, _ := bip39.NewEntropy(bitSize)
-	return entropy
-}
-
-type WalletID string
-
 type Wallet struct {
-	ID            WalletID
-	Name          string
-	externalChain keyPairChain
-	internalChain keyPairChain
-	stakeChain    keyPairChain
-	node          cardanoNode
-	network       Network
+	ID      string
+	Name    string
+	keys    []crypto.ExtendedSigningKey
+	rootKey crypto.ExtendedSigningKey
+	node    cardanoNode
+	network Network
 }
 
 func (w *Wallet) SetNetwork(net Network) {
@@ -68,12 +60,13 @@ func (w *Wallet) Transfer(receiver Address, amount uint64) error {
 		MinFeeB:          155381,
 	})
 
-	keys := make(map[int]keyPair)
+	keys := make(map[int]crypto.ExtendedSigningKey)
 	for i, utxo := range pickedUtxos {
-		for _, keyPair := range w.externalChain.Childs {
-			keyPairAddress := newEnterpriseAddress(keyPair.Xvk, w.network)
-			if keyPairAddress == utxo.Address {
-				keys[i] = keyPair
+		for _, key := range w.keys {
+			vkey := key.ExtendedVerificationKey()
+			address := newEnterpriseAddress(vkey, w.network)
+			if address == utxo.Address {
+				keys[i] = key
 			}
 		}
 	}
@@ -83,8 +76,9 @@ func (w *Wallet) Transfer(receiver Address, amount uint64) error {
 	}
 
 	for i, utxo := range pickedUtxos {
-		xvk := keys[i].Xvk
-		builder.AddInput(xvk, utxo.TxId, utxo.Index, utxo.Amount)
+		skey := keys[i]
+		vkey := skey.ExtendedVerificationKey()
+		builder.AddInput(vkey, utxo.TxId, utxo.Index, utxo.Amount)
 	}
 	builder.AddOutput(receiver, amount)
 
@@ -100,8 +94,8 @@ func (w *Wallet) Transfer(receiver Address, amount uint64) error {
 	if err != nil {
 		return err
 	}
-	for _, keyPair := range keys {
-		builder.Sign(keyPair.Xsk)
+	for _, key := range keys {
+		builder.Sign(key)
 	}
 	tx := builder.Build()
 	return w.node.SubmitTx(tx)
@@ -133,59 +127,54 @@ func (w *Wallet) findUtxos() ([]Utxo, error) {
 	return walletUtxos, nil
 }
 
-// GenerateAddress generates a new payment address and adds it to the wallet.
-func (w *Wallet) GenerateAddress() Address {
-	chain := w.externalChain
-	index := uint32(len(chain.Childs))
-	xsk := crypto.DeriveChildSigningKey(chain.Root.Xsk, index)
-	w.externalChain.Childs = append(w.externalChain.Childs, keyPair{xsk, xsk.XVerificationKey()})
-	return newEnterpriseAddress(xsk.XVerificationKey(), w.network)
+// AddAddress generates a new payment address and adds it to the wallet.
+func (w *Wallet) AddAddress() Address {
+	index := uint32(len(w.keys))
+	newKey := crypto.DeriveChildSigningKey(w.rootKey, index)
+	w.keys = append(w.keys, newKey)
+	return newEnterpriseAddress(newKey.ExtendedVerificationKey(), w.network)
 }
 
 // AddAddresses returns all wallet's addresss.
 func (w *Wallet) Addresses() []Address {
-	addresses := make([]Address, len(w.externalChain.Childs))
-	for i, kp := range w.externalChain.Childs {
-		addresses[i] = newEnterpriseAddress(kp.Xvk, w.network)
+	addresses := make([]Address, len(w.keys))
+	for i, key := range w.keys {
+		addresses[i] = newEnterpriseAddress(key.ExtendedVerificationKey(), w.network)
 	}
 	return addresses
 }
 
-func NewWalletID() WalletID {
+func newWalletID() string {
 	id, _ := gonanoid.Generate(walleIDAlphabet, 10)
-	return WalletID("wallet_" + id)
+	return "wallet_" + id
 }
 
 func newWallet(name, password string, entropy []byte) *Wallet {
-	wallet := &Wallet{Name: name, ID: NewWalletID()}
-	rootXsk := crypto.GenerateMasterKey(entropy, password)
-	purposeXsk := crypto.DeriveChildSigningKey(rootXsk, purposeIndex)
-	coinXsk := crypto.DeriveChildSigningKey(purposeXsk, coinTypeIndex)
-	accountXsk := crypto.DeriveChildSigningKey(coinXsk, accountIndex)
-	chainXsk := crypto.DeriveChildSigningKey(accountXsk, externalChainIndex)
-	addr0Xsk := crypto.DeriveChildSigningKey(chainXsk, 0)
-	wallet.externalChain = keyPairChain{
-		Root:   newKeyPairFromXsk(chainXsk),
-		Childs: []keyPair{newKeyPairFromXsk(addr0Xsk)},
-	}
+	wallet := &Wallet{Name: name, ID: newWalletID()}
+	rootKey := crypto.NewExtendedSigningKey(entropy, password)
+	purposeKey := crypto.DeriveChildSigningKey(rootKey, purposeIndex)
+	coinKey := crypto.DeriveChildSigningKey(purposeKey, coinTypeIndex)
+	accountKey := crypto.DeriveChildSigningKey(coinKey, accountIndex)
+	chainKey := crypto.DeriveChildSigningKey(accountKey, externalChainIndex)
+	addr0Key := crypto.DeriveChildSigningKey(chainKey, 0)
+	wallet.rootKey = chainKey
+	wallet.keys = []crypto.ExtendedSigningKey{addr0Key}
 	return wallet
 }
 
 type walletDump struct {
-	ID            WalletID
-	Name          string
-	ExternalChain keyPairChain
-	InternalChain keyPairChain
-	StakeChain    keyPairChain
+	ID      string
+	Name    string
+	Keys    []crypto.ExtendedSigningKey
+	RootKey crypto.ExtendedSigningKey
 }
 
 func (w *Wallet) marshal() ([]byte, error) {
 	wd := &walletDump{
-		ID:            w.ID,
-		Name:          w.Name,
-		ExternalChain: w.externalChain,
-		InternalChain: w.internalChain,
-		StakeChain:    w.stakeChain,
+		ID:      w.ID,
+		Name:    w.Name,
+		Keys:    w.keys,
+		RootKey: w.rootKey,
 	}
 	bytes, err := json.Marshal(wd)
 	if err != nil {
@@ -202,9 +191,8 @@ func (w *Wallet) unmarshal(bytes []byte) error {
 	}
 	w.ID = wd.ID
 	w.Name = wd.Name
-	w.externalChain = wd.ExternalChain
-	w.internalChain = wd.InternalChain
-	w.stakeChain = wd.StakeChain
+	w.keys = wd.Keys
+	w.rootKey = wd.RootKey
 	return nil
 }
 
@@ -214,4 +202,9 @@ func ParseUint64(s string) (uint64, error) {
 		return 0, err
 	}
 	return parsed, nil
+}
+
+var newEntropy = func(bitSize int) []byte {
+	entropy, _ := bip39.NewEntropy(bitSize)
+	return entropy
 }

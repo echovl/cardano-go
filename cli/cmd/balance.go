@@ -22,8 +22,8 @@ var balanceCmd = &cobra.Command{
 			network = cardano.Testnet
 		}
 
-		id := cardano.WalletID(args[0])
-		w, err := client.GetWallet(id)
+		id := args[0]
+		w, err := client.Wallet(id)
 		if err != nil {
 			return err
 		}

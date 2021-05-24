@@ -24,7 +24,7 @@ var d1h0 = []byte{
 }
 
 func TestDerivePrivateKey(t *testing.T) {
-	xsk := XSigningKey(d1)
+	xsk := ExtendedSigningKey(d1)
 	xprivh0 := DeriveChildSigningKey(xsk, 0x80000000)
 
 	if equal := bytes.Compare(xprivh0, d1h0); equal != 0 {

@@ -15,7 +15,7 @@ var listWalletCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := cardano.NewClient()
 		defer client.Close()
-		wallets, err := client.GetWallets()
+		wallets, err := client.Wallets()
 		if err != nil {
 			return err
 		}

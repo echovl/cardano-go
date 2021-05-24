@@ -26,10 +26,10 @@ func TestGenerateAddress(t *testing.T) {
 		}
 		w.SetNetwork(Testnet)
 
-		paymentAddr1 := w.GenerateAddress()
+		paymentAddr1 := w.AddAddress()
 
-		addrXsk1 := bech32From("addr_xsk", w.externalChain.Childs[1].Xsk)
-		addrXvk1 := bech32From("addr_xvk", w.externalChain.Childs[1].Xvk)
+		addrXsk1 := bech32From("addr_xsk", w.keys[1])
+		addrXvk1 := bech32From("addr_xvk", w.keys[1].ExtendedVerificationKey())
 
 		if addrXsk1 != testVector.addrXsk1 {
 			t.Errorf("invalid addrXsk1 :\ngot: %v\nwant: %v", addrXsk1, testVector.addrXsk1)

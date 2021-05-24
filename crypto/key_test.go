@@ -15,10 +15,10 @@ const (
 	passphrase                 = "foo"
 )
 
-func TestGenerateMasterKeyWithoutPassphrase(t *testing.T) {
+func TestExtendedSigningKeyWithoutPassphrase(t *testing.T) {
 	entropy, _ := bip39.EntropyFromMnemonic(mnemonic)
 
-	got := GenerateMasterKey(entropy, "")
+	got := NewExtendedSigningKey(entropy, "")
 	want, _ := hex.DecodeString(masterKeyWithoutPassphrase)
 
 	if bytes.Compare(got, want) != 0 {
@@ -26,10 +26,10 @@ func TestGenerateMasterKeyWithoutPassphrase(t *testing.T) {
 	}
 }
 
-func TestGenerateMasterKeyWithPassphrase(t *testing.T) {
+func TestExtendedSigningKeyWithPassphrase(t *testing.T) {
 	entropy, _ := bip39.EntropyFromMnemonic(mnemonic)
 
-	got := GenerateMasterKey(entropy, passphrase)
+	got := NewExtendedSigningKey(entropy, passphrase)
 	want, _ := hex.DecodeString(masterKeyWithPassphrase)
 
 	if bytes.Compare(got, want) != 0 {
