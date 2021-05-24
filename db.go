@@ -1,46 +1,48 @@
-package db
+package cardano
 
 import (
-	"bytes"
-	"encoding/json"
-
 	"github.com/dgraph-io/badger/v3"
-	"github.com/echovl/cardano-go"
 )
 
-type BadgerDB struct {
+type DB interface {
+	SaveWallet(*Wallet) error
+	GetWallets() ([]*Wallet, error)
+	DeleteWallet(WalletID) error
+	Close()
+}
+
+type badgerDB struct {
 	db *badger.DB
 }
 
-func NewBadgerDB() *BadgerDB {
+func newBadgerDB() *badgerDB {
 	db, err := badger.Open(badger.DefaultOptions("/tmp/badger").WithLoggingLevel(badger.ERROR))
 	if err != nil {
 		panic(err)
 	}
-
-	return &BadgerDB{db}
+	return &badgerDB{db}
 }
 
-func (bdb *BadgerDB) Close() {
+func (bdb *badgerDB) Close() {
 	bdb.db.Close()
 }
 
-func (bdb *BadgerDB) SaveWallet(w *cardano.Wallet) error {
-	walletBuffer := &bytes.Buffer{}
-	json.NewEncoder(walletBuffer).Encode(w)
-
-	err := bdb.db.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte(w.ID), walletBuffer.Bytes())
+func (bdb *badgerDB) SaveWallet(w *Wallet) error {
+	bytes, err := w.marshal()
+	if err != nil {
+		return err
+	}
+	err = bdb.db.Update(func(txn *badger.Txn) error {
+		return txn.Set([]byte(w.ID), bytes)
 	})
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
-func (bdb *BadgerDB) GetWallets() ([]cardano.Wallet, error) {
-	wallets := []cardano.Wallet{}
+func (bdb *badgerDB) GetWallets() ([]*Wallet, error) {
+	wallets := []*Wallet{}
 	err := bdb.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
@@ -51,9 +53,8 @@ func (bdb *BadgerDB) GetWallets() ([]cardano.Wallet, error) {
 			if err != nil {
 				return err
 			}
-
-			wallet := cardano.Wallet{}
-			json.NewDecoder(bytes.NewBuffer(value)).Decode(&wallet)
+			wallet := &Wallet{}
+			wallet.unmarshal(value)
 			wallets = append(wallets, wallet)
 		}
 		return nil
@@ -61,14 +62,12 @@ func (bdb *BadgerDB) GetWallets() ([]cardano.Wallet, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return wallets, nil
 }
 
-func (bdb *BadgerDB) DeleteWallet(id cardano.WalletID) error {
+func (bdb *badgerDB) DeleteWallet(id WalletID) error {
 	err := bdb.db.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(id))
 	})
-
 	return err
 }

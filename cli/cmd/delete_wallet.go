@@ -12,8 +12,9 @@ var deleteWalletCmd = &cobra.Command{
 	Aliases: []string{"delw"},
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		walletId := cardano.WalletID(args[0])
-		return cardano.DeleteWallet(walletId, DefaultDb)
+		client := cardano.NewClient()
+		id := cardano.WalletID(args[0])
+		return client.DeleteWallet(id)
 	},
 }
 

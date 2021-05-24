@@ -7,7 +7,7 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-type ProtocolParams struct {
+type protocolParams struct {
 	MinimumUtxoValue uint64
 	PoolDeposit      uint64
 	KeyDeposit       uint64
@@ -15,14 +15,25 @@ type ProtocolParams struct {
 	MinFeeB          uint64
 }
 
-type Transaction struct {
-	_          struct{} `cbor:",toarray"`
-	Body       TransactionBody
-	WitnessSet TransactionWitnessSet
-	Metadata   *TransactionMetadata // or null
+type transactionID string
+
+func (id transactionID) Bytes() []byte {
+	bytes, err := hex.DecodeString(string(id))
+	if err != nil {
+		panic(err)
+	}
+
+	return bytes
 }
 
-func (tx *Transaction) Bytes() []byte {
+type transaction struct {
+	_          struct{} `cbor:",toarray"`
+	Body       transactionBody
+	WitnessSet transactionWitnessSet
+	Metadata   *transactionMetadata // or null
+}
+
+func (tx *transaction) Bytes() []byte {
 	bytes, err := cbor.Marshal(tx)
 	if err != nil {
 		panic(err)
@@ -30,44 +41,44 @@ func (tx *Transaction) Bytes() []byte {
 	return bytes
 }
 
-func (tx *Transaction) CborHex() string {
+func (tx *transaction) CborHex() string {
 	return hex.EncodeToString(tx.Bytes())
 }
 
-func (tx *Transaction) ID() TxId {
+func (tx *transaction) ID() transactionID {
 	txHash := blake2b.Sum256(tx.Body.Bytes())
-	return TxId(hex.EncodeToString(txHash[:]))
+	return transactionID(hex.EncodeToString(txHash[:]))
 }
 
-type TransactionWitnessSet struct {
-	VKeyWitnessSet []VKeyWitness `cbor:"0,keyasint,omitempty"`
+type transactionWitnessSet struct {
+	VKeyWitnessSet []vkeyWitness `cbor:"0,keyasint,omitempty"`
 	// TODO: add optional fields 1-4
 }
 
-type VKeyWitness struct {
+type vkeyWitness struct {
 	_         struct{} `cbor:",toarray"`
 	VKey      []byte   // ed25519 public key
 	Signature []byte   // ed25519 signature
 }
 
 // Cbor map
-type TransactionMetadata map[uint64]TransactionMetadatum
+type transactionMetadata map[uint64]transactionMetadatum
 
 // This could be cbor map, array, int, bytes or a text
-type TransactionMetadatum struct{}
+type transactionMetadatum struct{}
 
-type TransactionBody struct {
-	Inputs       []TransactionInput  `cbor:"0,keyasint"`
-	Outputs      []TransactionOutput `cbor:"1,keyasint"`
+type transactionBody struct {
+	Inputs       []transactionInput  `cbor:"0,keyasint"`
+	Outputs      []transactionOutput `cbor:"1,keyasint"`
 	Fee          uint64              `cbor:"2,keyasint"`
 	Ttl          uint64              `cbor:"3,keyasint"`
-	Certificates []Certificate       `cbor:"4,keyasint,omitempty"` // Omit for now
+	Certificates []certificate       `cbor:"4,keyasint,omitempty"` // Omit for now
 	Withdrawals  *uint               `cbor:"5,keyasint,omitempty"` // Omit for now
 	Update       *uint               `cbor:"6,keyasint,omitempty"` // Omit for now
 	MetadataHash *uint               `cbor:"7,keyasint,omitempty"` // Omit for now
 }
 
-func (body *TransactionBody) Bytes() []byte {
+func (body *transactionBody) Bytes() []byte {
 	bytes, err := cbor.Marshal(body)
 	if err != nil {
 		panic(err)
@@ -75,13 +86,13 @@ func (body *TransactionBody) Bytes() []byte {
 	return bytes
 }
 
-type TransactionInput struct {
+type transactionInput struct {
 	_     struct{} `cbor:",toarray"`
 	ID    []byte   // HashKey 32 bytes
 	Index uint64
 }
 
-type TransactionOutput struct {
+type transactionOutput struct {
 	_       struct{} `cbor:",toarray"`
 	Address []byte
 	Amount  uint64
@@ -95,4 +106,4 @@ type TransactionOutput struct {
 //	pool_retirement
 //	genesis_key_delegation
 //	move_instantaneous_rewards_cert
-type Certificate struct{}
+type certificate struct{}

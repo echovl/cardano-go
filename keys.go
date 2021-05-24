@@ -2,16 +2,16 @@ package cardano
 
 import "github.com/echovl/cardano-go/crypto"
 
-type KeyPair struct {
+type keyPair struct {
 	Xsk crypto.XSigningKey
 	Xvk crypto.XVerificationKey
 }
 
-type KeyPairChain struct {
-	Root   KeyPair
-	Childs []KeyPair
+type keyPairChain struct {
+	Root   keyPair
+	Childs []keyPair
 }
 
-func newKeyPairFromXsk(xsk crypto.XSigningKey) KeyPair {
-	return KeyPair{xsk, xsk.XVerificationKey()}
+func newKeyPairFromXsk(xsk crypto.XSigningKey) keyPair {
+	return keyPair{xsk, xsk.XVerificationKey()}
 }

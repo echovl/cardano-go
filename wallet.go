@@ -1,6 +1,7 @@
 package cardano
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -28,16 +29,11 @@ type WalletID string
 type Wallet struct {
 	ID            WalletID
 	Name          string
-	ExternalChain KeyPairChain
-	internalChain KeyPairChain
-	stakeChain    KeyPairChain
-	db            WalletDB
-	node          CardanoNode
+	externalChain keyPairChain
+	internalChain keyPairChain
+	stakeChain    keyPairChain
+	node          cardanoNode
 	network       Network
-}
-
-func (w *Wallet) SetNode(p CardanoNode) {
-	w.node = p
 }
 
 func (w *Wallet) SetNetwork(net Network) {
@@ -50,7 +46,6 @@ func (w *Wallet) Transfer(receiver Address, amount uint64) error {
 	if err != nil {
 		return err
 	}
-
 	if amount > balance {
 		return fmt.Errorf("Not enough balance, %v > %v", amount, balance)
 	}
@@ -67,15 +62,15 @@ func (w *Wallet) Transfer(receiver Address, amount uint64) error {
 		pickedUtxosAmount += utxo.Amount
 	}
 
-	builder := NewTxBuilder(ProtocolParams{
+	builder := newTxBuilder(protocolParams{
 		MinimumUtxoValue: 1000000,
 		MinFeeA:          44,
 		MinFeeB:          155381,
 	})
 
-	keys := make(map[int]KeyPair)
+	keys := make(map[int]keyPair)
 	for i, utxo := range pickedUtxos {
-		for _, keyPair := range w.ExternalChain.Childs {
+		for _, keyPair := range w.externalChain.Childs {
 			keyPairAddress := newEnterpriseAddress(keyPair.Xvk, w.network)
 			if keyPairAddress == utxo.Address {
 				keys[i] = keyPair
@@ -105,18 +100,11 @@ func (w *Wallet) Transfer(receiver Address, amount uint64) error {
 	if err != nil {
 		return err
 	}
-
 	for _, keyPair := range keys {
 		builder.Sign(keyPair.Xsk)
 	}
-
 	tx := builder.Build()
-
-	fmt.Println(pretty(tx))
-
-	err = w.node.SubmitTx(tx)
-
-	return err
+	return w.node.SubmitTx(tx)
 }
 
 // Balance returns the total lovelace amount of the wallet.
@@ -126,11 +114,9 @@ func (w *Wallet) Balance() (uint64, error) {
 	if err != nil {
 		return 0, nil
 	}
-
 	for _, utxo := range utxos {
 		balance += utxo.Amount
 	}
-
 	return balance, nil
 }
 
@@ -143,32 +129,25 @@ func (w *Wallet) findUtxos() ([]Utxo, error) {
 			return nil, err
 		}
 		walletUtxos = append(walletUtxos, addrUtxos...)
-
 	}
 	return walletUtxos, nil
 }
 
 // GenerateAddress generates a new payment address and adds it to the wallet.
 func (w *Wallet) GenerateAddress() Address {
-	chain := w.ExternalChain
+	chain := w.externalChain
 	index := uint32(len(chain.Childs))
 	xsk := crypto.DeriveChildSigningKey(chain.Root.Xsk, index)
-	w.ExternalChain.Childs = append(w.ExternalChain.Childs, KeyPair{xsk, xsk.XVerificationKey()})
-
-	if w.db != nil {
-		w.db.SaveWallet(w)
-	}
-
+	w.externalChain.Childs = append(w.externalChain.Childs, keyPair{xsk, xsk.XVerificationKey()})
 	return newEnterpriseAddress(xsk.XVerificationKey(), w.network)
 }
 
 // AddAddresses returns all wallet's addresss.
 func (w *Wallet) Addresses() []Address {
-	addresses := make([]Address, len(w.ExternalChain.Childs))
-	for i, kp := range w.ExternalChain.Childs {
+	addresses := make([]Address, len(w.externalChain.Childs))
+	for i, kp := range w.externalChain.Childs {
 		addresses[i] = newEnterpriseAddress(kp.Xvk, w.network)
 	}
-
 	return addresses
 }
 
@@ -177,85 +156,56 @@ func NewWalletID() WalletID {
 	return WalletID("wallet_" + id)
 }
 
-// AddWallet creates a brand new wallet using a secure entropy and password.
-// This function will return a new wallet with its corresponding 24 word mnemonic
-func AddWallet(name, password string, db WalletDB) (*Wallet, string, error) {
-	entropy := newEntropy(entropySizeInBits)
-	mnemonic := crypto.GenerateMnemonic(entropy)
-
-	wallet := newWallet(entropy, password)
-	wallet.Name = name
-	err := db.SaveWallet(wallet)
-	if err != nil {
-		return nil, "", err
-	}
-
-	return wallet, mnemonic, nil
-}
-
-// TODO: Find utxos with amount to restore the number of addresses
-func RestoreWallet(name, mnemonic, password string, db WalletDB) (*Wallet, error) {
-	entropy, err := bip39.EntropyFromMnemonic(mnemonic)
-	if err != nil {
-		return nil, err
-	}
-
-	wallet := newWallet(entropy, password)
-	wallet.Name = name
-	err = db.SaveWallet(wallet)
-	if err != nil {
-		return nil, err
-	}
-
-	return wallet, nil
-}
-
-func GetWallets(db WalletDB) ([]Wallet, error) {
-	wallets, err := db.GetWallets()
-	if err != nil {
-		return nil, err
-	}
-	for i := range wallets {
-		wallets[i].db = db
-	}
-	return wallets, nil
-}
-
-func GetWallet(id WalletID, db WalletDB) (*Wallet, error) {
-	wallets, err := GetWallets(db)
-	if err != nil {
-		return nil, err
-	}
-	for _, w := range wallets {
-		if w.ID == id {
-			return &w, nil
-		}
-	}
-
-	return nil, fmt.Errorf("wallet %v not found", id)
-}
-
-func DeleteWallet(id WalletID, db WalletDB) error {
-	return db.DeleteWallet(id)
-}
-
-func newWallet(entropy []byte, password string) *Wallet {
-	wallet := &Wallet{ID: NewWalletID()}
-
+func newWallet(name, password string, entropy []byte) *Wallet {
+	wallet := &Wallet{Name: name, ID: NewWalletID()}
 	rootXsk := crypto.GenerateMasterKey(entropy, password)
 	purposeXsk := crypto.DeriveChildSigningKey(rootXsk, purposeIndex)
 	coinXsk := crypto.DeriveChildSigningKey(purposeXsk, coinTypeIndex)
 	accountXsk := crypto.DeriveChildSigningKey(coinXsk, accountIndex)
 	chainXsk := crypto.DeriveChildSigningKey(accountXsk, externalChainIndex)
-
 	addr0Xsk := crypto.DeriveChildSigningKey(chainXsk, 0)
-
-	wallet.ExternalChain = KeyPairChain{
+	wallet.externalChain = keyPairChain{
 		Root:   newKeyPairFromXsk(chainXsk),
-		Childs: []KeyPair{newKeyPairFromXsk(addr0Xsk)},
+		Childs: []keyPair{newKeyPairFromXsk(addr0Xsk)},
 	}
-
 	return wallet
+}
+
+type walletDump struct {
+	ID            WalletID
+	Name          string
+	ExternalChain keyPairChain
+	InternalChain keyPairChain
+	StakeChain    keyPairChain
+}
+
+func (w *Wallet) marshal() ([]byte, error) {
+	wd := &walletDump{
+		ID:            w.ID,
+		Name:          w.Name,
+		ExternalChain: w.externalChain,
+		InternalChain: w.internalChain,
+		StakeChain:    w.stakeChain,
+	}
+	bytes, err := json.Marshal(wd)
+	if err != nil {
+		return nil, err
+	}
+	return bytes, nil
+}
+
+func (w *Wallet) unmarshal(bytes []byte) error {
+	wd := &walletDump{}
+	err := json.Unmarshal(bytes, wd)
+	if err != nil {
+		return err
+	}
+	w.ID = wd.ID
+	w.Name = wd.Name
+	w.externalChain = wd.ExternalChain
+	w.internalChain = wd.InternalChain
+	w.stakeChain = wd.StakeChain
+	return nil
 }
 
 func ParseUint64(s string) (uint64, error) {

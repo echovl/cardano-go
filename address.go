@@ -15,6 +15,7 @@ const (
 
 type Address string
 
+// Bytes returns the byte slice representation of the address.
 func (addr *Address) Bytes() []byte {
 	_, bytes, err := bech32.DecodeToBase256(string(*addr))
 	if err != nil {
@@ -44,6 +45,24 @@ func newEnterpriseAddress(xvk crypto.XVerificationKey, network Network) Address 
 	}
 
 	return Address(address)
+}
+
+// NewAddressFromBech32 creates an Address from a bech32 encoded string.
+func NewAddressFromBech32(addr string) (Address, error) {
+	_, _, err := bech32.DecodeToBase256(addr)
+	if err != nil {
+		return "", err
+	}
+	return Address(addr), nil
+}
+
+// NewAddressFromBytes creates an Address from a byte slice.
+func NewAddressFromBytes(addr []byte, network Network) (Address, error) {
+	encoded, err := bech32.EncodeFromBase256(getHrp(network), addr)
+	if err != nil {
+		return "", nil
+	}
+	return Address(encoded), nil
 }
 
 func getHrp(network Network) string {

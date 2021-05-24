@@ -12,20 +12,23 @@ var newAddressCmd = &cobra.Command{
 	Args:    cobra.ExactArgs(1),
 	Aliases: []string{"newa"},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		client := cardano.NewClient()
+		defer client.Close()
+
 		useTestnet, err := cmd.Flags().GetBool("testnet")
 		network := cardano.Mainnet
 		if useTestnet {
 			network = cardano.Testnet
 		}
 
-		walletID := cardano.WalletID(args[0])
-		w, err := cardano.GetWallet(walletID, DefaultDb)
+		id := cardano.WalletID(args[0])
+		w, err := client.GetWallet(id)
 		if err != nil {
 			return err
 		}
-
 		w.SetNetwork(network)
 		w.GenerateAddress()
+		client.SaveWallet(w)
 
 		return nil
 	},

@@ -15,16 +15,23 @@ var newWalletCmd = &cobra.Command{
 it will restore a wallet using the mnemonic and password.`,
 	Aliases: []string{"neww"},
 	Args:    cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client := cardano.NewClient()
+		defer client.Close()
 		password, _ := cmd.Flags().GetString("password")
 		mnemonic, _ := cmd.Flags().GetStringSlice("mnemonic")
+		name := args[0]
 
 		if len(mnemonic) == 0 {
-			_, mnemonic, _ := cardano.AddWallet(args[0], password, DefaultDb)
+			_, mnemonic, err := client.CreateWallet(name, password)
+			if err != nil {
+				return err
+			}
 			fmt.Printf("mnemonic: %v\n", mnemonic)
 		} else {
-			cardano.RestoreWallet(args[0], strings.Join(mnemonic, " "), password, DefaultDb)
+			client.RestoreWallet(name, strings.Join(mnemonic, " "), password)
 		}
+		return nil
 	},
 }
 

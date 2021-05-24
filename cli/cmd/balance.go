@@ -13,6 +13,9 @@ var balanceCmd = &cobra.Command{
 	Aliases: []string{"bal"},
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		client := cardano.NewClient()
+		defer client.Close()
+
 		useTestnet, err := cmd.Flags().GetBool("testnet")
 		network := cardano.Mainnet
 		if useTestnet {
@@ -20,15 +23,11 @@ var balanceCmd = &cobra.Command{
 		}
 
 		id := cardano.WalletID(args[0])
-
-		w, err := cardano.GetWallet(id, DefaultDb)
+		w, err := client.GetWallet(id)
 		if err != nil {
 			return err
 		}
-
 		w.SetNetwork(network)
-		w.SetNode(DefaultCardanoNode)
-
 		balance, err := w.Balance()
 		fmt.Printf("%-25v %-9v\n", "ASSET", "AMOUNT")
 		fmt.Printf("%-25v %-9v\n", "Lovelace", balance)
