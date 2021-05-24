@@ -13,11 +13,12 @@ var listWalletCmd = &cobra.Command{
 	Short:   "Print a list of known wallets",
 	Aliases: []string{"lsw"},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		wallets, err := cardano.GetWallets(DefaultDb)
+		client := cardano.NewClient()
+		defer client.Close()
+		wallets, err := client.GetWallets()
 		if err != nil {
 			return err
 		}
-
 		fmt.Printf("%-18v %-9v %-9v\n", "ID", "NAME", "ADDRESS")
 		for _, w := range wallets {
 			w.SetNetwork(cardano.Testnet)

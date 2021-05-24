@@ -12,23 +12,20 @@ var transferCmd = &cobra.Command{
 	Short: "Transfer an amount of lovelace to the given address",
 	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		client := cardano.NewClient()
+		defer client.Close()
 		senderId := cardano.WalletID(args[0])
 		receiver := cardano.Address(args[2])
-		amountToTransfer, err := cardano.ParseUint64(args[1])
+		amount, err := cardano.ParseUint64(args[1])
 		if err != nil {
 			return err
 		}
-
-		w, err := cardano.GetWallet(senderId, DefaultDb)
+		w, err := client.GetWallet(senderId)
 		if err != nil {
 			return err
 		}
-
 		w.SetNetwork(cardano.Testnet)
-		w.SetNode(DefaultCardanoNode)
-
-		err = w.Transfer(receiver, amountToTransfer)
-
+		err = w.Transfer(receiver, amount)
 		return err
 	},
 }

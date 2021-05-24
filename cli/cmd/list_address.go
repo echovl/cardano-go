@@ -15,24 +15,27 @@ var listAddressCmd = &cobra.Command{
 	Aliases: []string{"lsa"},
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		client := cardano.NewClient()
+		defer client.Close()
+
 		useTestnet, err := cmd.Flags().GetBool("testnet")
 		network := cardano.Mainnet
 		if useTestnet {
 			network = cardano.Testnet
 		}
 
-		walletID := cardano.WalletID(args[0])
-		w, err := cardano.GetWallet(walletID, DefaultDb)
+		id := cardano.WalletID(args[0])
+		w, err := client.GetWallet(id)
 		if err != nil {
 			return err
 		}
 		w.SetNetwork(network)
+
 		addresses := w.Addresses()
 		fmt.Printf("%-25v %-9v\n", "PATH", "ADDRESS")
 		for i, addr := range addresses {
 			fmt.Printf("%-25v %-9v\n", "m/1852'/1815'/0'/0/"+strconv.Itoa(i), addr)
 		}
-
 		return nil
 	},
 }
