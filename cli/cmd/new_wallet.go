@@ -29,7 +29,10 @@ it will restore a wallet using the mnemonic and password.`,
 			}
 			fmt.Printf("mnemonic: %v\n", mnemonic)
 		} else {
-			client.RestoreWallet(name, strings.Join(mnemonic, " "), password)
+			_, err := client.RestoreWallet(name, password, strings.Join(mnemonic, " "))
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	},
