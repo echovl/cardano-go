@@ -33,7 +33,7 @@ func NewExtendedSigningKey(entropy []byte, password string) ExtendedSigningKey {
 	return key
 }
 
-func Mnemonic(entropy []byte) string {
+func NewMnemonic(entropy []byte) string {
 	mnemonic, err := bip39.NewMnemonic(entropy)
 	if err != nil {
 		panic(err)

@@ -3,11 +3,13 @@ package crypto
 import (
 	"crypto/hmac"
 	"crypto/sha512"
+	"fmt"
 
+	"filippo.io/edwards25519"
 	"github.com/echovl/ed25519"
 )
 
-func DeriveChildSigningKey(xsk ExtendedSigningKey, index uint32) ExtendedSigningKey {
+func DeriveSigningKey(xsk ExtendedSigningKey, index uint32) ExtendedSigningKey {
 	xpriv := xsk[:64]
 	chainCode := xsk[64:]
 	zmac := hmac.New(sha512.New, chainCode)
@@ -46,6 +48,60 @@ func DeriveChildSigningKey(xsk ExtendedSigningKey, index uint32) ExtendedSigning
 	copy(cxsk[64:], cc)
 
 	return cxsk
+}
+
+func DeriveVerificationKey(xvk ExtendedVerificationKey, index uint32) (ExtendedVerificationKey, error) {
+	pub := []byte(xvk[:32])
+	chainCode := []byte(xvk[32:64])
+	zmac := hmac.New(sha512.New, chainCode)
+	ccmac := hmac.New(sha512.New, chainCode)
+
+	sindex := serializeIndex(index)
+	if isHardenedDerivation(index) {
+		return ExtendedVerificationKey{}, fmt.Errorf("expected soft derivation")
+	}
+
+	zmac.Write([]byte{0x2})
+	zmac.Write(pub)
+	zmac.Write(sindex)
+	ccmac.Write([]byte{0x3})
+	ccmac.Write(pub)
+	ccmac.Write(sindex)
+
+	z := zmac.Sum(nil)
+	zl := z[:32]
+
+	// PKc = PK + 8ZL*B
+	// C = A + B
+	var (
+		zero [32]byte
+		a    edwards25519.Point
+		b    edwards25519.Point
+		c    edwards25519.Point
+		s    edwards25519.Scalar
+	)
+
+	zl8 := add28Mul8(zero[:], zl)
+	_, err := s.SetCanonicalBytes(zl8)
+	if err != nil {
+		return nil, err
+	}
+	b.ScalarBaseMult(&s)
+	_, err = a.SetBytes(pub)
+	if err != nil {
+		return nil, err
+	}
+
+	c.Add(&a, &b)
+
+	cxvk := make([]byte, 64)
+	cc := ccmac.Sum(nil)
+	cc = cc[32:64]
+
+	copy(cxvk[:32], c.Bytes())
+	copy(cxvk[32:64], cc)
+
+	return ExtendedVerificationKey(cxvk), nil
 }
 
 func serializeIndex(index uint32) []byte {

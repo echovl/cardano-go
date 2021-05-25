@@ -38,7 +38,7 @@ func (c *Client) Close() {
 // returning a Wallet with its corresponding 24 word mnemonic
 func (c *Client) CreateWallet(name, password string) (*Wallet, string, error) {
 	entropy := newEntropy(entropySizeInBits)
-	mnemonic := crypto.Mnemonic(entropy)
+	mnemonic := crypto.NewMnemonic(entropy)
 	wallet := newWallet(name, password, entropy)
 	wallet.node = c.node
 	err := c.db.SaveWallet(wallet)

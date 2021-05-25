@@ -22,7 +22,8 @@ const (
 type Wallet struct {
 	ID      string
 	Name    string
-	keys    []crypto.ExtendedSigningKey
+	skeys   []crypto.ExtendedSigningKey
+	pkeys   []crypto.ExtendedVerificationKey
 	rootKey crypto.ExtendedSigningKey
 	node    cardanoNode
 	network Network
@@ -62,7 +63,7 @@ func (w *Wallet) Transfer(receiver Address, amount uint64) error {
 
 	keys := make(map[int]crypto.ExtendedSigningKey)
 	for i, utxo := range pickedUtxos {
-		for _, key := range w.keys {
+		for _, key := range w.skeys {
 			vkey := key.ExtendedVerificationKey()
 			address := newEnterpriseAddress(vkey, w.network)
 			if address == utxo.Address {
@@ -129,16 +130,16 @@ func (w *Wallet) findUtxos() ([]Utxo, error) {
 
 // AddAddress generates a new payment address and adds it to the wallet.
 func (w *Wallet) AddAddress() Address {
-	index := uint32(len(w.keys))
-	newKey := crypto.DeriveChildSigningKey(w.rootKey, index)
-	w.keys = append(w.keys, newKey)
+	index := uint32(len(w.skeys))
+	newKey := crypto.DeriveSigningKey(w.rootKey, index)
+	w.skeys = append(w.skeys, newKey)
 	return newEnterpriseAddress(newKey.ExtendedVerificationKey(), w.network)
 }
 
 // AddAddresses returns all wallet's addresss.
 func (w *Wallet) Addresses() []Address {
-	addresses := make([]Address, len(w.keys))
-	for i, key := range w.keys {
+	addresses := make([]Address, len(w.skeys))
+	for i, key := range w.skeys {
 		addresses[i] = newEnterpriseAddress(key.ExtendedVerificationKey(), w.network)
 	}
 	return addresses
@@ -152,13 +153,13 @@ func newWalletID() string {
 func newWallet(name, password string, entropy []byte) *Wallet {
 	wallet := &Wallet{Name: name, ID: newWalletID()}
 	rootKey := crypto.NewExtendedSigningKey(entropy, password)
-	purposeKey := crypto.DeriveChildSigningKey(rootKey, purposeIndex)
-	coinKey := crypto.DeriveChildSigningKey(purposeKey, coinTypeIndex)
-	accountKey := crypto.DeriveChildSigningKey(coinKey, accountIndex)
-	chainKey := crypto.DeriveChildSigningKey(accountKey, externalChainIndex)
-	addr0Key := crypto.DeriveChildSigningKey(chainKey, 0)
+	purposeKey := crypto.DeriveSigningKey(rootKey, purposeIndex)
+	coinKey := crypto.DeriveSigningKey(purposeKey, coinTypeIndex)
+	accountKey := crypto.DeriveSigningKey(coinKey, accountIndex)
+	chainKey := crypto.DeriveSigningKey(accountKey, externalChainIndex)
+	addr0Key := crypto.DeriveSigningKey(chainKey, 0)
 	wallet.rootKey = chainKey
-	wallet.keys = []crypto.ExtendedSigningKey{addr0Key}
+	wallet.skeys = []crypto.ExtendedSigningKey{addr0Key}
 	return wallet
 }
 
@@ -173,7 +174,7 @@ func (w *Wallet) marshal() ([]byte, error) {
 	wd := &walletDump{
 		ID:      w.ID,
 		Name:    w.Name,
-		Keys:    w.keys,
+		Keys:    w.skeys,
 		RootKey: w.rootKey,
 	}
 	bytes, err := json.Marshal(wd)
@@ -191,7 +192,7 @@ func (w *Wallet) unmarshal(bytes []byte) error {
 	}
 	w.ID = wd.ID
 	w.Name = wd.Name
-	w.keys = wd.Keys
+	w.skeys = wd.Keys
 	w.rootKey = wd.RootKey
 	return nil
 }

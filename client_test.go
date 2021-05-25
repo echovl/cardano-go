@@ -95,8 +95,8 @@ func TestCreateWallet(t *testing.T) {
 		}
 		w.SetNetwork(Testnet)
 
-		addrXsk0 := bech32From("addr_xsk", w.keys[0])
-		addrXvk0 := bech32From("addr_xvk", w.keys[0].ExtendedVerificationKey())
+		addrXsk0 := bech32From("addr_xsk", w.skeys[0])
+		addrXvk0 := bech32From("addr_xvk", w.skeys[0].ExtendedVerificationKey())
 
 		if addrXsk0 != testVector.addrXsk0 {
 			t.Errorf("invalid addrXsk0 :\ngot: %v\nwant: %v", addrXsk0, testVector.addrXsk0)
@@ -129,8 +129,8 @@ func TestRestoreWallet(t *testing.T) {
 		}
 		w.SetNetwork(Testnet)
 
-		addrXsk0 := bech32From("addr_xsk", w.keys[0])
-		addrXvk0 := bech32From("addr_xvk", w.keys[0].ExtendedVerificationKey())
+		addrXsk0 := bech32From("addr_xsk", w.skeys[0])
+		addrXvk0 := bech32From("addr_xvk", w.skeys[0].ExtendedVerificationKey())
 
 		if addrXsk0 != testVector.addrXsk0 {
 			t.Errorf("invalid addrXsk0 :\ngot: %v\nwant: %v", addrXsk0, testVector.addrXsk0)

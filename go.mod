@@ -3,6 +3,7 @@ module github.com/echovl/cardano-go
 go 1.16
 
 require (
+	filippo.io/edwards25519 v1.0.0-beta.3 // indirect
 	github.com/dgraph-io/badger/v3 v3.2011.1 // indirect
 	github.com/echovl/bech32 v0.1.0
 	github.com/echovl/ed25519 v0.2.0
