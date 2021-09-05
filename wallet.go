@@ -33,6 +33,8 @@ func (w *Wallet) SetNetwork(net Network) {
 	w.network = net
 }
 
+// Transfer sends an amount of lovelace to the receiver address
+//TODO: remove hardcoded protocol parameters, these parameters must be obtained using the cardano node
 func (w *Wallet) Transfer(receiver Address, amount uint64) error {
 	// Calculate if the account has enough balance
 	balance, err := w.Balance()
@@ -136,7 +138,7 @@ func (w *Wallet) AddAddress() Address {
 	return newEnterpriseAddress(newKey.ExtendedVerificationKey(), w.network)
 }
 
-// AddAddresses returns all wallet's addresss.
+// Addresses returns all wallet's addresss.
 func (w *Wallet) Addresses() []Address {
 	addresses := make([]Address, len(w.skeys))
 	for i, key := range w.skeys {

@@ -10,6 +10,10 @@ import (
 	"strings"
 )
 
+const (
+	testnetMagic = 1097911063
+)
+
 type cardanoNode interface {
 	QueryUtxos(Address) ([]Utxo, error)
 	QueryTip() (NodeTip, error)
@@ -51,6 +55,7 @@ func newCli() *cardanoCli {
 	return &cardanoCli{}
 }
 
+//TODO: add ability to use mainnet and testnet
 func (cli *cardanoCli) QueryUtxos(address Address) ([]Utxo, error) {
 	out, err := runCommand("cardano-cli", "query", "utxo", "--address", string(address), "--testnet-magic", "1097911063")
 	if err != nil {
@@ -93,6 +98,7 @@ func (cli *cardanoCli) QueryUtxos(address Address) ([]Utxo, error) {
 	return utxos, nil
 }
 
+//TODO: add ability to use mainnet and testnet
 func (cli *cardanoCli) QueryTip() (NodeTip, error) {
 	out, err := runCommand("cardano-cli", "query", "tip", "--testnet-magic", "1097911063")
 	if err != nil {
@@ -112,6 +118,7 @@ func (cli *cardanoCli) QueryTip() (NodeTip, error) {
 	}, nil
 }
 
+//TODO: add ability to use mainnet and testnet
 func (cli *cardanoCli) SubmitTx(tx transaction) error {
 	const txFileName = "txsigned.temp"
 	txPayload := cardanoCliTx{
