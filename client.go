@@ -14,12 +14,14 @@ type Client struct {
 	socketPath string
 }
 
+var socketPath = "/path/to/node/socket"
+
 // NewClient builds a new Client using cardano-cli as the default connection
 // to the Blockhain.
 //
 // It uses BadgerDB as the default Wallet storage.
 func NewClient(opts ...Options) *Client {
-	client := &Client{node: newCli()}
+	client := &Client{node: newCli(socketPath)}
 	for _, opt := range opts {
 		opt.apply(client)
 	}

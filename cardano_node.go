@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -18,6 +19,7 @@ type cardanoNode interface {
 	QueryUtxos(Address) ([]Utxo, error)
 	QueryTip() (NodeTip, error)
 	SubmitTx(transaction) error
+	ProtocolParameters() (Protocol, error)
 }
 
 type Utxo struct {
@@ -51,13 +53,51 @@ type cardanoCliTx struct {
 	CborHex     string `json:"cborHex"`
 }
 
-func newCli() *cardanoCli {
-	return &cardanoCli{}
+type Protocol struct {
+	TxFeePerByte           uint64
+	MinUTxOValue           uint64
+	StakePoolDeposit       uint64
+	UtxoCostPerWord        uint64
+	Decentralization       int
+	PoolRetireMaxEpoch     int
+	CollateralPercentage   int
+	StakePoolTargetNum     int
+	MaxBlockBodySize       uint64
+	MaxTxSize              uint64
+	TreasuryCut            float64
+	MinPoolCost            uint64
+	MaxCollateralInputs    int
+	MaxValueSize           int
+	MaxBlockExecutionUnits struct {
+		Memory uint64
+		Steps  uint64
+	}
+	MaxBlockHeaderSize  int
+	MaxTxExecutionUnits struct {
+		Memory uint64
+		Steps  uint64
+	}
+	ProtocolVersion struct {
+		Minor int
+		Major int
+	}
+	TxFeeFixed          uint64
+	StakeAddressDeposit uint64
+	MonetaryExpansion   float64
+	PoolPledgeInfluence float64
+	ExecutionUnitPrices struct {
+		PriceSteps  float64
+		PriceMemory float64
+	}
+}
+
+func newCli(socketPath string) *cardanoCli {
+	return &cardanoCli{socketPath: socketPath}
 }
 
 //TODO: add ability to use mainnet and testnet
 func (cli *cardanoCli) QueryUtxos(address Address) ([]Utxo, error) {
-	out, err := runCommand("cardano-cli", "query", "utxo", "--address", string(address), "--testnet-magic", "1097911063")
+	out, err := cli.runCommand("cardano-cli", "query", "utxo", "--address", string(address), "--testnet-magic", strconv.Itoa(testnetMagic))
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +140,7 @@ func (cli *cardanoCli) QueryUtxos(address Address) ([]Utxo, error) {
 
 //TODO: add ability to use mainnet and testnet
 func (cli *cardanoCli) QueryTip() (NodeTip, error) {
-	out, err := runCommand("cardano-cli", "query", "tip", "--testnet-magic", "1097911063")
+	out, err := cli.runCommand("cardano-cli", "query", "tip", "--testnet-magic", strconv.Itoa(testnetMagic))
 	if err != nil {
 		return NodeTip{}, err
 	}
@@ -137,7 +177,10 @@ func (cli *cardanoCli) SubmitTx(tx transaction) error {
 		return err
 	}
 
-	out, err := runCommand("cardano-cli", "transaction", "submit", "--tx-file", txFileName, "--testnet-magic", "1097911063")
+	out, err := cli.runCommand("cardano-cli", "transaction", "submit", "--tx-file", txFileName, "--testnet-magic", strconv.Itoa(testnetMagic))
+	if err != nil {
+		return err
+	}
 	fmt.Print(out.String())
 
 	err = os.Remove(txFileName)
@@ -145,12 +188,27 @@ func (cli *cardanoCli) SubmitTx(tx transaction) error {
 	return err
 }
 
-func runCommand(cmd string, arg ...string) (*bytes.Buffer, error) {
+func (cli *cardanoCli) ProtocolParameters() (Protocol, error) {
+	var data Protocol
+	out, err := cli.runCommand("cardano-cli", "query", "protocol-parameters", "--testnet-magic", strconv.Itoa(testnetMagic))
+	if err != nil {
+		return data, err
+	}
+
+	err = json.Unmarshal(out.Bytes(), &data)
+	if err != nil {
+		return data, err
+	}
+	return data, nil
+}
+
+func (cli *cardanoCli) runCommand(cmd string, arg ...string) (*bytes.Buffer, error) {
 	out := &bytes.Buffer{}
 	command := exec.Command(cmd, arg...)
 	command.Stdout = out
 	command.Stderr = os.Stderr
-
+	command.Env = os.Environ()
+	command.Env = append(command.Env, "CARDANO_NODE_SOCKET_PATH="+cli.socketPath)
 	err := command.Run()
 	if err != nil {
 		return nil, err

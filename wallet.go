@@ -34,7 +34,6 @@ func (w *Wallet) SetNetwork(net Network) {
 }
 
 // Transfer sends an amount of lovelace to the receiver address
-//TODO: remove hardcoded protocol parameters, these parameters must be obtained using the cardano node
 func (w *Wallet) Transfer(receiver Address, amount uint64) error {
 	// Calculate if the account has enough balance
 	balance, err := w.Balance()
@@ -42,7 +41,7 @@ func (w *Wallet) Transfer(receiver Address, amount uint64) error {
 		return err
 	}
 	if amount > balance {
-		return fmt.Errorf("Not enough balance, %v > %v", amount, balance)
+		return fmt.Errorf("not enough balance, %v > %v", amount, balance)
 	}
 
 	// Find utxos that cover the amount to transfer
@@ -57,10 +56,15 @@ func (w *Wallet) Transfer(receiver Address, amount uint64) error {
 		pickedUtxosAmount += utxo.Amount
 	}
 
+	proto, err := w.node.ProtocolParameters()
+	if err != nil {
+		return err
+	}
+
 	builder := newTxBuilder(protocolParams{
-		MinimumUtxoValue: 1000000,
-		MinFeeA:          44,
-		MinFeeB:          155381,
+		MinimumUtxoValue: proto.MinUTxOValue,
+		MinFeeA:          proto.TxFeePerByte,
+		MinFeeB:          proto.TxFeeFixed,
 	})
 
 	keys := make(map[int]crypto.ExtendedSigningKey)
