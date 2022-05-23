@@ -1,7 +1,7 @@
 package cardano
 
 import (
-	"github.com/tclairet/cardano-go/crypto"
+	"github.com/echovl/cardano-go/crypto"
 	"testing"
 )
 

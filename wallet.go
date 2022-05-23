@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/echovl/cardano-go/crypto"
 	gonanoid "github.com/matoous/go-nanoid/v2"
-	"github.com/tclairet/cardano-go/crypto"
 	"github.com/tyler-smith/go-bip39"
 )
 

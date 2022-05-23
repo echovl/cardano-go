@@ -2,7 +2,7 @@ package cardano
 
 import (
 	"encoding/hex"
-	"github.com/tclairet/cardano-go/crypto"
+	"github.com/echovl/cardano-go/crypto"
 	"golang.org/x/crypto/blake2b"
 )
 
