@@ -3,7 +3,7 @@ package cardano
 import (
 	"fmt"
 
-	"github.com/echovl/cardano-go/crypto"
+	"github.com/tclairet/cardano-go/crypto"
 	"github.com/tyler-smith/go-bip39"
 )
 

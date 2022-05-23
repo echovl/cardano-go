@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/echovl/cardano-go/crypto"
 	gonanoid "github.com/matoous/go-nanoid/v2"
+	"github.com/tclairet/cardano-go/crypto"
 	"github.com/tyler-smith/go-bip39"
 )
 
@@ -57,7 +57,7 @@ func (w *Wallet) Transfer(receiver Address, amount uint64) error {
 		pickedUtxosAmount += utxo.Amount
 	}
 
-	builder := newTxBuilder(protocolParams{
+	builder := NewTxBuilder(ProtocolParams{
 		MinimumUtxoValue: 1000000,
 		MinFeeA:          44,
 		MinFeeB:          155381,
@@ -67,7 +67,7 @@ func (w *Wallet) Transfer(receiver Address, amount uint64) error {
 	for i, utxo := range pickedUtxos {
 		for _, key := range w.skeys {
 			vkey := key.ExtendedVerificationKey()
-			address := newEnterpriseAddress(vkey, w.network)
+			address := NewEnterpriseAddress(vkey, w.network)
 			if address == utxo.Address {
 				keys[i] = key
 			}
@@ -135,14 +135,14 @@ func (w *Wallet) AddAddress() Address {
 	index := uint32(len(w.skeys))
 	newKey := crypto.DeriveSigningKey(w.rootKey, index)
 	w.skeys = append(w.skeys, newKey)
-	return newEnterpriseAddress(newKey.ExtendedVerificationKey(), w.network)
+	return NewEnterpriseAddress(newKey.ExtendedVerificationKey(), w.network)
 }
 
 // Addresses returns all wallet's addresss.
 func (w *Wallet) Addresses() []Address {
 	addresses := make([]Address, len(w.skeys))
 	for i, key := range w.skeys {
-		addresses[i] = newEnterpriseAddress(key.ExtendedVerificationKey(), w.network)
+		addresses[i] = NewEnterpriseAddress(key.ExtendedVerificationKey(), w.network)
 	}
 	return addresses
 }
