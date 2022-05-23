@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/echovl/cardano-go"
 	"github.com/spf13/cobra"
+	"github.com/tclairet/cardano-go"
 )
 
 // listAddressCmd represents the listAddress command

@@ -57,7 +57,7 @@ func (prov *MockNode) QueryTip() (NodeTip, error) {
 	return NodeTip{}, nil
 }
 
-func (prov *MockNode) SubmitTx(tx transaction) error {
+func (prov *MockNode) SubmitTx(tx Transaction) error {
 	return nil
 }
 

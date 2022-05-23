@@ -2,7 +2,7 @@ package cardano
 
 import (
 	"github.com/echovl/bech32"
-	"github.com/echovl/cardano-go/crypto"
+	"github.com/tclairet/cardano-go/crypto"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -25,7 +25,19 @@ func (addr *Address) Bytes() []byte {
 	return bytes
 }
 
-func newEnterpriseAddress(xvk crypto.ExtendedVerificationKey, network Network) Address {
+func DecodeAddress(data []byte) (Address, Address, error) {
+	testnet, err := bech32.EncodeFromBase256("addr_test", data)
+	if err != nil {
+		return "", "", err
+	}
+	mainnet, err := bech32.EncodeFromBase256("addr", data)
+	if err != nil {
+		return "", "", err
+	}
+	return Address(mainnet), Address(testnet), nil
+}
+
+func NewEnterpriseAddress(xvk crypto.ExtendedVerificationKey, network Network) Address {
 	addressBytes := make([]byte, 29)
 	header := 0x60 | (byte(network) & 0xFF)
 	hash, err := blake2b.New(224/8, nil)

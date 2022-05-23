@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/echovl/cardano-go/cli/cmd"
+	"github.com/tclairet/cardano-go/cli/cmd"
 )
 
 func main() {
