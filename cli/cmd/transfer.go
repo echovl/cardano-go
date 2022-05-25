@@ -25,7 +25,7 @@ var transferCmd = &cobra.Command{
 			return err
 		}
 		w.SetNetwork(cardano.Testnet)
-		err = w.Transfer(receiver, amount)
+		err = w.Transfer(receiver, cardano.Coin(amount))
 		return err
 	},
 }

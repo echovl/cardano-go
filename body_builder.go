@@ -24,8 +24,8 @@ type TXBodyBuilder struct {
 	TTL      uint64
 }
 
-func (builder TXBodyBuilder) Build(receiver Address, pickedUtxos []Utxo, amount uint64, change Address) (*TransactionBody, error) {
-	var inputAmount uint64
+func (builder TXBodyBuilder) Build(receiver Address, pickedUtxos []Utxo, amount Coin, change Address) (*TransactionBody, error) {
+	var inputAmount Coin
 	var inputs []TransactionInput
 	for _, utxo := range pickedUtxos {
 		inputs = append(inputs, TransactionInput{
@@ -44,7 +44,7 @@ func (builder TXBodyBuilder) Build(receiver Address, pickedUtxos []Utxo, amount 
 	body := TransactionBody{
 		Inputs:  inputs,
 		Outputs: outputs,
-		Ttl:     builder.ttl(),
+		TTL:     NewUint64(builder.ttl()),
 	}
 	if err := body.addFee(inputAmount, change, builder.protocol()); err != nil {
 		return nil, err

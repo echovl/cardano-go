@@ -1,8 +1,9 @@
 package cardano
 
 import (
-	"github.com/echovl/cardano-go/crypto"
 	"testing"
+
+	"github.com/echovl/cardano-go/crypto"
 )
 
 func TestTXBuilder_AddFee(t *testing.T) {
@@ -56,7 +57,7 @@ func TestTXBuilder_AddFee(t *testing.T) {
 							ID:    []byte("input 0"),
 							Index: 0,
 						},
-						amount: ShelleyProtocol.MinimumUtxoValue + 162685,
+						amount: ShelleyProtocol.MinimumUtxoValue + 1162729,
 					},
 				},
 				outputs: []TransactionOutput{
@@ -170,11 +171,11 @@ func TestTXBuilder_AddFee(t *testing.T) {
 				}
 				t.Fatalf("AddFee() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			var totalIn uint64
+			var totalIn Coin
 			for _, input := range builder.inputs {
 				totalIn += input.amount
 			}
-			var totalOut uint64
+			var totalOut Coin
 			for _, output := range builder.outputs {
 				totalOut += output.Amount
 			}

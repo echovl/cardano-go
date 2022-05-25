@@ -2,6 +2,7 @@ package cardano
 
 import (
 	"encoding/hex"
+
 	"github.com/echovl/cardano-go/crypto"
 	"golang.org/x/crypto/blake2b"
 )
@@ -10,7 +11,7 @@ const maxUint64 uint64 = 1<<64 - 1
 
 type TXBuilderInput struct {
 	input  TransactionInput
-	amount uint64
+	amount Coin
 }
 
 type TXBuilderOutput struct {
@@ -24,7 +25,7 @@ type TXBuilder struct {
 	inputs   []TXBuilderInput
 	outputs  []TransactionOutput
 	ttl      uint64
-	fee      uint64
+	fee      Coin
 	vkeys    map[string]crypto.ExtendedVerificationKey
 	pkeys    map[string]crypto.ExtendedSigningKey
 }
@@ -37,7 +38,7 @@ func NewTxBuilder(protocol ProtocolParams) *TXBuilder {
 	}
 }
 
-func (builder *TXBuilder) AddInput(xvk crypto.ExtendedVerificationKey, txId TransactionID, index, amount uint64) {
+func (builder *TXBuilder) AddInput(xvk crypto.ExtendedVerificationKey, txId TransactionID, index uint64, amount Coin) {
 	input := TXBuilderInput{input: TransactionInput{ID: txId.Bytes(), Index: index}, amount: amount}
 	builder.inputs = append(builder.inputs, input)
 
@@ -46,12 +47,12 @@ func (builder *TXBuilder) AddInput(xvk crypto.ExtendedVerificationKey, txId Tran
 	builder.vkeys[vkeyHashString] = xvk
 }
 
-func (builder *TXBuilder) AddInputWithoutSig(txId TransactionID, index, amount uint64) {
+func (builder *TXBuilder) AddInputWithoutSig(txId TransactionID, index uint64, amount Coin) {
 	input := TXBuilderInput{input: TransactionInput{ID: txId.Bytes(), Index: index}, amount: amount}
 	builder.inputs = append(builder.inputs, input)
 }
 
-func (builder *TXBuilder) AddOutput(address Address, amount uint64) {
+func (builder *TXBuilder) AddOutput(address Address, amount Coin) {
 	output := TransactionOutput{Address: address.Bytes(), Amount: amount}
 	builder.outputs = append(builder.outputs, output)
 }
@@ -60,13 +61,13 @@ func (builder *TXBuilder) SetTtl(ttl uint64) {
 	builder.ttl = ttl
 }
 
-func (builder *TXBuilder) SetFee(fee uint64) {
+func (builder *TXBuilder) SetFee(fee Coin) {
 	builder.fee = fee
 }
 
 // This assumes that the builder inputs and outputs are defined
 func (builder *TXBuilder) AddFee(address Address) error {
-	inputAmount := uint64(0)
+	inputAmount := Coin(0)
 	for _, txIn := range builder.inputs {
 		inputAmount += txIn.amount
 	}
@@ -92,7 +93,7 @@ func (builder *TXBuilder) Build() Transaction {
 	}
 
 	body := builder.buildBody()
-	witnessSet := TransactionWitnessSet{}
+	witnessSet := WitnessSet{}
 	txHash := blake2b.Sum256(body.Bytes())
 	for _, pkey := range builder.pkeys {
 		publicKey := pkey.ExtendedVerificationKey()[:32]
@@ -101,7 +102,7 @@ func (builder *TXBuilder) Build() Transaction {
 		witnessSet.VKeyWitnessSet = append(witnessSet.VKeyWitnessSet, witness)
 	}
 
-	return Transaction{Body: body, WitnessSet: witnessSet, Metadata: nil}
+	return Transaction{Body: body, WitnessSet: witnessSet, AuxiliaryData: nil}
 }
 
 func (builder *TXBuilder) buildBody() TransactionBody {
@@ -117,6 +118,6 @@ func (builder *TXBuilder) buildBody() TransactionBody {
 		Inputs:  inputs,
 		Outputs: builder.outputs,
 		Fee:     builder.fee,
-		Ttl:     builder.ttl,
+		TTL:     NewUint64(builder.ttl),
 	}
 }

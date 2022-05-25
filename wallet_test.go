@@ -73,7 +73,7 @@ func TestWalletBalance(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	want := uint64(133)
+	want := Coin(133)
 
 	if got != want {
 		t.Errorf("invalid balance :\ngot: %v\nwant: %v", got, want)
