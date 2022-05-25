@@ -82,6 +82,18 @@ type VKeyWitness struct {
 	Signature []byte   // ed25519 signature
 }
 
+type TransactionInput struct {
+	_     struct{} `cbor:",toarray"`
+	ID    Hash32   // HashKey 32 bytes
+	Index uint64
+}
+
+type TransactionOutput struct {
+	_       struct{} `cbor:",toarray"`
+	Address []byte
+	Amount  Coin
+}
+
 type TransactionBody struct {
 	Inputs  []TransactionInput  `cbor:"0,keyasint"`
 	Outputs []TransactionOutput `cbor:"1,keyasint"`
@@ -141,12 +153,16 @@ func (body *TransactionBody) AddSignatures(publicKeys [][]byte, signatures [][]b
 
 func (body *TransactionBody) calculateMinFee(protocol ProtocolParams) Coin {
 	fakeXSigningKey := crypto.NewExtendedSigningKey([]byte{
-		0x0c, 0xcb, 0x74, 0xf3, 0x6b, 0x7d, 0xa1, 0x64, 0x9a, 0x81, 0x44, 0x67, 0x55, 0x22, 0xd4, 0xd8, 0x09, 0x7c, 0x64, 0x12,
+		0x0c, 0xcb, 0x74, 0xf3, 0x6b, 0x7d, 0xa1, 0x64, 0x9a, 0x81,
+		0x44, 0x67, 0x55, 0x22, 0xd4, 0xd8, 0x09, 0x7c, 0x64, 0x12,
 	}, "")
 
 	witnessSet := WitnessSet{}
 	for range body.Inputs {
-		witness := VKeyWitness{VKey: fakeXSigningKey.ExtendedVerificationKey()[:32], Signature: fakeXSigningKey.Sign(fakeXSigningKey.ExtendedVerificationKey())}
+		witness := VKeyWitness{
+			VKey:      fakeXSigningKey.ExtendedVerificationKey()[:32],
+			Signature: fakeXSigningKey.Sign(fakeXSigningKey.ExtendedVerificationKey()),
+		}
 		witnessSet.VKeyWitnessSet = append(witnessSet.VKeyWitnessSet, witness)
 	}
 
@@ -170,7 +186,11 @@ func (body *TransactionBody) addFee(inputAmount Coin, changeAddress Address, pro
 	outputWithFeeAmount := outputAmount + minFee
 
 	if inputAmount < outputWithFeeAmount {
-		return fmt.Errorf("insuficient input in transaction, got %v want atleast %v", inputAmount, outputWithFeeAmount)
+		return fmt.Errorf(
+			"insuficient input in transaction, got %v want atleast %v",
+			inputAmount,
+			outputWithFeeAmount,
+		)
 	}
 
 	if inputAmount == outputWithFeeAmount {
@@ -203,45 +223,40 @@ func (body *TransactionBody) addFee(inputAmount Coin, changeAddress Address, pro
 	return nil
 }
 
-type TransactionInput struct {
-	_     struct{} `cbor:",toarray"`
-	ID    []byte   // HashKey 32 bytes
-	Index uint64
-}
+type CertificateType uint
 
-type TransactionOutput struct {
-	_       struct{} `cbor:",toarray"`
-	Address []byte
-	Amount  Coin
-}
+const (
+	StakeRegistration        CertificateType = 0
+	StakeDeregistration                      = 1
+	StakeDelegation                          = 2
+	PoolRegistration                         = 3
+	PoolRetirement                           = 4
+	GenesisKeyDelegation                     = 5
+	MoveInstantaneousRewards                 = 6
+)
 
-// One of StakeRegistrationCert, StakeDeregistrationCert, StakeDelegationCert, PoolRegistrationCert
-// PoolRetirementCert, GenesisKeyDelegationCert or MoveInstantaneousRewardsCert
-//	TODO: MoveInstantaneousRewardsCert requires a map with StakeCredential as a key
-type Certificate interface{}
-
-type StakeRegistrationCert struct {
+type stakeRegistration struct {
 	_               struct{} `cbor:",toarray"`
-	ID              uint64   // 0
+	Type            CertificateType
 	StakeCredential StakeCredential
 }
 
-type StakeDeregistrationCert struct {
+type stakeDeregistration struct {
 	_               struct{} `cbor:",toarray"`
-	ID              uint64   // 1
+	Type            CertificateType
 	StakeCredential StakeCredential
 }
 
-type StakeDelegationCert struct {
+type stakeDelegation struct {
 	_               struct{} `cbor:",toarray"`
-	ID              uint64   // 2
+	Type            CertificateType
 	StakeCredential StakeCredential
 	PoolKeyHash     PoolKeyHash
 }
 
-type PoolRegistrationCert struct {
+type poolRegistration struct {
 	_             struct{} `cbor:",toarray"`
-	ID            uint64   // 3
+	Type          CertificateType
 	Operator      PoolKeyHash
 	VrfKeyHash    Hash32
 	Pledge        Coin
@@ -249,30 +264,224 @@ type PoolRegistrationCert struct {
 	RewardAccount AddressBytes
 	Owners        []AddrKeyHash
 	Relays        []Relay
-	Metadata      *PoolMetadata // or null
+	PoolMetadata  *PoolMetadata // or null
 }
 
-type PoolRetirementCert struct {
+type poolRetirement struct {
 	_           struct{} `cbor:",toarray"`
-	ID          uint64   // 4
+	Type        CertificateType
 	PoolKeyHash PoolKeyHash
 	Epoch       uint64
 }
 
-type GenesisKeyDelegationCert struct {
+type genesisKeyDelegation struct {
 	_                   struct{} `cbor:",toarray"`
-	ID                  uint64   // 5
+	Type                CertificateType
 	GenesisHash         Hash28
 	GenesisDelegateHash Hash28
 	VrfKeyHash          Hash32
 }
 
+//	TODO: MoveInstantaneousRewardsCert requires a map with StakeCredential as a key
+type Certificate struct {
+	Type CertificateType
+
+	// Common fields
+	StakeCredential StakeCredential
+	PoolKeyHash     PoolKeyHash
+	VrfKeyHash      Hash32
+
+	// Pool related fields
+	Operator      PoolKeyHash
+	Pledge        Coin
+	Margin        UnitInterval
+	RewardAccount AddressBytes
+	Owners        []AddrKeyHash
+	Relays        []Relay
+	PoolMetadata  *PoolMetadata // or null
+	Epoch         uint64
+
+	// Genesis fields
+	GenesisHash         Hash28
+	GenesisDelegateHash Hash28
+}
+
+func (c *Certificate) MarshalCBOR() ([]byte, error) {
+	var cert interface{}
+	switch c.Type {
+	case StakeRegistration:
+		cert = stakeRegistration{
+			Type:            c.Type,
+			StakeCredential: c.StakeCredential,
+		}
+	case StakeDeregistration:
+		cert = stakeDeregistration{
+			Type:            c.Type,
+			StakeCredential: c.StakeCredential,
+		}
+	case StakeDelegation:
+		cert = stakeDelegation{
+			Type:            c.Type,
+			StakeCredential: c.StakeCredential,
+			PoolKeyHash:     c.PoolKeyHash,
+		}
+	case PoolRegistration:
+		cert = poolRegistration{
+			Type:          c.Type,
+			Operator:      c.Operator,
+			VrfKeyHash:    c.VrfKeyHash,
+			Pledge:        c.Pledge,
+			Margin:        c.Margin,
+			RewardAccount: c.RewardAccount,
+			Owners:        c.Owners,
+			Relays:        c.Relays,
+			PoolMetadata:  c.PoolMetadata,
+		}
+	case PoolRetirement:
+		cert = poolRetirement{
+			Type:        c.Type,
+			PoolKeyHash: c.PoolKeyHash,
+			Epoch:       c.Epoch,
+		}
+	case GenesisKeyDelegation:
+		cert = genesisKeyDelegation{
+			Type:                c.Type,
+			GenesisHash:         c.GenesisHash,
+			GenesisDelegateHash: c.GenesisDelegateHash,
+			VrfKeyHash:          c.VrfKeyHash,
+		}
+	}
+
+	return cbor.Marshal(cert)
+}
+
+func (c *Certificate) UnmarshalCBOR(data []byte) error {
+	certType, err := getTypeFromCBORArray(data)
+	if err != nil {
+		return fmt.Errorf("cbor: cannot unmarshal CBOR array into StakeCredential (%v)", err)
+	}
+
+	switch CertificateType(certType) {
+	case StakeRegistration:
+		cert := &stakeRegistration{}
+		if err := cbor.Unmarshal(data, cert); err != nil {
+			return err
+		}
+		c.Type = StakeRegistration
+		c.StakeCredential = cert.StakeCredential
+	case StakeDeregistration:
+		cert := &stakeDeregistration{}
+		if err := cbor.Unmarshal(data, cert); err != nil {
+			return err
+		}
+		c.Type = StakeDeregistration
+		c.StakeCredential = cert.StakeCredential
+	case StakeDelegation:
+		cert := &stakeDelegation{}
+		if err := cbor.Unmarshal(data, cert); err != nil {
+			return err
+		}
+		c.Type = StakeDelegation
+		c.StakeCredential = cert.StakeCredential
+		c.PoolKeyHash = cert.PoolKeyHash
+	case PoolRegistration:
+		cert := &poolRegistration{}
+		if err := cbor.Unmarshal(data, cert); err != nil {
+			return err
+		}
+		c.Type = PoolRegistration
+		c.Operator = cert.Operator
+		c.VrfKeyHash = cert.VrfKeyHash
+		c.Pledge = cert.Pledge
+		c.Margin = cert.Margin
+		c.RewardAccount = cert.RewardAccount
+		c.Owners = cert.Owners
+		c.Relays = cert.Relays
+		c.PoolMetadata = cert.PoolMetadata
+	case PoolRetirement:
+		cert := &poolRetirement{}
+		if err := cbor.Unmarshal(data, cert); err != nil {
+			return err
+		}
+		c.Type = PoolRetirement
+		c.PoolKeyHash = cert.PoolKeyHash
+		c.Epoch = cert.Epoch
+	case GenesisKeyDelegation:
+		cert := &genesisKeyDelegation{}
+		if err := cbor.Unmarshal(data, cert); err != nil {
+			return err
+		}
+		c.Type = GenesisKeyDelegation
+		c.GenesisHash = cert.GenesisHash
+		c.GenesisDelegateHash = cert.GenesisDelegateHash
+		c.VrfKeyHash = cert.VrfKeyHash
+	}
+
+	return nil
+}
+
+type StakeCredentialType uint64
+
+const (
+	AddrKeyCredential StakeCredentialType = 0
+	ScriptCredential                      = 1
+)
+
+type addrKeyStakeCredential struct {
+	_           struct{} `cbor:",toarray"`
+	Type        StakeCredentialType
+	AddrKeyHash AddrKeyHash
+}
+
+type scriptStakeCredential struct {
+	_          struct{} `cbor:",toarray"`
+	Type       StakeCredentialType
+	ScriptHash Hash28
+}
+
 type StakeCredential struct {
-	_ struct{} `cbor:",toarray"`
-	// 0 for AddrKeyHash, 1 for ScriptHash
-	ID          uint64
-	AddrKeyHash AddrKeyHash `cbor:",omitempty"`
-	ScriptHash  Hash28      `cbor:",omitempty"`
+	Type        StakeCredentialType
+	AddrKeyHash AddrKeyHash
+	ScriptHash  Hash28
+}
+
+func (s *StakeCredential) MarshalCBOR() ([]byte, error) {
+	var cred []interface{}
+	switch s.Type {
+	case AddrKeyCredential:
+		cred = append(cred, s.Type, s.AddrKeyHash)
+	case ScriptCredential:
+		cred = append(cred, s.Type, s.ScriptHash)
+	}
+
+	return cbor.Marshal(cred)
+
+}
+
+func (s *StakeCredential) UnmarshalCBOR(data []byte) error {
+	credType, err := getTypeFromCBORArray(data)
+	if err != nil {
+		return fmt.Errorf("cbor: cannot unmarshal CBOR array into StakeCredential (%v)", err)
+	}
+
+	switch StakeCredentialType(credType) {
+	case AddrKeyCredential:
+		cred := &addrKeyStakeCredential{}
+		if err := cbor.Unmarshal(data, cred); err != nil {
+			return err
+		}
+		s.Type = AddrKeyCredential
+		s.AddrKeyHash = cred.AddrKeyHash
+	case ScriptCredential:
+		cred := &scriptStakeCredential{}
+		if err := cbor.Unmarshal(data, cred); err != nil {
+			return err
+		}
+		s.Type = ScriptCredential
+		s.ScriptHash = cred.ScriptHash
+	}
+
+	return nil
 }
 
 type PoolMetadata struct {
@@ -281,26 +490,119 @@ type PoolMetadata struct {
 	Hash Hash32
 }
 
-// One of SingleHostAddr, SingleHostName or MultiHostName
-type Relay interface{}
+type RelayType uint64
 
-type SingleHostAddr struct {
+const (
+	SingleHostAddr RelayType = 0
+	SingleHostName           = 1
+	MultiHostName            = 2
+)
+
+type singleHostAddr struct {
 	_    struct{} `cbor:",toarray"`
-	ID   uint64   // 0
-	Port *uint64  // or null
-	Ipv4 []byte   // or null
-	Ipv6 []byte   // or null
+	Type RelayType
+	Port Uint64
+	Ipv4 []byte
+	Ipv6 []byte
 }
 
-type SingleHostName struct {
+type singleHostName struct {
 	_       struct{} `cbor:",toarray"`
-	ID      uint64   // 1
-	Port    *uint64  // or null
-	DNSName string   // A or AAA DNS record
+	Type    RelayType
+	Port    Uint64
+	DNSName string
 }
 
-type MultiHostName struct {
+type multiHostName struct {
 	_       struct{} `cbor:",toarray"`
-	ID      uint64   // 2
-	DNSName string   // SRV DNS record
+	Type    RelayType
+	DNSName string
+}
+
+type Relay struct {
+	Type    RelayType
+	Port    Uint64
+	Ipv4    []byte
+	Ipv6    []byte
+	DNSName string
+}
+
+func (r *Relay) MarshalCBOR() ([]byte, error) {
+	var relay interface{}
+	switch r.Type {
+	case SingleHostAddr:
+		relay = singleHostAddr{
+			Type: r.Type,
+			Port: r.Port,
+			Ipv4: r.Ipv4,
+			Ipv6: r.Ipv6,
+		}
+	case SingleHostName:
+		relay = singleHostName{
+			Type:    r.Type,
+			Port:    r.Port,
+			DNSName: r.DNSName,
+		}
+	case MultiHostName:
+		relay = multiHostName{
+			Type:    r.Type,
+			DNSName: r.DNSName,
+		}
+	}
+
+	return cbor.Marshal(relay)
+}
+
+func (r *Relay) UnmarshalCBOR(data []byte) error {
+	relayType, err := getTypeFromCBORArray(data)
+	if err != nil {
+		return fmt.Errorf("cbor: cannot unmarshal CBOR array into Relay (%v)", err)
+	}
+
+	switch RelayType(relayType) {
+	case SingleHostAddr:
+		rl := &singleHostAddr{}
+		if err := cbor.Unmarshal(data, rl); err != nil {
+			return err
+		}
+		r.Type = SingleHostAddr
+		r.Port = rl.Port
+		r.Ipv4 = rl.Ipv4
+		r.Ipv6 = rl.Ipv6
+	case SingleHostName:
+		rl := &singleHostName{}
+		if err := cbor.Unmarshal(data, rl); err != nil {
+			return err
+		}
+		r.Type = SingleHostName
+		r.Port = rl.Port
+		r.DNSName = rl.DNSName
+	case MultiHostName:
+		rl := &multiHostName{}
+		if err := cbor.Unmarshal(data, rl); err != nil {
+			return err
+		}
+		r.Type = MultiHostName
+		r.DNSName = rl.DNSName
+	}
+
+	return nil
+}
+
+func getTypeFromCBORArray(data []byte) (uint64, error) {
+	raw := []interface{}{}
+	if err := cbor.Unmarshal(data, &raw); err != nil {
+		return 0, err
+	}
+
+	if len(raw) == 0 {
+		return 0, fmt.Errorf("empty CBOR array")
+	}
+
+	t, ok := raw[0].(uint64)
+	if !ok {
+		return 0, fmt.Errorf("invalid Type")
+	}
+
+	return t, nil
 }
