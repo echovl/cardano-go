@@ -23,7 +23,7 @@ type cardanoNode interface {
 type Utxo struct {
 	Address Address
 	TxId    TransactionID
-	Amount  uint64
+	Amount  Coin
 	Index   uint64
 }
 
@@ -88,7 +88,7 @@ func (cli *cardanoCli) QueryUtxos(address Address) ([]Utxo, error) {
 			utxos = append(utxos, Utxo{
 				TxId:    txId,
 				Index:   index,
-				Amount:  amount,
+				Amount:  Coin(amount),
 				Address: address,
 			})
 		}
