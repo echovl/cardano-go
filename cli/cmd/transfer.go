@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/echovl/cardano-go/node"
@@ -16,8 +17,13 @@ var transferCmd = &cobra.Command{
 	Short: "Transfer an amount of lovelace to the given address",
 	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		useTestnet, _ := cmd.Flags().GetBool("testnet")
+		network := types.Mainnet
+		if useTestnet {
+			network = types.Testnet
+		}
 		opts := &wallet.Options{
-			Node: node.NewCli(types.Testnet),
+			Node: node.NewCli(network),
 		}
 		client := wallet.NewClient(opts)
 		defer client.Close()
@@ -31,11 +37,14 @@ var transferCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		_, err = w.Transfer(receiver, types.Coin(amount))
+		txHash, err := w.Transfer(receiver, types.Coin(amount))
+		fmt.Println(txHash)
+
 		return err
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(transferCmd)
+	transferCmd.Flags().Bool("testnet", false, "Use testnet network")
 }

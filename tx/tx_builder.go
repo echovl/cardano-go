@@ -103,7 +103,12 @@ func (builder *TXBuilder) Build() Transaction {
 		witnessSet.VKeyWitnessSet = append(witnessSet.VKeyWitnessSet, witness)
 	}
 
-	return Transaction{Body: body, WitnessSet: witnessSet, AuxiliaryData: nil}
+	return Transaction{
+		Body:          body,
+		WitnessSet:    witnessSet,
+		AuxiliaryData: nil,
+		IsValid:       true,
+	}
 }
 
 func (builder *TXBuilder) buildBody() TransactionBody {

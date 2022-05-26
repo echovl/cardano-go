@@ -119,6 +119,7 @@ func (c *Cli) Tip() (NodeTip, error) {
 
 func (c *Cli) SubmitTx(tx tx.Transaction) (*types.Hash32, error) {
 	txOut := cliTx{
+		Type:    "Witnessed Tx AlonzoEra",
 		CborHex: tx.CborHex(),
 	}
 

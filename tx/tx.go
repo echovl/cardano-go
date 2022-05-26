@@ -50,7 +50,7 @@ func DecodeTransaction(cborHex string) (*Transaction, error) {
 func CalculateFee(tx *Transaction, protocol types.ProtocolParams) types.Coin {
 	txBytes := tx.Bytes()
 	txLength := uint64(len(txBytes))
-	return protocol.MinFeeA*types.Coin(txLength) + protocol.MinFeeB
+	return protocol.MinFeeA*types.Coin(txLength) + protocol.MinFeeB + 1000
 }
 
 type WitnessSet struct {
@@ -86,10 +86,10 @@ type TransactionBody struct {
 	Certificates          []Certificate       `cbor:"4,keyasint,omitempty"`
 	Withdrawals           interface{}         `cbor:"5,keyasint,omitempty"` // Omit for now
 	Update                interface{}         `cbor:"6,keyasint,omitempty"` // Omit for now
-	AuxiliaryDataHash     types.Hash32        `cbor:"7,keyasint,omitempty"`
+	AuxiliaryDataHash     *types.Hash32       `cbor:"7,keyasint,omitempty"`
 	ValidityIntervalStart types.Uint64        `cbor:"8,keyasint,omitempty"`
 	Mint                  interface{}         `cbor:"9,keyasint,omitempty"` // Omit for now
-	ScriptDataHash        types.Hash32        `cbor:"10,keyasint,omitempty"`
+	ScriptDataHash        *types.Hash32       `cbor:"10,keyasint,omitempty"`
 	Collateral            []TransactionInput  `cbor:"11,keyasint,omitempty"`
 	RequiredSigners       []types.AddrKeyHash `cbor:"12,keyasint,omitempty"`
 	NetworkID             types.Uint64        `cbor:"13,keyasint,omitempty"`

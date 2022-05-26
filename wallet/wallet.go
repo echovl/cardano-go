@@ -99,6 +99,7 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 		builder.Sign(key)
 	}
 	tx := builder.Build()
+
 	return w.node.SubmitTx(tx)
 }
 
