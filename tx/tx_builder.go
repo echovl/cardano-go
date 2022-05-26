@@ -1,9 +1,10 @@
-package cardano
+package tx
 
 import (
 	"encoding/hex"
 
 	"github.com/echovl/cardano-go/crypto"
+	"github.com/echovl/cardano-go/types"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -11,26 +12,26 @@ const maxUint64 uint64 = 1<<64 - 1
 
 type TXBuilderInput struct {
 	input  TransactionInput
-	amount Coin
+	amount types.Coin
 }
 
 type TXBuilderOutput struct {
-	address Address
+	address types.Address
 	amount  uint64
 }
 
 type TXBuilder struct {
 	tx       Transaction
-	protocol ProtocolParams
+	protocol types.ProtocolParams
 	inputs   []TXBuilderInput
 	outputs  []TransactionOutput
 	ttl      uint64
-	fee      Coin
+	fee      types.Coin
 	vkeys    map[string]crypto.ExtendedVerificationKey
 	pkeys    map[string]crypto.ExtendedSigningKey
 }
 
-func NewTxBuilder(protocol ProtocolParams) *TXBuilder {
+func NewTxBuilder(protocol types.ProtocolParams) *TXBuilder {
 	return &TXBuilder{
 		protocol: protocol,
 		vkeys:    map[string]crypto.ExtendedVerificationKey{},
@@ -38,7 +39,7 @@ func NewTxBuilder(protocol ProtocolParams) *TXBuilder {
 	}
 }
 
-func (builder *TXBuilder) AddInput(xvk crypto.ExtendedVerificationKey, txId TransactionID, index uint64, amount Coin) {
+func (builder *TXBuilder) AddInput(xvk crypto.ExtendedVerificationKey, txId TransactionID, index uint64, amount types.Coin) {
 	input := TXBuilderInput{input: TransactionInput{ID: txId.Bytes(), Index: index}, amount: amount}
 	builder.inputs = append(builder.inputs, input)
 
@@ -47,12 +48,12 @@ func (builder *TXBuilder) AddInput(xvk crypto.ExtendedVerificationKey, txId Tran
 	builder.vkeys[vkeyHashString] = xvk
 }
 
-func (builder *TXBuilder) AddInputWithoutSig(txId TransactionID, index uint64, amount Coin) {
+func (builder *TXBuilder) AddInputWithoutSig(txId TransactionID, index uint64, amount types.Coin) {
 	input := TXBuilderInput{input: TransactionInput{ID: txId.Bytes(), Index: index}, amount: amount}
 	builder.inputs = append(builder.inputs, input)
 }
 
-func (builder *TXBuilder) AddOutput(address Address, amount Coin) {
+func (builder *TXBuilder) AddOutput(address types.Address, amount types.Coin) {
 	output := TransactionOutput{Address: address.Bytes(), Amount: amount}
 	builder.outputs = append(builder.outputs, output)
 }
@@ -61,13 +62,13 @@ func (builder *TXBuilder) SetTtl(ttl uint64) {
 	builder.ttl = ttl
 }
 
-func (builder *TXBuilder) SetFee(fee Coin) {
+func (builder *TXBuilder) SetFee(fee types.Coin) {
 	builder.fee = fee
 }
 
 // This assumes that the builder inputs and outputs are defined
-func (builder *TXBuilder) AddFee(address Address) error {
-	inputAmount := Coin(0)
+func (builder *TXBuilder) AddFee(address types.Address) error {
+	inputAmount := types.Coin(0)
 	for _, txIn := range builder.inputs {
 		inputAmount += txIn.amount
 	}
@@ -118,6 +119,6 @@ func (builder *TXBuilder) buildBody() TransactionBody {
 		Inputs:  inputs,
 		Outputs: builder.outputs,
 		Fee:     builder.fee,
-		TTL:     NewUint64(builder.ttl),
+		TTL:     types.NewUint64(builder.ttl),
 	}
 }

@@ -1,17 +1,18 @@
-package cardano
+package tx
 
 import (
 	"testing"
 
 	"github.com/echovl/cardano-go/crypto"
+	"github.com/echovl/cardano-go/types"
 )
 
 func TestTXBuilder_AddFee(t *testing.T) {
 	key := crypto.NewExtendedSigningKey([]byte("receiver address"), "foo")
-	receiver := NewEnterpriseAddress(key.ExtendedVerificationKey(), Testnet)
+	receiver := types.NewEnterpriseAddress(key.ExtendedVerificationKey(), types.Testnet)
 	type fields struct {
 		tx       Transaction
-		protocol ProtocolParams
+		protocol types.ProtocolParams
 		inputs   []TXBuilderInput
 		outputs  []TransactionOutput
 		ttl      uint64
@@ -164,18 +165,18 @@ func TestTXBuilder_AddFee(t *testing.T) {
 				ttl:      tt.fields.ttl,
 			}
 			key := crypto.NewExtendedSigningKey([]byte("change address"), "foo")
-			change := NewEnterpriseAddress(key.ExtendedVerificationKey(), Testnet)
+			change := types.NewEnterpriseAddress(key.ExtendedVerificationKey(), types.Testnet)
 			if err := builder.AddFee(change); err != nil {
 				if tt.wantErr {
 					return
 				}
 				t.Fatalf("AddFee() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			var totalIn Coin
+			var totalIn types.Coin
 			for _, input := range builder.inputs {
 				totalIn += input.amount
 			}
-			var totalOut Coin
+			var totalOut types.Coin
 			for _, output := range builder.outputs {
 				totalOut += output.Amount
 			}
@@ -189,7 +190,7 @@ func TestTXBuilder_AddFee(t *testing.T) {
 					t.Errorf("got %v want greater than %v", got, want)
 				}
 			}
-			_, firstOutputReceiver, _ := DecodeAddress(builder.outputs[0].Address)
+			_, firstOutputReceiver, _ := types.DecodeAddress(builder.outputs[0].Address)
 			if got, want := firstOutputReceiver, expectedReceiver; got != want {
 				t.Errorf("got %v want %v", got, want)
 			}

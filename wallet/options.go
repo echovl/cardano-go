@@ -1,4 +1,6 @@
-package cardano
+package wallet
+
+import "github.com/echovl/cardano-go/node"
 
 type Options interface {
 	apply(*Client)
@@ -22,7 +24,7 @@ func WithSocket(socketPath string) Options {
 	})
 }
 
-func WithNode(node cardanoNode) Options {
+func WithNode(node node.Node) Options {
 	return optionFunc(func(client *Client) {
 		client.node = node
 	})

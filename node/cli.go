@@ -1,4 +1,4 @@
-package cardano
+package node
 
 import (
 	"bytes"
@@ -7,37 +7,18 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
+
+	"github.com/echovl/cardano-go/tx"
+	"github.com/echovl/cardano-go/types"
 )
 
-const (
-	testnetMagic = 1097911063
-)
-
-type cardanoNode interface {
-	QueryUtxos(Address) ([]Utxo, error)
-	QueryTip() (NodeTip, error)
-	SubmitTx(Transaction) error
-}
-
-type Utxo struct {
-	Address Address
-	TxId    TransactionID
-	Amount  Coin
-	Index   uint64
-}
-
-type NodeTip struct {
-	Epoch uint64
-	Block uint64
-	Slot  uint64
-}
-
-type cardanoCli struct {
+type Cli struct {
 	socketPath string
 }
 
-type cardanoCliTip struct {
+type cliTip struct {
 	Epoch uint64
 	Hash  string
 	Slot  uint64
@@ -45,25 +26,25 @@ type cardanoCliTip struct {
 	Era   string
 }
 
-type cardanoCliTx struct {
+type cliTx struct {
 	Type        string `json:"type"`
 	Description string `json:"description"`
 	CborHex     string `json:"cborHex"`
 }
 
-func newCli() *cardanoCli {
-	return &cardanoCli{}
+func NewCli() Node {
+	return &Cli{}
 }
 
 //TODO: add ability to use mainnet and testnet
-func (cli *cardanoCli) QueryUtxos(address Address) ([]Utxo, error) {
+func (cli *Cli) QueryUtxos(address types.Address) ([]tx.Utxo, error) {
 	out, err := runCommand("cardano-cli", "query", "utxo", "--address", string(address), "--testnet-magic", "1097911063")
 	if err != nil {
 		return nil, err
 	}
 
 	counter := 0
-	utxos := []Utxo{}
+	utxos := []tx.Utxo{}
 	for {
 		line, err := out.ReadString(byte('\n'))
 		if err != nil {
@@ -75,20 +56,20 @@ func (cli *cardanoCli) QueryUtxos(address Address) ([]Utxo, error) {
 				return nil, fmt.Errorf("malformed cli response")
 			}
 
-			txId := TransactionID(args[0])
-			index, err := ParseUint64(args[1])
+			txId := tx.TransactionID(args[0])
+			index, err := strconv.ParseUint(args[1], 10, 64)
 			if err != nil {
 				return nil, err
 			}
-			amount, err := ParseUint64(args[2])
+			amount, err := strconv.ParseUint(args[2], 10, 64)
 			if err != nil {
 				return nil, err
 			}
 
-			utxos = append(utxos, Utxo{
+			utxos = append(utxos, tx.Utxo{
 				TxId:    txId,
 				Index:   index,
-				Amount:  Coin(amount),
+				Amount:  types.Coin(amount),
 				Address: address,
 			})
 		}
@@ -99,13 +80,13 @@ func (cli *cardanoCli) QueryUtxos(address Address) ([]Utxo, error) {
 }
 
 //TODO: add ability to use mainnet and testnet
-func (cli *cardanoCli) QueryTip() (NodeTip, error) {
+func (cli *Cli) QueryTip() (NodeTip, error) {
 	out, err := runCommand("cardano-cli", "query", "tip", "--testnet-magic", "1097911063")
 	if err != nil {
 		return NodeTip{}, err
 	}
 
-	cliTip := &cardanoCliTip{}
+	cliTip := &cliTip{}
 	err = json.Unmarshal(out.Bytes(), cliTip)
 	if err != nil {
 		return NodeTip{}, err
@@ -119,9 +100,9 @@ func (cli *cardanoCli) QueryTip() (NodeTip, error) {
 }
 
 //TODO: add ability to use mainnet and testnet
-func (cli *cardanoCli) SubmitTx(tx Transaction) error {
+func (cli *Cli) SubmitTx(tx tx.Transaction) error {
 	const txFileName = "txsigned.temp"
-	txPayload := cardanoCliTx{
+	txPayload := cliTx{
 		Type:        "Tx MaryEra",
 		Description: "",
 		CborHex:     tx.CborHex(),

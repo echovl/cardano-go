@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/echovl/cardano-go"
+	"github.com/echovl/cardano-go/wallet"
 	"github.com/spf13/cobra"
 )
 
@@ -12,7 +12,7 @@ var deleteWalletCmd = &cobra.Command{
 	Aliases: []string{"delw"},
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := cardano.NewClient()
+		client := wallet.NewClient()
 		id := args[0]
 		return client.DeleteWallet(id)
 	},

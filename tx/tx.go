@@ -1,22 +1,15 @@
-package cardano
+package tx
 
 import (
 	"encoding/hex"
 	"fmt"
 
 	"github.com/echovl/cardano-go/crypto"
+	"github.com/echovl/cardano-go/types"
 	"github.com/echovl/ed25519"
 	"github.com/fxamacker/cbor/v2"
 	"golang.org/x/crypto/blake2b"
 )
-
-type ProtocolParams struct {
-	MinimumUtxoValue Coin
-	PoolDeposit      uint64
-	KeyDeposit       uint64
-	MinFeeA          Coin
-	MinFeeB          Coin
-}
 
 type TransactionID string
 
@@ -65,10 +58,10 @@ func DecodeTransaction(cborHex string) (*Transaction, error) {
 	return &tx, nil
 }
 
-func CalculateFee(tx *Transaction, protocol ProtocolParams) Coin {
+func CalculateFee(tx *Transaction, protocol types.ProtocolParams) types.Coin {
 	txBytes := tx.Bytes()
 	txLength := uint64(len(txBytes))
-	return protocol.MinFeeA*Coin(txLength) + protocol.MinFeeB
+	return protocol.MinFeeA*types.Coin(txLength) + protocol.MinFeeB
 }
 
 type WitnessSet struct {
@@ -83,34 +76,34 @@ type VKeyWitness struct {
 }
 
 type TransactionInput struct {
-	_     struct{} `cbor:",toarray"`
-	ID    Hash32   // HashKey 32 bytes
+	_     struct{}     `cbor:",toarray"`
+	ID    types.Hash32 // HashKey 32 bytes
 	Index uint64
 }
 
 type TransactionOutput struct {
 	_       struct{} `cbor:",toarray"`
 	Address []byte
-	Amount  Coin
+	Amount  types.Coin
 }
 
 type TransactionBody struct {
 	Inputs  []TransactionInput  `cbor:"0,keyasint"`
 	Outputs []TransactionOutput `cbor:"1,keyasint"`
-	Fee     Coin                `cbor:"2,keyasint"`
+	Fee     types.Coin          `cbor:"2,keyasint"`
 
 	// Optionals
-	TTL                   Uint64             `cbor:"3,keyasint,omitempty"`
-	Certificates          []Certificate      `cbor:"4,keyasint,omitempty"`
-	Withdrawals           interface{}        `cbor:"5,keyasint,omitempty"` // Omit for now
-	Update                interface{}        `cbor:"6,keyasint,omitempty"` // Omit for now
-	AuxiliaryDataHash     *Hash32            `cbor:"7,keyasint,omitempty"`
-	ValidityIntervalStart Uint64             `cbor:"8,keyasint,omitempty"`
-	Mint                  interface{}        `cbor:"9,keyasint,omitempty"` // Omit for now
-	ScriptDataHash        *Hash32            `cbor:"10,keyasint,omitempty"`
-	Collateral            []TransactionInput `cbor:"11,keyasint,omitempty"`
-	RequiredSigners       []AddrKeyHash      `cbor:"12,keyasint,omitempty"`
-	NetworkID             Uint64             `cbor:"13,keyasint,omitempty"`
+	TTL                   types.Uint64        `cbor:"3,keyasint,omitempty"`
+	Certificates          []Certificate       `cbor:"4,keyasint,omitempty"`
+	Withdrawals           interface{}         `cbor:"5,keyasint,omitempty"` // Omit for now
+	Update                interface{}         `cbor:"6,keyasint,omitempty"` // Omit for now
+	AuxiliaryDataHash     types.Hash32        `cbor:"7,keyasint,omitempty"`
+	ValidityIntervalStart types.Uint64        `cbor:"8,keyasint,omitempty"`
+	Mint                  interface{}         `cbor:"9,keyasint,omitempty"` // Omit for now
+	ScriptDataHash        types.Hash32        `cbor:"10,keyasint,omitempty"`
+	Collateral            []TransactionInput  `cbor:"11,keyasint,omitempty"`
+	RequiredSigners       []types.AddrKeyHash `cbor:"12,keyasint,omitempty"`
+	NetworkID             types.Uint64        `cbor:"13,keyasint,omitempty"`
 }
 
 func (body *TransactionBody) Bytes() []byte {
@@ -151,7 +144,7 @@ func (body *TransactionBody) AddSignatures(publicKeys [][]byte, signatures [][]b
 	}, nil
 }
 
-func (body *TransactionBody) calculateMinFee(protocol ProtocolParams) Coin {
+func (body *TransactionBody) calculateMinFee(protocol types.ProtocolParams) types.Coin {
 	fakeXSigningKey := crypto.NewExtendedSigningKey([]byte{
 		0x0c, 0xcb, 0x74, 0xf3, 0x6b, 0x7d, 0xa1, 0x64, 0x9a, 0x81,
 		0x44, 0x67, 0x55, 0x22, 0xd4, 0xd8, 0x09, 0x7c, 0x64, 0x12,
@@ -173,13 +166,13 @@ func (body *TransactionBody) calculateMinFee(protocol ProtocolParams) Coin {
 	}, protocol)
 }
 
-func (body *TransactionBody) addFee(inputAmount Coin, changeAddress Address, protocol ProtocolParams) error {
+func (body *TransactionBody) addFee(inputAmount types.Coin, changeAddress types.Address, protocol types.ProtocolParams) error {
 	// Set a temporary realistic fee in order to serialize a valid transaction
 	body.Fee = 200000
 
 	minFee := body.calculateMinFee(protocol)
 
-	outputAmount := Coin(0)
+	outputAmount := types.Coin(0)
 	for _, txOut := range body.Outputs {
 		outputAmount += txOut.Amount
 	}
@@ -251,18 +244,18 @@ type stakeDelegation struct {
 	_               struct{} `cbor:",toarray"`
 	Type            CertificateType
 	StakeCredential StakeCredential
-	PoolKeyHash     PoolKeyHash
+	PoolKeyHash     types.PoolKeyHash
 }
 
 type poolRegistration struct {
 	_             struct{} `cbor:",toarray"`
 	Type          CertificateType
-	Operator      PoolKeyHash
-	VrfKeyHash    Hash32
-	Pledge        Coin
-	Margin        UnitInterval
-	RewardAccount AddressBytes
-	Owners        []AddrKeyHash
+	Operator      types.PoolKeyHash
+	VrfKeyHash    types.Hash32
+	Pledge        types.Coin
+	Margin        types.UnitInterval
+	RewardAccount types.AddressBytes
+	Owners        []types.AddrKeyHash
 	Relays        []Relay
 	PoolMetadata  *PoolMetadata // or null
 }
@@ -270,16 +263,16 @@ type poolRegistration struct {
 type poolRetirement struct {
 	_           struct{} `cbor:",toarray"`
 	Type        CertificateType
-	PoolKeyHash PoolKeyHash
+	PoolKeyHash types.PoolKeyHash
 	Epoch       uint64
 }
 
 type genesisKeyDelegation struct {
 	_                   struct{} `cbor:",toarray"`
 	Type                CertificateType
-	GenesisHash         Hash28
-	GenesisDelegateHash Hash28
-	VrfKeyHash          Hash32
+	GenesisHash         types.Hash28
+	GenesisDelegateHash types.Hash28
+	VrfKeyHash          types.Hash32
 }
 
 //	TODO: MoveInstantaneousRewardsCert requires a map with StakeCredential as a key
@@ -288,22 +281,22 @@ type Certificate struct {
 
 	// Common fields
 	StakeCredential StakeCredential
-	PoolKeyHash     PoolKeyHash
-	VrfKeyHash      Hash32
+	PoolKeyHash     types.PoolKeyHash
+	VrfKeyHash      types.Hash32
 
 	// Pool related fields
-	Operator      PoolKeyHash
-	Pledge        Coin
-	Margin        UnitInterval
-	RewardAccount AddressBytes
-	Owners        []AddrKeyHash
+	Operator      types.PoolKeyHash
+	Pledge        types.Coin
+	Margin        types.UnitInterval
+	RewardAccount types.AddressBytes
+	Owners        []types.AddrKeyHash
 	Relays        []Relay
 	PoolMetadata  *PoolMetadata // or null
 	Epoch         uint64
 
 	// Genesis fields
-	GenesisHash         Hash28
-	GenesisDelegateHash Hash28
+	GenesisHash         types.Hash28
+	GenesisDelegateHash types.Hash28
 }
 
 func (c *Certificate) MarshalCBOR() ([]byte, error) {
@@ -430,19 +423,19 @@ const (
 type addrKeyStakeCredential struct {
 	_           struct{} `cbor:",toarray"`
 	Type        StakeCredentialType
-	AddrKeyHash AddrKeyHash
+	AddrKeyHash types.AddrKeyHash
 }
 
 type scriptStakeCredential struct {
 	_          struct{} `cbor:",toarray"`
 	Type       StakeCredentialType
-	ScriptHash Hash28
+	ScriptHash types.Hash28
 }
 
 type StakeCredential struct {
 	Type        StakeCredentialType
-	AddrKeyHash AddrKeyHash
-	ScriptHash  Hash28
+	AddrKeyHash types.AddrKeyHash
+	ScriptHash  types.Hash28
 }
 
 func (s *StakeCredential) MarshalCBOR() ([]byte, error) {
@@ -487,7 +480,7 @@ func (s *StakeCredential) UnmarshalCBOR(data []byte) error {
 type PoolMetadata struct {
 	_    struct{} `cbor:",toarray"`
 	URL  string
-	Hash Hash32
+	Hash types.Hash32
 }
 
 type RelayType uint64
@@ -501,7 +494,7 @@ const (
 type singleHostAddr struct {
 	_    struct{} `cbor:",toarray"`
 	Type RelayType
-	Port Uint64
+	Port types.Uint64
 	Ipv4 []byte
 	Ipv6 []byte
 }
@@ -509,7 +502,7 @@ type singleHostAddr struct {
 type singleHostName struct {
 	_       struct{} `cbor:",toarray"`
 	Type    RelayType
-	Port    Uint64
+	Port    types.Uint64
 	DNSName string
 }
 
@@ -521,7 +514,7 @@ type multiHostName struct {
 
 type Relay struct {
 	Type    RelayType
-	Port    Uint64
+	Port    types.Uint64
 	Ipv4    []byte
 	Ipv6    []byte
 	DNSName string

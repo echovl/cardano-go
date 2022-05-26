@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/echovl/cardano-go"
+	"github.com/echovl/cardano-go/wallet"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +16,7 @@ it will restore a wallet using the mnemonic and password.`,
 	Aliases: []string{"neww"},
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := cardano.NewClient()
+		client := wallet.NewClient()
 		defer client.Close()
 		password, _ := cmd.Flags().GetString("password")
 		mnemonic, _ := cmd.Flags().GetStringSlice("mnemonic")

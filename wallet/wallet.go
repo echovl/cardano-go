@@ -1,11 +1,13 @@
-package cardano
+package wallet
 
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	"github.com/echovl/cardano-go/crypto"
+	"github.com/echovl/cardano-go/node"
+	"github.com/echovl/cardano-go/tx"
+	"github.com/echovl/cardano-go/types"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/tyler-smith/go-bip39"
 )
@@ -25,17 +27,17 @@ type Wallet struct {
 	skeys   []crypto.ExtendedSigningKey
 	pkeys   []crypto.ExtendedVerificationKey
 	rootKey crypto.ExtendedSigningKey
-	node    cardanoNode
-	network Network
+	node    node.Node
+	network types.Network
 }
 
-func (w *Wallet) SetNetwork(net Network) {
+func (w *Wallet) SetNetwork(net types.Network) {
 	w.network = net
 }
 
 // Transfer sends an amount of lovelace to the receiver address
 //TODO: remove hardcoded protocol parameters, these parameters must be obtained using the cardano node
-func (w *Wallet) Transfer(receiver Address, amount Coin) error {
+func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) error {
 	// Calculate if the account has enough balance
 	balance, err := w.Balance()
 	if err != nil {
@@ -46,9 +48,9 @@ func (w *Wallet) Transfer(receiver Address, amount Coin) error {
 	}
 
 	// Find utxos that cover the amount to transfer
-	pickedUtxos := []Utxo{}
+	pickedUtxos := []tx.Utxo{}
 	utxos, err := w.findUtxos()
-	pickedUtxosAmount := Coin(0)
+	pickedUtxosAmount := types.Coin(0)
 	for _, utxo := range utxos {
 		if pickedUtxosAmount > amount {
 			break
@@ -57,7 +59,7 @@ func (w *Wallet) Transfer(receiver Address, amount Coin) error {
 		pickedUtxosAmount += utxo.Amount
 	}
 
-	builder := NewTxBuilder(ProtocolParams{
+	builder := tx.NewTxBuilder(types.ProtocolParams{
 		MinimumUtxoValue: 1000000,
 		MinFeeA:          44,
 		MinFeeB:          155381,
@@ -67,7 +69,7 @@ func (w *Wallet) Transfer(receiver Address, amount Coin) error {
 	for i, utxo := range pickedUtxos {
 		for _, key := range w.skeys {
 			vkey := key.ExtendedVerificationKey()
-			address := NewEnterpriseAddress(vkey, w.network)
+			address := types.NewEnterpriseAddress(vkey, w.network)
 			if address == utxo.Address {
 				keys[i] = key
 			}
@@ -105,8 +107,8 @@ func (w *Wallet) Transfer(receiver Address, amount Coin) error {
 }
 
 // Balance returns the total lovelace amount of the wallet.
-func (w *Wallet) Balance() (Coin, error) {
-	var balance Coin
+func (w *Wallet) Balance() (types.Coin, error) {
+	var balance types.Coin
 	utxos, err := w.findUtxos()
 	if err != nil {
 		return 0, nil
@@ -117,9 +119,9 @@ func (w *Wallet) Balance() (Coin, error) {
 	return balance, nil
 }
 
-func (w *Wallet) findUtxos() ([]Utxo, error) {
+func (w *Wallet) findUtxos() ([]tx.Utxo, error) {
 	addresses := w.Addresses()
-	walletUtxos := []Utxo{}
+	walletUtxos := []tx.Utxo{}
 	for _, addr := range addresses {
 		addrUtxos, err := w.node.QueryUtxos(addr)
 		if err != nil {
@@ -131,18 +133,18 @@ func (w *Wallet) findUtxos() ([]Utxo, error) {
 }
 
 // AddAddress generates a new payment address and adds it to the wallet.
-func (w *Wallet) AddAddress() Address {
+func (w *Wallet) AddAddress() types.Address {
 	index := uint32(len(w.skeys))
 	newKey := crypto.DeriveSigningKey(w.rootKey, index)
 	w.skeys = append(w.skeys, newKey)
-	return NewEnterpriseAddress(newKey.ExtendedVerificationKey(), w.network)
+	return types.NewEnterpriseAddress(newKey.ExtendedVerificationKey(), w.network)
 }
 
 // Addresses returns all wallet's addresss.
-func (w *Wallet) Addresses() []Address {
-	addresses := make([]Address, len(w.skeys))
+func (w *Wallet) Addresses() []types.Address {
+	addresses := make([]types.Address, len(w.skeys))
 	for i, key := range w.skeys {
-		addresses[i] = NewEnterpriseAddress(key.ExtendedVerificationKey(), w.network)
+		addresses[i] = types.NewEnterpriseAddress(key.ExtendedVerificationKey(), w.network)
 	}
 	return addresses
 }
@@ -197,14 +199,6 @@ func (w *Wallet) unmarshal(bytes []byte) error {
 	w.skeys = wd.Keys
 	w.rootKey = wd.RootKey
 	return nil
-}
-
-func ParseUint64(s string) (uint64, error) {
-	parsed, err := strconv.ParseUint(s, 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return parsed, nil
 }
 
 var newEntropy = func(bitSize int) []byte {

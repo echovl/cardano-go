@@ -1,7 +1,10 @@
 package cmd
 
 import (
-	"github.com/echovl/cardano-go"
+	"strconv"
+
+	"github.com/echovl/cardano-go/types"
+	"github.com/echovl/cardano-go/wallet"
 	"github.com/spf13/cobra"
 )
 
@@ -12,11 +15,11 @@ var transferCmd = &cobra.Command{
 	Short: "Transfer an amount of lovelace to the given address",
 	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := cardano.NewClient()
+		client := wallet.NewClient()
 		defer client.Close()
 		senderId := args[0]
-		receiver := cardano.Address(args[2])
-		amount, err := cardano.ParseUint64(args[1])
+		receiver := types.Address(args[2])
+		amount, err := strconv.ParseUint(args[1], 10, 64)
 		if err != nil {
 			return err
 		}
@@ -24,8 +27,8 @@ var transferCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		w.SetNetwork(cardano.Testnet)
-		err = w.Transfer(receiver, cardano.Coin(amount))
+		w.SetNetwork(types.Testnet)
+		err = w.Transfer(receiver, types.Coin(amount))
 		return err
 	},
 }
