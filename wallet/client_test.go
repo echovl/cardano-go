@@ -1,8 +1,9 @@
-package cardano
+package wallet
 
 import (
 	"testing"
 
+	"github.com/echovl/cardano-go/types"
 	"github.com/tyler-smith/go-bip39"
 )
 
@@ -13,8 +14,8 @@ type TestVector struct {
 	addrXvk0     string
 	addrXsk1     string
 	addrXvk1     string
-	paymentAddr0 Address
-	paymentAddr1 Address
+	paymentAddr0 types.Address
+	paymentAddr1 types.Address
 }
 
 var testVectors = []TestVector{
@@ -93,7 +94,7 @@ func TestCreateWallet(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		w.SetNetwork(Testnet)
+		w.SetNetwork(types.Testnet)
 
 		addrXsk0 := bech32From("addr_xsk", w.skeys[0])
 		addrXvk0 := bech32From("addr_xvk", w.skeys[0].ExtendedVerificationKey())
@@ -127,7 +128,7 @@ func TestRestoreWallet(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		w.SetNetwork(Testnet)
+		w.SetNetwork(types.Testnet)
 
 		addrXsk0 := bech32From("addr_xsk", w.skeys[0])
 		addrXvk0 := bech32From("addr_xvk", w.skeys[0].ExtendedVerificationKey())

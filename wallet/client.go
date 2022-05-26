@@ -1,16 +1,17 @@
-package cardano
+package wallet
 
 import (
 	"fmt"
 
 	"github.com/echovl/cardano-go/crypto"
+	"github.com/echovl/cardano-go/node"
 	"github.com/tyler-smith/go-bip39"
 )
 
 // Client provides a clean interface for creating, saving and deleting Wallets.
 type Client struct {
 	db         DB
-	node       cardanoNode
+	node       node.Node
 	socketPath string
 }
 
@@ -19,7 +20,7 @@ type Client struct {
 //
 // It uses BadgerDB as the default Wallet storage.
 func NewClient(opts ...Options) *Client {
-	client := &Client{node: newCli()}
+	client := &Client{node: node.NewCli()}
 	for _, opt := range opts {
 		opt.apply(client)
 	}

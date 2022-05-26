@@ -3,7 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/echovl/cardano-go"
+	"github.com/echovl/cardano-go/types"
+	"github.com/echovl/cardano-go/wallet"
 	"github.com/spf13/cobra"
 )
 
@@ -13,13 +14,13 @@ var balanceCmd = &cobra.Command{
 	Aliases: []string{"bal"},
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := cardano.NewClient()
+		client := wallet.NewClient()
 		defer client.Close()
 
 		useTestnet, err := cmd.Flags().GetBool("testnet")
-		network := cardano.Mainnet
+		network := types.Mainnet
 		if useTestnet {
-			network = cardano.Testnet
+			network = types.Testnet
 		}
 
 		id := args[0]

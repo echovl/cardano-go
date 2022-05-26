@@ -1,4 +1,4 @@
-package cardano
+package wallet
 
 import (
 	"github.com/dgraph-io/badger/v3"
