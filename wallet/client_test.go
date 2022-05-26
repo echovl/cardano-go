@@ -67,7 +67,7 @@ func (db *MockDB) Close() {
 	db.calls++
 }
 
-func (db *MockDB) GetWallets() ([]*Wallet, error) {
+func (db *MockDB) GetWallets(network types.Network) ([]*Wallet, error) {
 	db.calls++
 	return []*Wallet{}, nil
 }
@@ -79,7 +79,7 @@ func (db *MockDB) DeleteWallet(id string) error {
 
 func TestCreateWallet(t *testing.T) {
 	for _, testVector := range testVectors {
-		client := NewClient(WithDB(&MockDB{}))
+		client := NewClient(&Options{DB: &MockDB{}})
 		defer client.Close()
 
 		newEntropy = func(bitSize int) []byte {
@@ -94,7 +94,6 @@ func TestCreateWallet(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		w.SetNetwork(types.Testnet)
 
 		addrXsk0 := bech32From("addr_xsk", w.skeys[0])
 		addrXvk0 := bech32From("addr_xvk", w.skeys[0].ExtendedVerificationKey())
@@ -121,14 +120,13 @@ func TestCreateWallet(t *testing.T) {
 
 func TestRestoreWallet(t *testing.T) {
 	for _, testVector := range testVectors {
-		client := NewClient(WithDB(&MockDB{}))
+		client := NewClient(&Options{DB: &MockDB{}})
 		defer client.Close()
 
 		w, err := client.RestoreWallet("test", "", testVector.mnemonic)
 		if err != nil {
 			t.Error(err)
 		}
-		w.SetNetwork(types.Testnet)
 
 		addrXsk0 := bech32From("addr_xsk", w.skeys[0])
 		addrXvk0 := bech32From("addr_xvk", w.skeys[0].ExtendedVerificationKey())

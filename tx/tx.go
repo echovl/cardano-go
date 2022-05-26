@@ -11,17 +11,6 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-type TransactionID string
-
-func (id TransactionID) Bytes() []byte {
-	bytes, err := hex.DecodeString(string(id))
-	if err != nil {
-		panic(err)
-	}
-
-	return bytes
-}
-
 type Transaction struct {
 	_             struct{} `cbor:",toarray"`
 	Body          TransactionBody
@@ -42,8 +31,8 @@ func (tx *Transaction) CborHex() string {
 	return hex.EncodeToString(tx.Bytes())
 }
 
-func (tx *Transaction) ID() TransactionID {
-	return tx.Body.ID()
+func (tx *Transaction) Hash() types.Hash32 {
+	return tx.Body.Hash()
 }
 
 func DecodeTransaction(cborHex string) (*Transaction, error) {
@@ -76,9 +65,9 @@ type VKeyWitness struct {
 }
 
 type TransactionInput struct {
-	_     struct{}     `cbor:",toarray"`
-	ID    types.Hash32 // HashKey 32 bytes
-	Index uint64
+	_      struct{} `cbor:",toarray"`
+	TxHash types.Hash32
+	Index  uint64
 }
 
 type TransactionOutput struct {
@@ -114,9 +103,8 @@ func (body *TransactionBody) Bytes() []byte {
 	return bytes
 }
 
-func (body *TransactionBody) ID() TransactionID {
-	hash := blake2b.Sum256(body.Bytes())
-	return TransactionID(hex.EncodeToString(hash[:]))
+func (body *TransactionBody) Hash() types.Hash32 {
+	return blake2b.Sum256(body.Bytes())
 }
 
 func (body *TransactionBody) AddSignatures(publicKeys [][]byte, signatures [][]byte) (*Transaction, error) {

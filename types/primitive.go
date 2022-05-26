@@ -1,6 +1,8 @@
 package types
 
 import (
+	"encoding/hex"
+	"fmt"
 	"reflect"
 
 	"github.com/fxamacker/cbor/v2"
@@ -13,6 +15,8 @@ const (
 	Mainnet Network = 1
 )
 
+type Coin uint64
+
 type ProtocolParams struct {
 	MinimumUtxoValue Coin
 	PoolDeposit      uint64
@@ -21,15 +25,41 @@ type ProtocolParams struct {
 	MinFeeB          Coin
 }
 
-type Hash28 []byte
-
-type Hash32 []byte
-
 type AddrKeyHash Hash28
 
 type PoolKeyHash Hash28
 
-type Coin uint64
+type Hash28 [28]byte
+
+func NewHash28(b []byte) (Hash28, error) {
+	hash := [28]byte{}
+	if len(b) != 28 {
+		return hash, fmt.Errorf("length should be 28")
+	}
+	copy(hash[:], b)
+	return hash, nil
+}
+
+type Hash32 [32]byte
+
+func NewHash32(b []byte) (Hash32, error) {
+	hash := [32]byte{}
+	if len(b) != 28 {
+		return hash, fmt.Errorf("length should be 32")
+	}
+	copy(hash[:], b)
+	return hash, nil
+}
+
+func NewHash32FromHex(h string) (Hash32, error) {
+	hash := [32]byte{}
+	b, err := hex.DecodeString(h)
+	if err != nil {
+		return hash, err
+	}
+	copy(hash[:], b)
+	return hash, nil
+}
 
 type Uint64 *uint64
 

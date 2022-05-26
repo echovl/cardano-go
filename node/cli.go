@@ -16,6 +16,7 @@ import (
 
 type Cli struct {
 	socketPath string
+	network    types.Network
 }
 
 type cliTip struct {
@@ -32,62 +33,81 @@ type cliTx struct {
 	CborHex     string `json:"cborHex"`
 }
 
-func NewCli() Node {
-	return &Cli{}
+func NewCli(network types.Network) Node {
+	return &Cli{network: network}
+}
+
+func (cli *Cli) runCommand(args ...string) ([]byte, error) {
+	out := &bytes.Buffer{}
+
+	if cli.network == types.Mainnet {
+		args = append(args, "--mainnet")
+	} else {
+		args = append(args, "--testnet-magic", strconv.Itoa(protocolMagic))
+	}
+
+	cmd := exec.Command("cardano-cli", args...)
+	cmd.Stdout = out
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return nil, err
+	}
+
+	return out.Bytes(), nil
 }
 
 //TODO: add ability to use mainnet and testnet
-func (cli *Cli) QueryUtxos(address types.Address) ([]tx.Utxo, error) {
-	out, err := runCommand("cardano-cli", "query", "utxo", "--address", string(address), "--testnet-magic", "1097911063")
+func (cli *Cli) UTXOs(address types.Address) ([]tx.Utxo, error) {
+	out, err := cli.runCommand("query", "utxo", "--address", string(address))
 	if err != nil {
 		return nil, err
 	}
 
-	counter := 0
 	utxos := []tx.Utxo{}
-	for {
-		line, err := out.ReadString(byte('\n'))
+	lines := strings.Split(string(out), "\n")
+
+	if len(lines) < 3 {
+		return nil, fmt.Errorf("malformed cli response")
+	}
+
+	for _, line := range lines[2:] {
+		args := strings.Fields(line)
+		if len(args) < 4 {
+			return nil, fmt.Errorf("malformed cli response")
+		}
+		txHash, err := types.NewHash32FromHex(args[0])
 		if err != nil {
-			break
+			return nil, err
 		}
-		if counter >= 2 {
-			args := strings.Fields(line)
-			if len(args) < 4 {
-				return nil, fmt.Errorf("malformed cli response")
-			}
-
-			txId := tx.TransactionID(args[0])
-			index, err := strconv.ParseUint(args[1], 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			amount, err := strconv.ParseUint(args[2], 10, 64)
-			if err != nil {
-				return nil, err
-			}
-
-			utxos = append(utxos, tx.Utxo{
-				TxId:    txId,
-				Index:   index,
-				Amount:  types.Coin(amount),
-				Address: address,
-			})
+		index, err := strconv.Atoi(args[1])
+		if err != nil {
+			return nil, err
 		}
-		counter++
+		amount, err := strconv.Atoi(args[2])
+		if err != nil {
+			return nil, err
+		}
+
+		utxos = append(utxos, tx.Utxo{
+			TxHash:  txHash,
+			Index:   uint64(index),
+			Amount:  types.Coin(amount),
+			Address: address,
+		})
 	}
 
 	return utxos, nil
 }
 
 //TODO: add ability to use mainnet and testnet
-func (cli *Cli) QueryTip() (NodeTip, error) {
-	out, err := runCommand("cardano-cli", "query", "tip", "--testnet-magic", "1097911063")
+func (cli *Cli) Tip() (NodeTip, error) {
+	out, err := cli.runCommand("query", "tip")
 	if err != nil {
 		return NodeTip{}, err
 	}
 
 	cliTip := &cliTip{}
-	err = json.Unmarshal(out.Bytes(), cliTip)
+	err = json.Unmarshal(out, cliTip)
 	if err != nil {
 		return NodeTip{}, err
 	}
@@ -102,10 +122,9 @@ func (cli *Cli) QueryTip() (NodeTip, error) {
 //TODO: add ability to use mainnet and testnet
 func (cli *Cli) SubmitTx(tx tx.Transaction) error {
 	const txFileName = "txsigned.temp"
+
 	txPayload := cliTx{
-		Type:        "Tx MaryEra",
-		Description: "",
-		CborHex:     tx.CborHex(),
+		CborHex: tx.CborHex(),
 	}
 
 	txPayloadJson, err := json.Marshal(txPayload)
@@ -118,24 +137,14 @@ func (cli *Cli) SubmitTx(tx tx.Transaction) error {
 		return err
 	}
 
-	out, err := runCommand("cardano-cli", "transaction", "submit", "--tx-file", txFileName, "--testnet-magic", "1097911063")
-	fmt.Print(out.String())
+	out, err := cli.runCommand("transaction", "submit", "--tx-file", txFileName)
+	fmt.Print(out)
 
 	err = os.Remove(txFileName)
 
 	return err
 }
 
-func runCommand(cmd string, arg ...string) (*bytes.Buffer, error) {
-	out := &bytes.Buffer{}
-	command := exec.Command(cmd, arg...)
-	command.Stdout = out
-	command.Stderr = os.Stderr
-
-	err := command.Run()
-	if err != nil {
-		return nil, err
-	}
-
-	return out, nil
+func (cli *Cli) Network() types.Network {
+	return cli.network
 }

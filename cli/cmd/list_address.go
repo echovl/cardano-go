@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/echovl/cardano-go/node"
 	"github.com/echovl/cardano-go/types"
 	"github.com/echovl/cardano-go/wallet"
 	"github.com/spf13/cobra"
@@ -16,21 +17,23 @@ var listAddressCmd = &cobra.Command{
 	Aliases: []string{"lsa"},
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := wallet.NewClient()
-		defer client.Close()
-
-		useTestnet, err := cmd.Flags().GetBool("testnet")
+		useTestnet, _ := cmd.Flags().GetBool("testnet")
 		network := types.Mainnet
 		if useTestnet {
 			network = types.Testnet
 		}
+
+		opts := &wallet.Options{
+			Node: node.NewCli(network),
+		}
+		client := wallet.NewClient(opts)
+		defer client.Close()
 
 		id := args[0]
 		w, err := client.Wallet(id)
 		if err != nil {
 			return err
 		}
-		w.SetNetwork(network)
 
 		addresses := w.Addresses()
 		fmt.Printf("%-25v %-9v\n", "PATH", "ADDRESS")
