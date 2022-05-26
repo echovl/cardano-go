@@ -14,9 +14,9 @@ import (
 	"github.com/echovl/cardano-go/types"
 )
 
+// Cli implements Node using cardano-cli and a local node.
 type Cli struct {
-	socketPath string
-	network    types.Network
+	network types.Network
 }
 
 type cliTip struct {
@@ -33,14 +33,15 @@ type cliTx struct {
 	CborHex     string `json:"cborHex"`
 }
 
+// NewCli returns a new instance of Cli
 func NewCli(network types.Network) Node {
 	return &Cli{network: network}
 }
 
-func (cli *Cli) runCommand(args ...string) ([]byte, error) {
+func (c *Cli) runCommand(args ...string) ([]byte, error) {
 	out := &bytes.Buffer{}
 
-	if cli.network == types.Mainnet {
+	if c.network == types.Mainnet {
 		args = append(args, "--mainnet")
 	} else {
 		args = append(args, "--testnet-magic", strconv.Itoa(protocolMagic))
@@ -56,9 +57,8 @@ func (cli *Cli) runCommand(args ...string) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-//TODO: add ability to use mainnet and testnet
-func (cli *Cli) UTXOs(address types.Address) ([]tx.Utxo, error) {
-	out, err := cli.runCommand("query", "utxo", "--address", string(address))
+func (c *Cli) UTXOs(address types.Address) ([]tx.Utxo, error) {
+	out, err := c.runCommand("query", "utxo", "--address", string(address))
 	if err != nil {
 		return nil, err
 	}
@@ -67,10 +67,10 @@ func (cli *Cli) UTXOs(address types.Address) ([]tx.Utxo, error) {
 	lines := strings.Split(string(out), "\n")
 
 	if len(lines) < 3 {
-		return nil, fmt.Errorf("malformed cli response")
+		return utxos, nil
 	}
 
-	for _, line := range lines[2:] {
+	for _, line := range lines[2 : len(lines)-1] {
 		args := strings.Fields(line)
 		if len(args) < 4 {
 			return nil, fmt.Errorf("malformed cli response")
@@ -99,16 +99,14 @@ func (cli *Cli) UTXOs(address types.Address) ([]tx.Utxo, error) {
 	return utxos, nil
 }
 
-//TODO: add ability to use mainnet and testnet
-func (cli *Cli) Tip() (NodeTip, error) {
-	out, err := cli.runCommand("query", "tip")
+func (c *Cli) Tip() (NodeTip, error) {
+	out, err := c.runCommand("query", "tip")
 	if err != nil {
 		return NodeTip{}, err
 	}
 
 	cliTip := &cliTip{}
-	err = json.Unmarshal(out, cliTip)
-	if err != nil {
+	if err = json.Unmarshal(out, cliTip); err != nil {
 		return NodeTip{}, err
 	}
 
@@ -119,32 +117,31 @@ func (cli *Cli) Tip() (NodeTip, error) {
 	}, nil
 }
 
-//TODO: add ability to use mainnet and testnet
-func (cli *Cli) SubmitTx(tx tx.Transaction) error {
-	const txFileName = "txsigned.temp"
-
-	txPayload := cliTx{
+func (c *Cli) SubmitTx(tx tx.Transaction) (*types.Hash32, error) {
+	txOut := cliTx{
 		CborHex: tx.CborHex(),
 	}
 
-	txPayloadJson, err := json.Marshal(txPayload)
+	txFile, err := ioutil.TempFile(os.TempDir(), "tx_")
 	if err != nil {
-		return err
+		return nil, err
+	}
+	defer os.Remove(txFile.Name())
+
+	if err := json.NewEncoder(txFile).Encode(txOut); err != nil {
+		return nil, err
 	}
 
-	err = ioutil.WriteFile(txFileName, txPayloadJson, 777)
+	var txHash types.Hash32
+	out, err := c.runCommand("transaction", "submit", "--tx-file", txFile.Name())
 	if err != nil {
-		return err
+		return nil, err
 	}
+	copy(txHash[:], out)
 
-	out, err := cli.runCommand("transaction", "submit", "--tx-file", txFileName)
-	fmt.Print(out)
-
-	err = os.Remove(txFileName)
-
-	return err
+	return &txHash, nil
 }
 
-func (cli *Cli) Network() types.Network {
-	return cli.network
+func (c *Cli) Network() types.Network {
+	return c.network
 }

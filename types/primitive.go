@@ -51,6 +51,10 @@ func NewHash32(b []byte) (Hash32, error) {
 	return hash, nil
 }
 
+func (h *Hash32) String() string {
+	return hex.EncodeToString(h[:])
+}
+
 func NewHash32FromHex(h string) (Hash32, error) {
 	hash := [32]byte{}
 	b, err := hex.DecodeString(h)

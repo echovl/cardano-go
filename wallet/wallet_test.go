@@ -59,8 +59,8 @@ func (n *MockNode) Tip() (node.NodeTip, error) {
 	return node.NodeTip{}, nil
 }
 
-func (n *MockNode) SubmitTx(tx tx.Transaction) error {
-	return nil
+func (n *MockNode) SubmitTx(tx tx.Transaction) (*types.Hash32, error) {
+	return nil, nil
 }
 
 func (n *MockNode) Network() types.Network {

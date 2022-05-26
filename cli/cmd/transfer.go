@@ -31,7 +31,7 @@ var transferCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		err = w.Transfer(receiver, types.Coin(amount))
+		_, err = w.Transfer(receiver, types.Coin(amount))
 		return err
 	},
 }

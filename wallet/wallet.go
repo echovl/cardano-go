@@ -31,16 +31,16 @@ type Wallet struct {
 	network types.Network
 }
 
-// Transfer sends an amount of lovelace to the receiver address
+// Transfer sends an amount of lovelace to the receiver address and returns the transaction hash
 //TODO: remove hardcoded protocol parameters, these parameters must be obtained using the cardano node
-func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) error {
+func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Hash32, error) {
 	// Calculate if the account has enough balance
 	balance, err := w.Balance()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if amount > balance {
-		return fmt.Errorf("Not enough balance, %v > %v", amount, balance)
+		return nil, fmt.Errorf("Not enough balance, %v > %v", amount, balance)
 	}
 
 	// Find utxos that cover the amount to transfer
@@ -86,14 +86,14 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) error {
 	// Calculate and set ttl
 	tip, err := w.node.Tip()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	builder.SetTtl(tip.Slot + 1200)
 
 	changeAddress := pickedUtxos[0].Address
 	err = builder.AddFee(changeAddress)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, key := range keys {
 		builder.Sign(key)
