@@ -31,10 +31,6 @@ type Wallet struct {
 	network types.Network
 }
 
-func (w *Wallet) SetNetwork(net types.Network) {
-	w.network = net
-}
-
 // Transfer sends an amount of lovelace to the receiver address
 //TODO: remove hardcoded protocol parameters, these parameters must be obtained using the cardano node
 func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) error {
@@ -83,12 +79,12 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) error {
 	for i, utxo := range pickedUtxos {
 		skey := keys[i]
 		vkey := skey.ExtendedVerificationKey()
-		builder.AddInput(vkey, utxo.TxId, utxo.Index, utxo.Amount)
+		builder.AddInput(vkey, utxo.TxHash, utxo.Index, utxo.Amount)
 	}
 	builder.AddOutput(receiver, amount)
 
 	// Calculate and set ttl
-	tip, err := w.node.QueryTip()
+	tip, err := w.node.Tip()
 	if err != nil {
 		return err
 	}
@@ -123,7 +119,7 @@ func (w *Wallet) findUtxos() ([]tx.Utxo, error) {
 	addresses := w.Addresses()
 	walletUtxos := []tx.Utxo{}
 	for _, addr := range addresses {
-		addrUtxos, err := w.node.QueryUtxos(addr)
+		addrUtxos, err := w.node.UTXOs(addr)
 		if err != nil {
 			return nil, err
 		}
@@ -172,6 +168,7 @@ type walletDump struct {
 	Name    string
 	Keys    []crypto.ExtendedSigningKey
 	RootKey crypto.ExtendedSigningKey
+	Network types.Network
 }
 
 func (w *Wallet) marshal() ([]byte, error) {
@@ -180,6 +177,7 @@ func (w *Wallet) marshal() ([]byte, error) {
 		Name:    w.Name,
 		Keys:    w.skeys,
 		RootKey: w.rootKey,
+		Network: w.network,
 	}
 	bytes, err := json.Marshal(wd)
 	if err != nil {
@@ -198,6 +196,7 @@ func (w *Wallet) unmarshal(bytes []byte) error {
 	w.Name = wd.Name
 	w.skeys = wd.Keys
 	w.rootKey = wd.RootKey
+	w.network = wd.Network
 	return nil
 }
 

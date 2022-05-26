@@ -1,31 +1,20 @@
 package wallet
 
-import "github.com/echovl/cardano-go/node"
+import (
+	"github.com/echovl/cardano-go/node"
+	"github.com/echovl/cardano-go/types"
+)
 
-type Options interface {
-	apply(*Client)
+type Options struct {
+	Node node.Node
+	DB   DB
 }
 
-type optionFunc func(*Client)
-
-func (f optionFunc) apply(client *Client) {
-	f(client)
-}
-
-func WithDB(db DB) Options {
-	return optionFunc(func(client *Client) {
-		client.db = db
-	})
-}
-
-func WithSocket(socketPath string) Options {
-	return optionFunc(func(client *Client) {
-		client.socketPath = socketPath
-	})
-}
-
-func WithNode(node node.Node) Options {
-	return optionFunc(func(client *Client) {
-		client.node = node
-	})
+func (o *Options) init() {
+	if o.Node == nil {
+		o.Node = node.NewCli(types.Testnet)
+	}
+	if o.DB == nil {
+		o.DB = newBadgerDB()
+	}
 }

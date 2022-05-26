@@ -25,7 +25,7 @@ func LiveTTL() uint64 {
 
 type Utxo struct {
 	Address types.Address
-	TxId    TransactionID
+	TxHash  types.Hash32
 	Amount  types.Coin
 	Index   uint64
 }
@@ -40,8 +40,8 @@ func (builder TXBodyBuilder) Build(receiver types.Address, pickedUtxos []Utxo, a
 	var inputs []TransactionInput
 	for _, utxo := range pickedUtxos {
 		inputs = append(inputs, TransactionInput{
-			ID:    utxo.TxId.Bytes(),
-			Index: utxo.Index,
+			TxHash: utxo.TxHash,
+			Index:  utxo.Index,
 		})
 		inputAmount += utxo.Amount
 	}

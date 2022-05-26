@@ -33,7 +33,7 @@ func TestTXBuilder_AddFee(t *testing.T) {
 				inputs: []TXBuilderInput{
 					{
 						input: TransactionInput{
-							ID:    []byte("input 0"),
+							TxHash:    [32]byte{},
 							Index: 0,
 						},
 						amount: 200000,
@@ -55,7 +55,7 @@ func TestTXBuilder_AddFee(t *testing.T) {
 				inputs: []TXBuilderInput{
 					{
 						input: TransactionInput{
-							ID:    []byte("input 0"),
+							TxHash:    [32]byte{},
 							Index: 0,
 						},
 						amount: ShelleyProtocol.MinimumUtxoValue + 1162729,
@@ -76,7 +76,7 @@ func TestTXBuilder_AddFee(t *testing.T) {
 				inputs: []TXBuilderInput{
 					{
 						input: TransactionInput{
-							ID:    []byte("input 0"),
+							TxHash:    [32]byte{},
 							Index: 0,
 						},
 						amount: 2*ShelleyProtocol.MinimumUtxoValue - 1,
@@ -97,7 +97,7 @@ func TestTXBuilder_AddFee(t *testing.T) {
 				inputs: []TXBuilderInput{
 					{
 						input: TransactionInput{
-							ID:    []byte("input 0"),
+							TxHash:    [32]byte{},
 							Index: 0,
 						},
 						amount: 2*ShelleyProtocol.MinimumUtxoValue + 162685,
@@ -118,7 +118,7 @@ func TestTXBuilder_AddFee(t *testing.T) {
 				inputs: []TXBuilderInput{
 					{
 						input: TransactionInput{
-							ID:    []byte("input 0"),
+							TxHash:    [32]byte{},
 							Index: 0,
 						},
 						amount: 3 * ShelleyProtocol.MinimumUtxoValue,
@@ -140,7 +140,7 @@ func TestTXBuilder_AddFee(t *testing.T) {
 				inputs: []TXBuilderInput{
 					{
 						input: TransactionInput{
-							ID:    []byte("input 0"),
+							TxHash:    [32]byte{},
 							Index: 0,
 						},
 						amount: 2*ShelleyProtocol.MinimumUtxoValue + 164137,

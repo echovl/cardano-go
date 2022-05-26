@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/echovl/cardano-go/node"
+	"github.com/echovl/cardano-go/types"
 	"github.com/echovl/cardano-go/wallet"
 	"github.com/spf13/cobra"
 )
@@ -16,7 +18,16 @@ it will restore a wallet using the mnemonic and password.`,
 	Aliases: []string{"neww"},
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := wallet.NewClient()
+		useTestnet, _ := cmd.Flags().GetBool("testnet")
+		network := types.Mainnet
+		if useTestnet {
+			network = types.Testnet
+		}
+
+		opts := &wallet.Options{
+			Node: node.NewCli(network),
+		}
+		client := wallet.NewClient(opts)
 		defer client.Close()
 		password, _ := cmd.Flags().GetString("password")
 		mnemonic, _ := cmd.Flags().GetStringSlice("mnemonic")
@@ -43,4 +54,5 @@ func init() {
 
 	newWalletCmd.Flags().StringP("password", "p", "", "A list of mnemonic words")
 	newWalletCmd.Flags().StringSliceP("mnemonic", "m", nil, "Password to lock and protect the wallet")
+	newWalletCmd.Flags().Bool("testnet", false, "Use testnet network")
 }

@@ -12,7 +12,7 @@ type Address string
 type AddressBytes []byte
 
 // Bytes returns the byte slice representation of the address.
-func (addr *Address) Bytes() []byte {
+func (addr *Address) Bytes() AddressBytes {
 	_, bytes, err := bech32.DecodeToBase256(string(*addr))
 	if err != nil {
 		panic(err)

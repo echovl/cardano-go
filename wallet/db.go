@@ -2,11 +2,12 @@ package wallet
 
 import (
 	"github.com/dgraph-io/badger/v3"
+	"github.com/echovl/cardano-go/types"
 )
 
 type DB interface {
 	SaveWallet(*Wallet) error
-	GetWallets() ([]*Wallet, error)
+	GetWallets(types.Network) ([]*Wallet, error)
 	DeleteWallet(string) error
 	Close()
 }
@@ -41,7 +42,7 @@ func (bdb *badgerDB) SaveWallet(w *Wallet) error {
 	return nil
 }
 
-func (bdb *badgerDB) GetWallets() ([]*Wallet, error) {
+func (bdb *badgerDB) GetWallets(network types.Network) ([]*Wallet, error) {
 	wallets := []*Wallet{}
 	err := bdb.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
@@ -55,7 +56,9 @@ func (bdb *badgerDB) GetWallets() ([]*Wallet, error) {
 			}
 			wallet := &Wallet{}
 			wallet.unmarshal(value)
-			wallets = append(wallets, wallet)
+			if wallet.network == network {
+				wallets = append(wallets, wallet)
+			}
 		}
 		return nil
 	})

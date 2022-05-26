@@ -6,13 +6,14 @@ import (
 )
 
 const (
-	testnetMagic = 1097911063
+	protocolMagic = 1097911063
 )
 
 type Node interface {
-	QueryUtxos(types.Address) ([]tx.Utxo, error)
-	QueryTip() (NodeTip, error)
+	UTXOs(types.Address) ([]tx.Utxo, error)
+	Tip() (NodeTip, error)
 	SubmitTx(tx.Transaction) error
+	Network() types.Network
 }
 
 type NodeTip struct {

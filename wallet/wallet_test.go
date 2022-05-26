@@ -12,7 +12,7 @@ import (
 
 func TestGenerateAddress(t *testing.T) {
 	for _, testVector := range testVectors {
-		client := NewClient(WithDB(&MockDB{}))
+		client := NewClient(&Options{DB: &MockDB{}})
 		defer client.Close()
 
 		newEntropy = func(bitSize int) []byte {
@@ -27,7 +27,6 @@ func TestGenerateAddress(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		w.SetNetwork(types.Testnet)
 
 		paymentAddr1 := w.AddAddress()
 
@@ -52,21 +51,27 @@ type MockNode struct {
 	utxos []tx.Utxo
 }
 
-func (prov *MockNode) QueryUtxos(addr types.Address) ([]tx.Utxo, error) {
-	return prov.utxos, nil
+func (n *MockNode) UTXOs(addr types.Address) ([]tx.Utxo, error) {
+	return n.utxos, nil
 }
 
-func (prov *MockNode) QueryTip() (node.NodeTip, error) {
+func (n *MockNode) Tip() (node.NodeTip, error) {
 	return node.NodeTip{}, nil
 }
 
-func (prov *MockNode) SubmitTx(tx tx.Transaction) error {
+func (n *MockNode) SubmitTx(tx tx.Transaction) error {
 	return nil
 }
 
+func (n *MockNode) Network() types.Network {
+	return types.Testnet
+}
+
 func TestWalletBalance(t *testing.T) {
-	client := NewClient(WithDB(&MockDB{}))
-	client.node = &MockNode{utxos: []tx.Utxo{{Amount: 100}, {Amount: 33}}}
+	client := NewClient(&Options{
+		DB:   &MockDB{},
+		Node: &MockNode{utxos: []tx.Utxo{{Amount: 100}, {Amount: 33}}},
+	})
 	w, _, err := client.CreateWallet("test", "")
 	if err != nil {
 		t.Error(err)
