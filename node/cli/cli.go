@@ -15,7 +15,7 @@ import (
 	"github.com/echovl/cardano-go/types"
 )
 
-// CardanoCli implements Node using cardano-cli and a local node.
+// CardanoCli implements Node using cardano-cli and a local node
 type CardanoCli struct {
 	network types.Network
 }
@@ -59,7 +59,7 @@ func (c *CardanoCli) runCommand(args ...string) ([]byte, error) {
 }
 
 func (c *CardanoCli) UTXOs(addr types.Address) ([]tx.UTXO, error) {
-	out, err := c.runCommand("query", "utxo", "--address", string(addr))
+	out, err := c.runCommand("query", "utxo", "--address", addr.String())
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (c *CardanoCli) Tip() (*node.NodeTip, error) {
 	}, nil
 }
 
-func (c *CardanoCli) SubmitTx(tx tx.Transaction) (*types.Hash32, error) {
+func (c *CardanoCli) SubmitTx(tx *tx.Transaction) (*types.Hash32, error) {
 	txOut := cliTx{
 		Type:    "Witnessed Tx AlonzoEra",
 		CborHex: tx.CborHex(),

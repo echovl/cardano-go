@@ -31,7 +31,7 @@ func TestGenerateAddress(t *testing.T) {
 		paymentAddr1 := w.AddAddress()
 
 		addrXsk1 := bech32From("addr_xsk", w.skeys[1])
-		addrXvk1 := bech32From("addr_xvk", w.skeys[1].ExtendedVerificationKey())
+		addrXvk1 := bech32From("addr_xvk", w.skeys[1].PublicKey())
 
 		if addrXsk1 != testVector.addrXsk1 {
 			t.Errorf("invalid addrXsk1 :\ngot: %v\nwant: %v", addrXsk1, testVector.addrXsk1)
@@ -41,7 +41,7 @@ func TestGenerateAddress(t *testing.T) {
 			t.Errorf("invalid addrXvk1 :\ngot: %v\nwant: %v", addrXvk1, testVector.addrXvk1)
 		}
 
-		if paymentAddr1 != testVector.paymentAddr1 {
+		if paymentAddr1.String() != testVector.paymentAddr1 {
 			t.Errorf("invalid paymentAddr1:\ngot: %v\nwant: %v", paymentAddr1, testVector.paymentAddr1)
 		}
 	}
@@ -59,7 +59,7 @@ func (n *MockNode) Tip() (*node.NodeTip, error) {
 	return &node.NodeTip{}, nil
 }
 
-func (n *MockNode) SubmitTx(tx tx.Transaction) (*types.Hash32, error) {
+func (n *MockNode) SubmitTx(tx *tx.Transaction) (*types.Hash32, error) {
 	return nil, nil
 }
 

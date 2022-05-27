@@ -12,30 +12,23 @@ const (
 	slotMargin            = 1200
 )
 
-var ShelleyProtocol = types.ProtocolParams{
+var shelleyProtocol = types.ProtocolParams{
 	MinimumUtxoValue: 1000000,
 	MinFeeA:          44,
 	MinFeeB:          155381,
 }
 
-func LiveTTL() uint64 {
+func liveTTL() int {
 	shelleyStart := time.Unix(shelleyStartTimestamp, 0)
-	return uint64(shelleyStartSlot + time.Since(shelleyStart).Seconds())
+	return int(shelleyStartSlot + time.Since(shelleyStart).Seconds())
 }
 
-type UTXO struct {
-	TxHash  types.Hash32
-	Spender types.Address
-	Amount  types.Coin
-	Index   uint64
-}
-
-type TXBodyBuilder struct {
+type txBodyBuilder struct {
 	Protocol types.ProtocolParams
-	TTL      uint64
+	TTL      int
 }
 
-func (builder TXBodyBuilder) Build(receiver types.Address, pickedUtxos []UTXO, amount types.Coin, change types.Address) (*TransactionBody, error) {
+func (builder txBodyBuilder) build(receiver types.Address, pickedUtxos []UTXO, amount types.Coin, change types.Address) (*TransactionBody, error) {
 	var inputAmount types.Coin
 	var inputs []TransactionInput
 	for _, utxo := range pickedUtxos {
@@ -48,14 +41,14 @@ func (builder TXBodyBuilder) Build(receiver types.Address, pickedUtxos []UTXO, a
 
 	var outputs []TransactionOutput
 	outputs = append(outputs, TransactionOutput{
-		Address: receiver.Bytes(),
+		Address: receiver,
 		Amount:  amount,
 	})
 
 	body := TransactionBody{
 		Inputs:  inputs,
 		Outputs: outputs,
-		TTL:     types.NewUint64(builder.ttl()),
+		TTL:     types.NewUint64(uint64(builder.ttl())),
 	}
 	if err := body.addFee(inputAmount, change, builder.protocol()); err != nil {
 		return nil, err
@@ -64,16 +57,16 @@ func (builder TXBodyBuilder) Build(receiver types.Address, pickedUtxos []UTXO, a
 	return &body, nil
 }
 
-func (builder TXBodyBuilder) ttl() uint64 {
+func (builder txBodyBuilder) ttl() int {
 	if builder.TTL == 0 {
-		return LiveTTL() + slotMargin
+		return liveTTL() + slotMargin
 	}
 	return builder.TTL
 }
 
-func (builder TXBodyBuilder) protocol() types.ProtocolParams {
+func (builder txBodyBuilder) protocol() types.ProtocolParams {
 	if builder.Protocol == (types.ProtocolParams{}) {
-		return ShelleyProtocol
+		return shelleyProtocol
 	}
 	return builder.Protocol
 }

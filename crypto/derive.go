@@ -9,7 +9,7 @@ import (
 	"github.com/echovl/ed25519"
 )
 
-func DeriveSigningKey(xsk ExtendedSigningKey, index uint32) ExtendedSigningKey {
+func DeriveSigningKey(xsk XPrv, index uint32) XPrv {
 	xpriv := xsk[:64]
 	chainCode := xsk[64:]
 	zmac := hmac.New(sha512.New, chainCode)
@@ -50,7 +50,7 @@ func DeriveSigningKey(xsk ExtendedSigningKey, index uint32) ExtendedSigningKey {
 	return cxsk
 }
 
-func DeriveVerificationKey(xvk ExtendedVerificationKey, index uint32) (ExtendedVerificationKey, error) {
+func DeriveVerificationKey(xvk XPub, index uint32) (XPub, error) {
 	pub := []byte(xvk[:32])
 	chainCode := []byte(xvk[32:64])
 	zmac := hmac.New(sha512.New, chainCode)
@@ -58,7 +58,7 @@ func DeriveVerificationKey(xvk ExtendedVerificationKey, index uint32) (ExtendedV
 
 	sindex := serializeIndex(index)
 	if isHardenedDerivation(index) {
-		return ExtendedVerificationKey{}, fmt.Errorf("expected soft derivation")
+		return XPub{}, fmt.Errorf("expected soft derivation")
 	}
 
 	zmac.Write([]byte{0x2})
@@ -101,7 +101,7 @@ func DeriveVerificationKey(xvk ExtendedVerificationKey, index uint32) (ExtendedV
 	copy(cxvk[:32], c.Bytes())
 	copy(cxvk[32:64], cc)
 
-	return ExtendedVerificationKey(cxvk), nil
+	return XPub(cxvk), nil
 }
 
 func serializeIndex(index uint32) []byte {

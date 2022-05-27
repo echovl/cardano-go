@@ -1,69 +1,90 @@
 # cardano-go
 
-cardano-go is both a library for creating go applicactions that interact with the Cardano Blockchain as well as a CLI to manage Cardano Wallets [WIP].
+cardano-go is a library for creating go applicactions that interact with the Cardano Blockchain. [WIP]
 
-## Installation from source
-
-Clone the repository using `git clone`
+## Installation
 
 ```
-$ git clone https://github.com/echovl/cardano-wallet.git
+$ go get github.com/echovl/cardano-node
+$ go get github.com/echovl/cardano-node/node
+$ go get github.com/echovl/cardano-node/tx
 ```
 
-Compile the source code and install the executable
+## Quickstart
 
-```
-$ make && sudo make install
-```
+```go
+import (
+	"fmt"
 
-## Dependencies
+	"github.com/echovl/cardano-go/crypto"
+	"github.com/echovl/cardano-go/node/blockfrost"
+	"github.com/echovl/cardano-go/tx"
+	"github.com/echovl/cardano-go/types"
+)
 
-For balance and transfer commands `cardano-node` and `cardano-cli` are required. 
-You can install them using this guide https://docs.cardano.org/projects/cardano-node/en/latest/getting-started/install.html
+func main() {
+	// Node using blockfrost
+	node := blockfrost.NewNode(types.Mainnet, "project-id")
 
-## Getting started
+	// New transaction builder
+	builder := tx.NewTxBuilder(types.ProtocolParams{
+		MinimumUtxoValue: 1000000,
+		MinFeeA:          44,
+		MinFeeB:          155381,
+	})
 
-First create a new wallet and generate your mnemonic squence:
+	// Fetch node tip information
+	tip, err := node.Tip()
+	if err != nil {
+		panic(err)
+	}
 
-```
-$ cardano-wallet new-wallet myWallet -p simplePassword
-mnemonic: banner capital gift plate worth sand pass canvas pave decade pig borrow cruel lunar arena
-```
+	xprv, err := crypto.NewXPrvFromBech32("xpriv")
+	if err != nil {
+		panic(err)
+	}
+	txInputHash, err := types.NewHash32FromHex("tx-hash")
+	if err != nil {
+		panic(err)
+	}
+	sender, err := types.NewAddress("addr")
+	if err != nil {
+		panic(err)
+	}
+	receiver, err := types.NewAddress("addr")
+	if err != nil {
+		panic(err)
+	}
 
-If you already have a wallet you can restore it using a mnemonic and password:running this command:
+	// Build inputs and ouputs
+	txInput := tx.TransactionInput{TxHash: txInputHash, Index: 0, Amount: types.Coin(14838997)}
+	txOutput := tx.TransactionOutput{Address: receiver, Amount: 1000000}
 
-```
-$ cardano-wallet new-wallet restoredWallet -m=talent,risk,require,split,leave,script,panel,slight,entire,soap,chase,pill,grant,laugh,fringe -p simplePassword
-```
+	// Add inputs and outputs
+	builder.AddInputs(txInput)
+	builder.AddOutputs(txOutput)
 
-You can inspect your wallets using the `list-wallets` command:
+	// Add fee and change output
+	builder.AddFee(sender)
 
-```
-$ cardano-wallet list-wallets
-ID              NAME      ADDRESS
-wl_uu4FmZvNYG   myWallet  1
-```
+	// Set time to live
+	builder.SetTTL(tip.Slot + 100)
 
-By default a new wallet is created with one payment address, you can create more addresses running the following command:
+	// Sign transaction
+	builder.Sign(xprv)
 
-```
-$ cardano-wallet new-address wl_uu4FmZvNYG
-New address addr_test1vz8vyz6pk6hwgwqz239rcyk52e659aefa8g08amm80tq8ag9eng6q
-```
+	// Build transaction
+	tx, err := builder.Build()
+	if err != nil {
+		panic(err)
+	}
 
-To get all addresses run:
+	// Submit transaction to node
+	txHash, err := node.SubmitTx(tx)
+	if err != nil {
+		panic(err)
+	}
 
-```
-$ cardano-wallet list-address wallet_WGejugqca4 --testnet
-PATH                      ADDRESS
-m/1852'/1815'/0'/0/0      addr_test1vpfla0wgltpjwxzt52p7wkn720eact33udlq9z8xrc6cypc3c70f5
-
-```
-
-You can get your balance running:
-
-```
-$ cardano-wallet balance wallet_WGejugqca4 --testnet
-ASSET                     AMOUNT
-Lovelace                  1000000000
+	fmt.Println(txHash)
+}
 ```

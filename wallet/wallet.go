@@ -2,7 +2,9 @@ package wallet
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/echovl/cardano-go/crypto"
 	"github.com/echovl/cardano-go/node"
@@ -24,9 +26,9 @@ const (
 type Wallet struct {
 	ID      string
 	Name    string
-	skeys   []crypto.ExtendedSigningKey
-	pkeys   []crypto.ExtendedVerificationKey
-	rootKey crypto.ExtendedSigningKey
+	skeys   []crypto.XPrv
+	pkeys   []crypto.XPub
+	rootKey crypto.XPrv
 	node    node.Node
 	network types.Network
 }
@@ -61,34 +63,32 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 		MinFeeB:          155381,
 	})
 
-	keys := make(map[int]crypto.ExtendedSigningKey)
+	keys := make(map[int]crypto.XPrv)
 	for i, utxo := range pickedUtxos {
 		for _, key := range w.skeys {
-			vkey := key.ExtendedVerificationKey()
+			vkey := key.PublicKey()
 			addr := types.NewEnterpriseAddress(vkey, w.network)
-			if addr == utxo.Spender {
+			if reflect.DeepEqual(addr, utxo.Spender) {
 				keys[i] = key
 			}
 		}
 	}
 
 	if len(keys) != len(pickedUtxos) {
-		panic("not enough keys")
+		return nil, errors.New("not enough keys")
 	}
 
-	for i, utxo := range pickedUtxos {
-		skey := keys[i]
-		vkey := skey.ExtendedVerificationKey()
-		builder.AddInput(vkey, utxo.TxHash, utxo.Index, utxo.Amount)
+	for _, utxo := range pickedUtxos {
+		builder.AddInputs(tx.TransactionInput{TxHash: utxo.TxHash, Index: utxo.Index, Amount: utxo.Amount})
 	}
-	builder.AddOutput(receiver, amount)
+	builder.AddOutputs(tx.TransactionOutput{Address: receiver, Amount: amount})
 
 	// Calculate and set ttl
 	tip, err := w.node.Tip()
 	if err != nil {
 		return nil, err
 	}
-	builder.SetTtl(uint64(tip.Slot + 1200))
+	builder.SetTTL(tip.Slot + 1200)
 
 	changeAddress := pickedUtxos[0].Spender
 	err = builder.AddFee(changeAddress)
@@ -98,7 +98,10 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 	for _, key := range keys {
 		builder.Sign(key)
 	}
-	tx := builder.Build()
+	tx, err := builder.Build()
+	if err != nil {
+		return nil, err
+	}
 
 	return w.node.SubmitTx(tx)
 }
@@ -134,14 +137,14 @@ func (w *Wallet) AddAddress() types.Address {
 	index := uint32(len(w.skeys))
 	newKey := crypto.DeriveSigningKey(w.rootKey, index)
 	w.skeys = append(w.skeys, newKey)
-	return types.NewEnterpriseAddress(newKey.ExtendedVerificationKey(), w.network)
+	return types.NewEnterpriseAddress(newKey.PublicKey(), w.network)
 }
 
 // Addresses returns all wallet's addresss.
 func (w *Wallet) Addresses() []types.Address {
 	addresses := make([]types.Address, len(w.skeys))
 	for i, key := range w.skeys {
-		addresses[i] = types.NewEnterpriseAddress(key.ExtendedVerificationKey(), w.network)
+		addresses[i] = types.NewEnterpriseAddress(key.PublicKey(), w.network)
 	}
 	return addresses
 }
@@ -153,22 +156,30 @@ func newWalletID() string {
 
 func newWallet(name, password string, entropy []byte) *Wallet {
 	wallet := &Wallet{Name: name, ID: newWalletID()}
-	rootKey := crypto.NewExtendedSigningKey(entropy, password)
+	rootKey := crypto.NewXPrv(entropy, password)
 	purposeKey := crypto.DeriveSigningKey(rootKey, purposeIndex)
 	coinKey := crypto.DeriveSigningKey(purposeKey, coinTypeIndex)
 	accountKey := crypto.DeriveSigningKey(coinKey, accountIndex)
 	chainKey := crypto.DeriveSigningKey(accountKey, externalChainIndex)
 	addr0Key := crypto.DeriveSigningKey(chainKey, 0)
 	wallet.rootKey = chainKey
-	wallet.skeys = []crypto.ExtendedSigningKey{addr0Key}
+	wallet.skeys = []crypto.XPrv{addr0Key}
 	return wallet
+}
+
+func DeriveFirstXPriv(rootKey crypto.XPrv) crypto.XPrv {
+	purposeKey := crypto.DeriveSigningKey(rootKey, purposeIndex)
+	coinKey := crypto.DeriveSigningKey(purposeKey, coinTypeIndex)
+	accountKey := crypto.DeriveSigningKey(coinKey, accountIndex)
+	chainKey := crypto.DeriveSigningKey(accountKey, externalChainIndex)
+	return crypto.DeriveSigningKey(chainKey, 0)
 }
 
 type walletDump struct {
 	ID      string
 	Name    string
-	Keys    []crypto.ExtendedSigningKey
-	RootKey crypto.ExtendedSigningKey
+	Keys    []crypto.XPrv
+	RootKey crypto.XPrv
 	Network types.Network
 }
 

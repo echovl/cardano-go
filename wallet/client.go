@@ -3,7 +3,6 @@ package wallet
 import (
 	"fmt"
 
-	"github.com/echovl/cardano-go/crypto"
 	"github.com/echovl/cardano-go/types"
 	"github.com/tyler-smith/go-bip39"
 )
@@ -33,7 +32,7 @@ func (c *Client) Close() {
 // returning a Wallet with its corresponding 24 word mnemonic
 func (c *Client) CreateWallet(name, password string) (*Wallet, string, error) {
 	entropy := newEntropy(entropySizeInBits)
-	mnemonic := crypto.NewMnemonic(entropy)
+	mnemonic, _ := bip39.NewMnemonic(entropy)
 	wallet := newWallet(name, password, entropy)
 	wallet.node = c.opts.Node
 	wallet.network = c.network
@@ -53,8 +52,7 @@ func (c *Client) RestoreWallet(name, password, mnemonic string) (*Wallet, error)
 	wallet := newWallet(name, password, entropy)
 	wallet.node = c.opts.Node
 	wallet.network = c.network
-	err = c.opts.DB.SaveWallet(wallet)
-	if err != nil {
+	if err = c.opts.DB.SaveWallet(wallet); err != nil {
 		return nil, err
 	}
 

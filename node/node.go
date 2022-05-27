@@ -20,7 +20,7 @@ type Node interface {
 	Tip() (*NodeTip, error)
 
 	// SubmitTx submits a transaction to the node using cbor encoding
-	SubmitTx(tx.Transaction) (*types.Hash32, error)
+	SubmitTx(*tx.Transaction) (*types.Hash32, error)
 
 	// Network returns the node's current network type
 	Network() types.Network

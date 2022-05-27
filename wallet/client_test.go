@@ -14,8 +14,8 @@ type TestVector struct {
 	addrXvk0     string
 	addrXsk1     string
 	addrXvk1     string
-	paymentAddr0 types.Address
-	paymentAddr1 types.Address
+	paymentAddr0 string
+	paymentAddr1 string
 }
 
 var testVectors = []TestVector{
@@ -96,7 +96,7 @@ func TestCreateWallet(t *testing.T) {
 		}
 
 		addrXsk0 := bech32From("addr_xsk", w.skeys[0])
-		addrXvk0 := bech32From("addr_xvk", w.skeys[0].ExtendedVerificationKey())
+		addrXvk0 := bech32From("addr_xvk", w.skeys[0].PublicKey())
 
 		if addrXsk0 != testVector.addrXsk0 {
 			t.Errorf("invalid addrXsk0 :\ngot: %v\nwant: %v", addrXsk0, testVector.addrXsk0)
@@ -112,7 +112,7 @@ func TestCreateWallet(t *testing.T) {
 			t.Errorf("invalid mnemonic:\ngot: %v\nwant: %v", mnemonic, testVector.mnemonic)
 		}
 
-		if addresses[0] != testVector.paymentAddr0 {
+		if addresses[0].String() != testVector.paymentAddr0 {
 			t.Errorf("invalid paymentAddr0:\ngot: %v\nwant: %v", addresses[0], testVector.paymentAddr0)
 		}
 	}
@@ -129,7 +129,7 @@ func TestRestoreWallet(t *testing.T) {
 		}
 
 		addrXsk0 := bech32From("addr_xsk", w.skeys[0])
-		addrXvk0 := bech32From("addr_xvk", w.skeys[0].ExtendedVerificationKey())
+		addrXvk0 := bech32From("addr_xvk", w.skeys[0].PublicKey())
 
 		if addrXsk0 != testVector.addrXsk0 {
 			t.Errorf("invalid addrXsk0 :\ngot: %v\nwant: %v", addrXsk0, testVector.addrXsk0)
@@ -141,7 +141,7 @@ func TestRestoreWallet(t *testing.T) {
 
 		addresses := w.Addresses()
 
-		if addresses[0] != testVector.paymentAddr0 {
+		if addresses[0].String() != testVector.paymentAddr0 {
 			t.Errorf("invalid paymentAddr0:\ngot: %v\nwant: %v", addresses[0], testVector.paymentAddr0)
 		}
 	}

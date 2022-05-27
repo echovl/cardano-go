@@ -8,17 +8,18 @@ import (
 )
 
 func TestTXBuilder_AddFee(t *testing.T) {
-	key := crypto.NewExtendedSigningKey([]byte("receiver address"), "foo")
-	receiver := types.NewEnterpriseAddress(key.ExtendedVerificationKey(), types.Testnet)
+	key := crypto.NewXPrv([]byte("receiver address"), "foo")
+	receiver := types.NewEnterpriseAddress(key.PublicKey(), types.Testnet)
+
 	type fields struct {
 		tx       Transaction
 		protocol types.ProtocolParams
-		inputs   []TXBuilderInput
+		inputs   []TransactionInput
 		outputs  []TransactionOutput
-		ttl      uint64
+		ttl      int
 		fee      uint64
-		vkeys    map[string]crypto.ExtendedVerificationKey
-		pkeys    map[string]crypto.ExtendedSigningKey
+		vkeys    map[string]crypto.XPub
+		pkeys    map[string]crypto.XPrv
 	}
 	tests := []struct {
 		name      string
@@ -29,19 +30,17 @@ func TestTXBuilder_AddFee(t *testing.T) {
 		{
 			name: "input < output + fee",
 			fields: fields{
-				protocol: ShelleyProtocol,
-				inputs: []TXBuilderInput{
+				protocol: shelleyProtocol,
+				inputs: []TransactionInput{
 					{
-						input: TransactionInput{
-							TxHash:    [32]byte{},
-							Index: 0,
-						},
-						amount: 200000,
+						TxHash: [32]byte{},
+						Index:  uint64(0),
+						Amount: 200000,
 					},
 				},
 				outputs: []TransactionOutput{
 					{
-						Address: receiver.Bytes(),
+						Address: receiver,
 						Amount:  200000,
 					},
 				},
@@ -51,20 +50,18 @@ func TestTXBuilder_AddFee(t *testing.T) {
 		{
 			name: "input == output + fee",
 			fields: fields{
-				protocol: ShelleyProtocol,
-				inputs: []TXBuilderInput{
+				protocol: shelleyProtocol,
+				inputs: []TransactionInput{
 					{
-						input: TransactionInput{
-							TxHash:    [32]byte{},
-							Index: 0,
-						},
-						amount: ShelleyProtocol.MinimumUtxoValue + 1162729,
+						TxHash: [32]byte{},
+						Index:  0,
+						Amount: shelleyProtocol.MinimumUtxoValue + 1162729,
 					},
 				},
 				outputs: []TransactionOutput{
 					{
-						Address: receiver.Bytes(),
-						Amount:  ShelleyProtocol.MinimumUtxoValue,
+						Address: receiver,
+						Amount:  shelleyProtocol.MinimumUtxoValue,
 					},
 				},
 			},
@@ -72,20 +69,18 @@ func TestTXBuilder_AddFee(t *testing.T) {
 		{
 			name: "input > output + fee AND change < min utxo value -> burned",
 			fields: fields{
-				protocol: ShelleyProtocol,
-				inputs: []TXBuilderInput{
+				protocol: shelleyProtocol,
+				inputs: []TransactionInput{
 					{
-						input: TransactionInput{
-							TxHash:    [32]byte{},
-							Index: 0,
-						},
-						amount: 2*ShelleyProtocol.MinimumUtxoValue - 1,
+						TxHash: [32]byte{},
+						Index:  0,
+						Amount: 2*shelleyProtocol.MinimumUtxoValue - 1,
 					},
 				},
 				outputs: []TransactionOutput{
 					{
-						Address: receiver.Bytes(),
-						Amount:  ShelleyProtocol.MinimumUtxoValue,
+						Address: receiver,
+						Amount:  shelleyProtocol.MinimumUtxoValue,
 					},
 				},
 			},
@@ -93,20 +88,18 @@ func TestTXBuilder_AddFee(t *testing.T) {
 		{
 			name: "input > output + fee AND change > min utxo BUT change - change output fee < min utxo -> burned",
 			fields: fields{
-				protocol: ShelleyProtocol,
-				inputs: []TXBuilderInput{
+				protocol: shelleyProtocol,
+				inputs: []TransactionInput{
 					{
-						input: TransactionInput{
-							TxHash:    [32]byte{},
-							Index: 0,
-						},
-						amount: 2*ShelleyProtocol.MinimumUtxoValue + 162685,
+						TxHash: [32]byte{},
+						Index:  0,
+						Amount: 2*shelleyProtocol.MinimumUtxoValue + 162685,
 					},
 				},
 				outputs: []TransactionOutput{
 					{
-						Address: receiver.Bytes(),
-						Amount:  ShelleyProtocol.MinimumUtxoValue,
+						Address: receiver,
+						Amount:  shelleyProtocol.MinimumUtxoValue,
 					},
 				},
 			},
@@ -114,20 +107,18 @@ func TestTXBuilder_AddFee(t *testing.T) {
 		{
 			name: "input > output + fee AND change > min utxo AND change - change output fee > min utxo -> sent",
 			fields: fields{
-				protocol: ShelleyProtocol,
-				inputs: []TXBuilderInput{
+				protocol: shelleyProtocol,
+				inputs: []TransactionInput{
 					{
-						input: TransactionInput{
-							TxHash:    [32]byte{},
-							Index: 0,
-						},
-						amount: 3 * ShelleyProtocol.MinimumUtxoValue,
+						TxHash: [32]byte{},
+						Index:  0,
+						Amount: 3 * shelleyProtocol.MinimumUtxoValue,
 					},
 				},
 				outputs: []TransactionOutput{
 					{
-						Address: receiver.Bytes(),
-						Amount:  ShelleyProtocol.MinimumUtxoValue,
+						Address: receiver,
+						Amount:  shelleyProtocol.MinimumUtxoValue,
 					},
 				},
 			},
@@ -136,23 +127,21 @@ func TestTXBuilder_AddFee(t *testing.T) {
 		{
 			name: "take in account ttl -> burned",
 			fields: fields{
-				protocol: ShelleyProtocol,
-				inputs: []TXBuilderInput{
+				protocol: shelleyProtocol,
+				inputs: []TransactionInput{
 					{
-						input: TransactionInput{
-							TxHash:    [32]byte{},
-							Index: 0,
-						},
-						amount: 2*ShelleyProtocol.MinimumUtxoValue + 164137,
+						TxHash: [32]byte{},
+						Index:  0,
+						Amount: 2*shelleyProtocol.MinimumUtxoValue + 164137,
 					},
 				},
 				outputs: []TransactionOutput{
 					{
-						Address: receiver.Bytes(),
-						Amount:  ShelleyProtocol.MinimumUtxoValue,
+						Address: receiver,
+						Amount:  shelleyProtocol.MinimumUtxoValue,
 					},
 				},
-				ttl: LiveTTL(),
+				ttl: liveTTL(),
 			},
 		},
 	}
@@ -164,8 +153,8 @@ func TestTXBuilder_AddFee(t *testing.T) {
 				outputs:  tt.fields.outputs,
 				ttl:      tt.fields.ttl,
 			}
-			key := crypto.NewExtendedSigningKey([]byte("change address"), "foo")
-			change := types.NewEnterpriseAddress(key.ExtendedVerificationKey(), types.Testnet)
+			key := crypto.NewXPrv([]byte("change address"), "foo")
+			change := types.NewEnterpriseAddress(key.PublicKey(), types.Testnet)
 			if err := builder.AddFee(change); err != nil {
 				if tt.wantErr {
 					return
@@ -174,7 +163,7 @@ func TestTXBuilder_AddFee(t *testing.T) {
 			}
 			var totalIn types.Coin
 			for _, input := range builder.inputs {
-				totalIn += input.amount
+				totalIn += input.Amount
 			}
 			var totalOut types.Coin
 			for _, output := range builder.outputs {
@@ -190,8 +179,8 @@ func TestTXBuilder_AddFee(t *testing.T) {
 					t.Errorf("got %v want greater than %v", got, want)
 				}
 			}
-			_, firstOutputReceiver, _ := types.DecodeAddress(builder.outputs[0].Address)
-			if got, want := firstOutputReceiver, expectedReceiver; got != want {
+			firstOutputReceiver := builder.outputs[0].Address
+			if got, want := firstOutputReceiver.String(), expectedReceiver.String(); got != want {
 				t.Errorf("got %v want %v", got, want)
 			}
 		})

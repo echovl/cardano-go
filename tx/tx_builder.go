@@ -1,80 +1,63 @@
 package tx
 
 import (
-	"encoding/hex"
+	"errors"
 
 	"github.com/echovl/cardano-go/crypto"
 	"github.com/echovl/cardano-go/types"
-	"golang.org/x/crypto/blake2b"
 )
 
 const maxUint64 uint64 = 1<<64 - 1
 
-type TXBuilderInput struct {
-	input  TransactionInput
-	amount types.Coin
-}
-
-type TXBuilderOutput struct {
-	address types.Address
-	amount  types.Coin
-}
-
 type TXBuilder struct {
 	tx       Transaction
 	protocol types.ProtocolParams
-	inputs   []TXBuilderInput
+	inputs   []TransactionInput
 	outputs  []TransactionOutput
-	ttl      uint64
+	ttl      int
 	fee      types.Coin
-	vkeys    map[string]crypto.ExtendedVerificationKey
-	pkeys    map[string]crypto.ExtendedSigningKey
+	pkeys    []crypto.XPrv
 }
 
+// NewTxBuilder returns a new instance of TxBuilder
 func NewTxBuilder(protocol types.ProtocolParams) *TXBuilder {
 	return &TXBuilder{
 		protocol: protocol,
-		vkeys:    map[string]crypto.ExtendedVerificationKey{},
-		pkeys:    map[string]crypto.ExtendedSigningKey{},
+		pkeys:    []crypto.XPrv{},
 	}
 }
 
-func (builder *TXBuilder) AddInput(xvk crypto.ExtendedVerificationKey, txHash types.Hash32, index uint64, amount types.Coin) {
-	input := TXBuilderInput{input: TransactionInput{TxHash: txHash, Index: index}, amount: amount}
-	builder.inputs = append(builder.inputs, input)
-
-	vkeyHashBytes := blake2b.Sum256(xvk)
-	vkeyHashString := hex.EncodeToString(vkeyHashBytes[:])
-	builder.vkeys[vkeyHashString] = xvk
+// AddInputs adds inputs to a transaction being builded
+func (builder *TXBuilder) AddInputs(inputs ...TransactionInput) {
+	builder.inputs = append(builder.inputs, inputs...)
 }
 
-func (builder *TXBuilder) AddInputWithoutSig(txHash types.Hash32, index uint64, amount types.Coin) {
-	input := TXBuilderInput{input: TransactionInput{TxHash: txHash, Index: index}, amount: amount}
-	builder.inputs = append(builder.inputs, input)
+// AddOutputs adds outputs to a transaction being builded
+func (builder *TXBuilder) AddOutputs(outputs ...TransactionOutput) {
+	builder.outputs = append(builder.outputs, outputs...)
 }
 
-func (builder *TXBuilder) AddOutput(address types.Address, amount types.Coin) {
-	output := TransactionOutput{Address: address.Bytes(), Amount: amount}
-	builder.outputs = append(builder.outputs, output)
-}
-
-func (builder *TXBuilder) SetTtl(ttl uint64) {
+// SetTtl sets the transaction's time to live
+func (builder *TXBuilder) SetTTL(ttl int) {
 	builder.ttl = ttl
 }
 
+// SetFee sets the transactions's fee
 func (builder *TXBuilder) SetFee(fee types.Coin) {
 	builder.fee = fee
 }
 
+// AddFee calculates the required fee for the transaction and adds
+// an aditional output for the change if there is any.
 // This assumes that the builder inputs and outputs are defined
-func (builder *TXBuilder) AddFee(address types.Address) error {
+func (builder *TXBuilder) AddFee(changeAddr types.Address) error {
 	inputAmount := types.Coin(0)
 	for _, txIn := range builder.inputs {
-		inputAmount += txIn.amount
+		inputAmount += txIn.Amount
 	}
 	body := builder.buildBody()
 
-	if err := body.addFee(inputAmount, address, builder.protocol); err != nil {
+	if err := body.addFee(inputAmount, changeAddr, builder.protocol); err != nil {
 		return err
 	}
 	builder.outputs = body.Outputs
@@ -82,41 +65,47 @@ func (builder *TXBuilder) AddFee(address types.Address) error {
 	return nil
 }
 
-func (builder *TXBuilder) Sign(xsk crypto.ExtendedSigningKey) {
-	pkeyHashBytes := blake2b.Sum256(xsk)
-	pkeyHashString := hex.EncodeToString(pkeyHashBytes[:])
-	builder.pkeys[pkeyHashString] = xsk
+// Sign adds a signing key to create a signature for the witness set
+func (builder *TXBuilder) Sign(xsk crypto.XPrv) {
+	builder.pkeys = append(builder.pkeys, xsk)
 }
 
-func (builder *TXBuilder) Build() Transaction {
-	if len(builder.pkeys) != len(builder.vkeys) {
-		panic("missing signatures")
+// Build creates a new transaction using the inputs, outputs and keys provided
+func (builder *TXBuilder) Build() (*Transaction, error) {
+	if len(builder.pkeys) == 0 {
+		return nil, errors.New("missing signing keys")
 	}
 
 	body := builder.buildBody()
 	witnessSet := WitnessSet{}
-	txHash := blake2b.Sum256(body.Bytes())
+	txHash, err := body.Hash()
+	if err != nil {
+		return nil, err
+	}
+
 	for _, pkey := range builder.pkeys {
-		publicKey := pkey.ExtendedVerificationKey()[:32]
+		publicKey := pkey.PublicKey()[:32]
 		signature := pkey.Sign(txHash[:])
 		witness := VKeyWitness{VKey: publicKey, Signature: signature}
 		witnessSet.VKeyWitnessSet = append(witnessSet.VKeyWitnessSet, witness)
 	}
 
-	return Transaction{
+	tx := &Transaction{
 		Body:          body,
 		WitnessSet:    witnessSet,
 		AuxiliaryData: nil,
 		IsValid:       true,
 	}
+
+	return tx, nil
 }
 
 func (builder *TXBuilder) buildBody() TransactionBody {
 	inputs := make([]TransactionInput, len(builder.inputs))
 	for i, txInput := range builder.inputs {
 		inputs[i] = TransactionInput{
-			TxHash: txInput.input.TxHash,
-			Index:  txInput.input.Index,
+			TxHash: txInput.TxHash,
+			Index:  txInput.Index,
 		}
 	}
 
@@ -124,6 +113,6 @@ func (builder *TXBuilder) buildBody() TransactionBody {
 		Inputs:  inputs,
 		Outputs: builder.outputs,
 		Fee:     builder.fee,
-		TTL:     types.NewUint64(builder.ttl),
+		TTL:     types.NewUint64(uint64(builder.ttl)),
 	}
 }

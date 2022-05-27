@@ -18,7 +18,7 @@ const (
 func TestExtendedSigningKeyWithoutPassphrase(t *testing.T) {
 	entropy, _ := bip39.EntropyFromMnemonic(mnemonic)
 
-	got := NewExtendedSigningKey(entropy, "")
+	got := NewXPrv(entropy, "")
 	want, _ := hex.DecodeString(masterKeyWithoutPassphrase)
 
 	if bytes.Compare(got, want) != 0 {
@@ -29,7 +29,7 @@ func TestExtendedSigningKeyWithoutPassphrase(t *testing.T) {
 func TestExtendedSigningKeyWithPassphrase(t *testing.T) {
 	entropy, _ := bip39.EntropyFromMnemonic(mnemonic)
 
-	got := NewExtendedSigningKey(entropy, passphrase)
+	got := NewXPrv(entropy, passphrase)
 	want, _ := hex.DecodeString(masterKeyWithPassphrase)
 
 	if bytes.Compare(got, want) != 0 {

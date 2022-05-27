@@ -28,7 +28,10 @@ var transferCmd = &cobra.Command{
 		client := wallet.NewClient(opts)
 		defer client.Close()
 		senderId := args[0]
-		receiver := types.Address(args[2])
+		receiver, err := types.NewAddress(args[2])
+		if err != nil {
+			return err
+		}
 		amount, err := strconv.ParseUint(args[1], 10, 64)
 		if err != nil {
 			return err

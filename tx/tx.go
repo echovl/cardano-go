@@ -11,6 +11,13 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
+type UTXO struct {
+	TxHash  types.Hash32
+	Spender types.Address
+	Amount  types.Coin
+	Index   uint64
+}
+
 type Transaction struct {
 	_             struct{} `cbor:",toarray"`
 	Body          TransactionBody
@@ -19,6 +26,7 @@ type Transaction struct {
 	AuxiliaryData interface{} // or null
 }
 
+// Bytes returns the CBOR encoding of the transaction as bytes
 func (tx *Transaction) Bytes() []byte {
 	bytes, err := cbor.Marshal(tx)
 	if err != nil {
@@ -27,26 +35,17 @@ func (tx *Transaction) Bytes() []byte {
 	return bytes
 }
 
+// CborHex returns the CBOR encoding of the transaction as string
 func (tx *Transaction) CborHex() string {
 	return hex.EncodeToString(tx.Bytes())
 }
 
-func (tx *Transaction) Hash() types.Hash32 {
+// Hash returns the transaction body hash using blake2b
+func (tx *Transaction) Hash() (types.Hash32, error) {
 	return tx.Body.Hash()
 }
 
-func DecodeTransaction(cborHex string) (*Transaction, error) {
-	bytes, err := hex.DecodeString(cborHex)
-	if err != nil {
-		return nil, err
-	}
-	tx := Transaction{}
-	if err := cbor.Unmarshal(bytes, &tx); err != nil {
-		return nil, err
-	}
-	return &tx, nil
-}
-
+// CalculateFee computes the minimal fee required for a transaction
 func CalculateFee(tx *Transaction, protocol types.ProtocolParams) types.Coin {
 	txBytes := tx.Bytes()
 	txLength := uint64(len(txBytes))
@@ -68,11 +67,12 @@ type TransactionInput struct {
 	_      struct{} `cbor:",toarray"`
 	TxHash types.Hash32
 	Index  uint64
+	Amount types.Coin `cbor:"-"`
 }
 
 type TransactionOutput struct {
 	_       struct{} `cbor:",toarray"`
-	Address []byte
+	Address types.Address
 	Amount  types.Coin
 }
 
@@ -84,29 +84,27 @@ type TransactionBody struct {
 	// Optionals
 	TTL                   types.Uint64        `cbor:"3,keyasint,omitempty"`
 	Certificates          []Certificate       `cbor:"4,keyasint,omitempty"`
-	Withdrawals           interface{}         `cbor:"5,keyasint,omitempty"` // Omit for now
-	Update                interface{}         `cbor:"6,keyasint,omitempty"` // Omit for now
+	Withdrawals           interface{}         `cbor:"5,keyasint,omitempty"` // unsupported
+	Update                interface{}         `cbor:"6,keyasint,omitempty"` // unsupported
 	AuxiliaryDataHash     *types.Hash32       `cbor:"7,keyasint,omitempty"`
 	ValidityIntervalStart types.Uint64        `cbor:"8,keyasint,omitempty"`
-	Mint                  interface{}         `cbor:"9,keyasint,omitempty"` // Omit for now
+	Mint                  interface{}         `cbor:"9,keyasint,omitempty"` // unsupported
 	ScriptDataHash        *types.Hash32       `cbor:"10,keyasint,omitempty"`
 	Collateral            []TransactionInput  `cbor:"11,keyasint,omitempty"`
 	RequiredSigners       []types.AddrKeyHash `cbor:"12,keyasint,omitempty"`
 	NetworkID             types.Uint64        `cbor:"13,keyasint,omitempty"`
 }
 
-func (body *TransactionBody) Bytes() []byte {
+// Hash returns the transaction body hash using blake2b
+func (body *TransactionBody) Hash() (types.Hash32, error) {
 	bytes, err := cbor.Marshal(body)
 	if err != nil {
-		panic(err)
+		return types.Hash32{}, err
 	}
-	return bytes
+	return blake2b.Sum256(bytes), nil
 }
 
-func (body *TransactionBody) Hash() types.Hash32 {
-	return blake2b.Sum256(body.Bytes())
-}
-
+// AddSignatures sets the transaction's witness set
 func (body *TransactionBody) AddSignatures(publicKeys [][]byte, signatures [][]byte) (*Transaction, error) {
 	if len(publicKeys) != len(signatures) {
 		return nil, fmt.Errorf("missmatch length of publicKeys and signatures")
@@ -133,7 +131,7 @@ func (body *TransactionBody) AddSignatures(publicKeys [][]byte, signatures [][]b
 }
 
 func (body *TransactionBody) calculateMinFee(protocol types.ProtocolParams) types.Coin {
-	fakeXSigningKey := crypto.NewExtendedSigningKey([]byte{
+	fakeXSigningKey := crypto.NewXPrv([]byte{
 		0x0c, 0xcb, 0x74, 0xf3, 0x6b, 0x7d, 0xa1, 0x64, 0x9a, 0x81,
 		0x44, 0x67, 0x55, 0x22, 0xd4, 0xd8, 0x09, 0x7c, 0x64, 0x12,
 	}, "")
@@ -141,8 +139,8 @@ func (body *TransactionBody) calculateMinFee(protocol types.ProtocolParams) type
 	witnessSet := WitnessSet{}
 	for range body.Inputs {
 		witness := VKeyWitness{
-			VKey:      fakeXSigningKey.ExtendedVerificationKey()[:32],
-			Signature: fakeXSigningKey.Sign(fakeXSigningKey.ExtendedVerificationKey()),
+			VKey:      fakeXSigningKey.PublicKey()[:32],
+			Signature: fakeXSigningKey.Sign(fakeXSigningKey.PublicKey()),
 		}
 		witnessSet.VKeyWitnessSet = append(witnessSet.VKeyWitnessSet, witness)
 	}
@@ -188,7 +186,7 @@ func (body *TransactionBody) addFee(inputAmount types.Coin, changeAddress types.
 	newBody := TransactionBody{
 		Inputs: body.Inputs,
 		Outputs: append([]TransactionOutput{{
-			Address: changeAddress.Bytes(),
+			Address: changeAddress,
 			Amount:  change, // set a temporary value
 		}}, body.Outputs...), // change will always be outputs[0] if present
 		TTL: body.TTL,
@@ -242,7 +240,7 @@ type poolRegistration struct {
 	VrfKeyHash    types.Hash32
 	Pledge        types.Coin
 	Margin        types.UnitInterval
-	RewardAccount types.AddressBytes
+	RewardAccount types.Address
 	Owners        []types.AddrKeyHash
 	Relays        []Relay
 	PoolMetadata  *PoolMetadata // or null
@@ -276,7 +274,7 @@ type Certificate struct {
 	Operator      types.PoolKeyHash
 	Pledge        types.Coin
 	Margin        types.UnitInterval
-	RewardAccount types.AddressBytes
+	RewardAccount types.Address
 	Owners        []types.AddrKeyHash
 	Relays        []Relay
 	PoolMetadata  *PoolMetadata // or null
@@ -287,6 +285,7 @@ type Certificate struct {
 	GenesisDelegateHash types.Hash28
 }
 
+// MarshalCBOR implements cbor.Marshaler
 func (c *Certificate) MarshalCBOR() ([]byte, error) {
 	var cert interface{}
 	switch c.Type {
@@ -336,6 +335,7 @@ func (c *Certificate) MarshalCBOR() ([]byte, error) {
 	return cbor.Marshal(cert)
 }
 
+// UnmarshalCBOR implements cbor.Unmarshaler
 func (c *Certificate) UnmarshalCBOR(data []byte) error {
 	certType, err := getTypeFromCBORArray(data)
 	if err != nil {
@@ -426,6 +426,7 @@ type StakeCredential struct {
 	ScriptHash  types.Hash28
 }
 
+// MarshalCBOR implements cbor.Marshaler
 func (s *StakeCredential) MarshalCBOR() ([]byte, error) {
 	var cred []interface{}
 	switch s.Type {
@@ -439,6 +440,7 @@ func (s *StakeCredential) MarshalCBOR() ([]byte, error) {
 
 }
 
+// UnmarshalCBOR implements cbor.Unmarshaler
 func (s *StakeCredential) UnmarshalCBOR(data []byte) error {
 	credType, err := getTypeFromCBORArray(data)
 	if err != nil {
@@ -508,6 +510,7 @@ type Relay struct {
 	DNSName string
 }
 
+// MarshalCBOR implements cbor.Marshaler
 func (r *Relay) MarshalCBOR() ([]byte, error) {
 	var relay interface{}
 	switch r.Type {
@@ -534,6 +537,7 @@ func (r *Relay) MarshalCBOR() ([]byte, error) {
 	return cbor.Marshal(relay)
 }
 
+// UnmarshalCBOR implements cbor.Unmarshaler
 func (r *Relay) UnmarshalCBOR(data []byte) error {
 	relayType, err := getTypeFromCBORArray(data)
 	if err != nil {

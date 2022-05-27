@@ -32,7 +32,7 @@ var D0 = []byte{
 }
 
 func TestDerivePrivateKey(t *testing.T) {
-	pkey := ExtendedSigningKey(D)
+	pkey := XPrv(D)
 	got := DeriveSigningKey(pkey, 0x80000000)
 	want := Dh0
 
@@ -42,11 +42,11 @@ func TestDerivePrivateKey(t *testing.T) {
 }
 
 func TestDerivePublicKey(t *testing.T) {
-	pkey := ExtendedSigningKey(D)
-	vkey := pkey.ExtendedVerificationKey()
+	pkey := XPrv(D)
+	vkey := pkey.PublicKey()
 
 	pkey0 := DeriveSigningKey(pkey, 0)
-	want := pkey0.ExtendedVerificationKey()
+	want := pkey0.PublicKey()
 	got, err := DeriveVerificationKey(vkey, 0)
 	if err != nil {
 		t.Error(err)

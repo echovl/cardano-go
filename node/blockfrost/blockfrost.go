@@ -16,12 +16,14 @@ import (
 	"github.com/echovl/cardano-go/types"
 )
 
+// BlockfrostNode implements Node using the blockfrost API
 type BlockfrostNode struct {
 	client    blockfrost.APIClient
 	projectID string
 	network   types.Network
 }
 
+// NewNode returns a new instance of BlockfrostNode
 func NewNode(network types.Network, projectID string) node.Node {
 	return &BlockfrostNode{
 		network:   network,
@@ -33,7 +35,7 @@ func NewNode(network types.Network, projectID string) node.Node {
 }
 
 func (b *BlockfrostNode) UTXOs(addr types.Address) ([]tx.UTXO, error) {
-	butxos, err := b.client.AddressUTXOs(context.Background(), string(addr), blockfrost.APIQueryParams{})
+	butxos, err := b.client.AddressUTXOs(context.Background(), addr.String(), blockfrost.APIQueryParams{})
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +83,7 @@ func (b *BlockfrostNode) Tip() (*node.NodeTip, error) {
 	}, nil
 }
 
-func (b *BlockfrostNode) SubmitTx(tx tx.Transaction) (*types.Hash32, error) {
+func (b *BlockfrostNode) SubmitTx(tx *tx.Transaction) (*types.Hash32, error) {
 	url := fmt.Sprintf("https://cardano-%s.blockfrost.io/api/v0/tx/submit", b.network.String())
 	txBytes := tx.Bytes()
 
