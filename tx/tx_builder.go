@@ -19,7 +19,7 @@ type TXBuilder struct {
 	pkeys    []crypto.XPrv
 }
 
-// NewTxBuilder returns a new instance of TxBuilder
+// NewTxBuilder returns a new instance of TxBuilder.
 func NewTxBuilder(protocol types.ProtocolParams) *TXBuilder {
 	return &TXBuilder{
 		protocol: protocol,
@@ -27,29 +27,29 @@ func NewTxBuilder(protocol types.ProtocolParams) *TXBuilder {
 	}
 }
 
-// AddInputs adds inputs to a transaction being builded
+// AddInputs adds inputs to the transaction being builded.
 func (builder *TXBuilder) AddInputs(inputs ...TransactionInput) {
 	builder.inputs = append(builder.inputs, inputs...)
 }
 
-// AddOutputs adds outputs to a transaction being builded
+// AddOutputs adds outputs to the transaction being builded.
 func (builder *TXBuilder) AddOutputs(outputs ...TransactionOutput) {
 	builder.outputs = append(builder.outputs, outputs...)
 }
 
-// SetTtl sets the transaction's time to live
+// SetTtl sets the transaction's time to live.
 func (builder *TXBuilder) SetTTL(ttl int) {
 	builder.ttl = ttl
 }
 
-// SetFee sets the transactions's fee
+// SetFee sets the transactions's fee.
 func (builder *TXBuilder) SetFee(fee types.Coin) {
 	builder.fee = fee
 }
 
 // AddFee calculates the required fee for the transaction and adds
 // an aditional output for the change if there is any.
-// This assumes that the builder inputs and outputs are defined
+// This assumes that the builder inputs and outputs are defined.
 func (builder *TXBuilder) AddFee(changeAddr types.Address) error {
 	inputAmount := types.Coin(0)
 	for _, txIn := range builder.inputs {
@@ -65,12 +65,12 @@ func (builder *TXBuilder) AddFee(changeAddr types.Address) error {
 	return nil
 }
 
-// Sign adds a signing key to create a signature for the witness set
+// Sign adds a signing key to create a signature for the witness set.
 func (builder *TXBuilder) Sign(xsk crypto.XPrv) {
 	builder.pkeys = append(builder.pkeys, xsk)
 }
 
-// Build creates a new transaction using the inputs, outputs and keys provided
+// Build creates a new transaction using the inputs, outputs and keys provided.
 func (builder *TXBuilder) Build() (*Transaction, error) {
 	if len(builder.pkeys) == 0 {
 		return nil, errors.New("missing signing keys")

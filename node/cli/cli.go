@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -15,7 +16,7 @@ import (
 	"github.com/echovl/cardano-go/types"
 )
 
-// CardanoCli implements Node using cardano-cli and a local node
+// CardanoCli implements Node using cardano-cli and a local node.
 type CardanoCli struct {
 	network types.Network
 }
@@ -34,7 +35,7 @@ type cliTx struct {
 	CborHex     string `json:"cborHex"`
 }
 
-// NewNode returns a new instance of CardanoCli
+// NewNode returns a new instance of CardanoCli.
 func NewNode(network types.Network) node.Node {
 	return &CardanoCli{network: network}
 }
@@ -136,9 +137,10 @@ func (c *CardanoCli) SubmitTx(tx *tx.Transaction) (*types.Hash32, error) {
 
 	out, err := c.runCommand("transaction", "submit", "--tx-file", txFile.Name())
 	if err != nil {
-		return nil, err
+		return nil, errors.New(string(out))
 	}
-	txHash, err := types.NewHash32FromHex(string(out))
+
+	txHash, err := tx.Hash()
 	if err != nil {
 		return nil, err
 	}

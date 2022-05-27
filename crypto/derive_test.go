@@ -33,7 +33,7 @@ var D0 = []byte{
 
 func TestDerivePrivateKey(t *testing.T) {
 	pkey := XPrv(D)
-	got := DeriveSigningKey(pkey, 0x80000000)
+	got := pkey.DeriveXPrv(0x80000000)
 	want := Dh0
 
 	if equal := bytes.Compare(got, want); equal != 0 {
@@ -45,9 +45,9 @@ func TestDerivePublicKey(t *testing.T) {
 	pkey := XPrv(D)
 	vkey := pkey.PublicKey()
 
-	pkey0 := DeriveSigningKey(pkey, 0)
+	pkey0 := pkey.DeriveXPrv(0)
 	want := pkey0.PublicKey()
-	got, err := DeriveVerificationKey(vkey, 0)
+	got, err := vkey.DeriveXPub(0)
 	if err != nil {
 		t.Error(err)
 	}

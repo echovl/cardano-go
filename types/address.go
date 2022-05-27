@@ -7,7 +7,7 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-// Address is a cardano address
+// Address represents a cardano address.
 type Address struct {
 	B   []byte
 	Hrp string
@@ -31,12 +31,12 @@ func (a Address) String() string {
 	return addr
 }
 
-// MarshalCBOR implements cbor.Marshaler
+// MarshalCBOR implements cbor.Marshaler.
 func (a *Address) MarshalCBOR() ([]byte, error) {
 	return cbor.Marshal(a.B)
 }
 
-// UnmarshalCBOR implements cbor.Unmarshaler
+// UnmarshalCBOR implements cbor.Unmarshaler.
 func (a *Address) UnmarshalCBOR(data []byte) error {
 	if err := cbor.Unmarshal(data, &a.B); err != nil {
 		return nil

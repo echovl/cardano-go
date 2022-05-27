@@ -134,7 +134,7 @@ func (w *Wallet) findUtxos() ([]tx.UTXO, error) {
 // AddAddress generates a new payment address and adds it to the wallet.
 func (w *Wallet) AddAddress() types.Address {
 	index := uint32(len(w.skeys))
-	newKey := crypto.DeriveSigningKey(w.rootKey, index)
+	newKey := w.rootKey.DeriveXPrv(index)
 	w.skeys = append(w.skeys, newKey)
 	return types.NewEnterpriseAddress(newKey.PublicKey(), w.network)
 }
@@ -156,22 +156,14 @@ func newWalletID() string {
 func newWallet(name, password string, entropy []byte) *Wallet {
 	wallet := &Wallet{Name: name, ID: newWalletID()}
 	rootKey := crypto.NewXPrv(entropy, password)
-	purposeKey := crypto.DeriveSigningKey(rootKey, purposeIndex)
-	coinKey := crypto.DeriveSigningKey(purposeKey, coinTypeIndex)
-	accountKey := crypto.DeriveSigningKey(coinKey, accountIndex)
-	chainKey := crypto.DeriveSigningKey(accountKey, externalChainIndex)
-	addr0Key := crypto.DeriveSigningKey(chainKey, 0)
+	chainKey := rootKey.DeriveXPrv(purposeIndex).
+		DeriveXPrv(coinTypeIndex).
+		DeriveXPrv(accountIndex).
+		DeriveXPrv(externalChainIndex)
+	addr0Key := chainKey.DeriveXPrv(0)
 	wallet.rootKey = chainKey
 	wallet.skeys = []crypto.XPrv{addr0Key}
 	return wallet
-}
-
-func DeriveFirstXPriv(rootKey crypto.XPrv) crypto.XPrv {
-	purposeKey := crypto.DeriveSigningKey(rootKey, purposeIndex)
-	coinKey := crypto.DeriveSigningKey(purposeKey, coinTypeIndex)
-	accountKey := crypto.DeriveSigningKey(coinKey, accountIndex)
-	chainKey := crypto.DeriveSigningKey(accountKey, externalChainIndex)
-	return crypto.DeriveSigningKey(chainKey, 0)
 }
 
 type walletDump struct {

@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/blockfrost/blockfrost-go"
 	"github.com/echovl/cardano-go/node"
@@ -16,14 +15,14 @@ import (
 	"github.com/echovl/cardano-go/types"
 )
 
-// BlockfrostNode implements Node using the blockfrost API
+// BlockfrostNode implements Node using the blockfrost API.
 type BlockfrostNode struct {
 	client    blockfrost.APIClient
 	projectID string
 	network   types.Network
 }
 
-// NewNode returns a new instance of BlockfrostNode
+// NewNode returns a new instance of BlockfrostNode.
 func NewNode(network types.Network, projectID string) node.Node {
 	return &BlockfrostNode{
 		network:   network,
@@ -101,15 +100,16 @@ func (b *BlockfrostNode) SubmitTx(tx *tx.Transaction) (*types.Hash32, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New(string(body))
+		return nil, errors.New(string(respBody))
 	}
-	txHash, err := types.NewHash32FromHex(strings.ReplaceAll(string(body), `"`, ""))
+
+	txHash, err := tx.Hash()
 	if err != nil {
 		return nil, err
 	}

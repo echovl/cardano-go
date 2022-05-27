@@ -9,7 +9,7 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
-// XPrv is the extended private key (64 bytes) appended with the chain code (32 bytes)
+// XPrv is the extended private key (64 bytes) appended with the chain code (32 bytes).
 type XPrv []byte
 
 func NewXPrv(entropy []byte, password string) XPrv {
@@ -21,6 +21,7 @@ func NewXPrv(entropy []byte, password string) XPrv {
 	return key
 }
 
+// NewXPrvFromBech32 creates a new XPrv from a bech32 encoded private key.
 func NewXPrvFromBech32(bech string) (XPrv, error) {
 	_, xsk, err := bech32.DecodeToBase256(bech)
 	return xsk, err
@@ -34,6 +35,7 @@ func (xsk XPrv) String() string {
 	return bech
 }
 
+// PublicKey returns the XPub derived from the XPrv.
 func (xsk *XPrv) PublicKey() XPub {
 	xvk := make([]byte, 64)
 	pk := ed25519.PublicKeyFrom(ed25519.ExtendedPrivateKey((*xsk)[:64]))
@@ -50,7 +52,7 @@ func (xsk *XPrv) Sign(message []byte) []byte {
 	return ed25519.SignExtended(pk, message)
 }
 
-// XPub is the public key (32 bytes) appended with the chain code (32 bytes)
+// XPub is the public key (32 bytes) appended with the chain code (32 bytes).
 type XPub []byte
 
 func (xvk *XPub) Verify(message, signature []byte) bool {

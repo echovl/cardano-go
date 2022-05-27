@@ -9,7 +9,8 @@ import (
 	"github.com/echovl/ed25519"
 )
 
-func DeriveSigningKey(xsk XPrv, index uint32) XPrv {
+// DeriveXPrv derives a children XPrv using BIP32-Ed25519
+func (xsk XPrv) DeriveXPrv(index uint32) XPrv {
 	xpriv := xsk[:64]
 	chainCode := xsk[64:]
 	zmac := hmac.New(sha512.New, chainCode)
@@ -50,7 +51,8 @@ func DeriveSigningKey(xsk XPrv, index uint32) XPrv {
 	return cxsk
 }
 
-func DeriveVerificationKey(xvk XPub, index uint32) (XPub, error) {
+// DeriveXPub derives a children XPub using BIP32-Ed25519
+func (xvk XPub) DeriveXPub(index uint32) (XPub, error) {
 	pub := []byte(xvk[:32])
 	chainCode := []byte(xvk[32:64])
 	zmac := hmac.New(sha512.New, chainCode)
