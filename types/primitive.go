@@ -33,9 +33,9 @@ type ProtocolParams struct {
 	MinFeeB          Coin
 }
 
-type AddrKeyHash Hash28
+type AddrKeyHash = Hash28
 
-type PoolKeyHash Hash28
+type PoolKeyHash = Hash28
 
 type Hash28 [28]byte
 
@@ -46,6 +46,10 @@ func NewHash28(b []byte) (Hash28, error) {
 	}
 	copy(hash[:], b)
 	return hash, nil
+}
+
+func (h Hash28) String() string {
+	return hex.EncodeToString(h[:])
 }
 
 type Hash32 [32]byte
@@ -59,7 +63,7 @@ func NewHash32(b []byte) (Hash32, error) {
 	return hash, nil
 }
 
-func (h *Hash32) String() string {
+func (h Hash32) String() string {
 	return hex.EncodeToString(h[:])
 }
 
