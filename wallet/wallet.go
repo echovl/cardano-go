@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/echovl/cardano-go/crypto"
 	"github.com/echovl/cardano-go/node"
@@ -68,7 +67,7 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 		for _, key := range w.skeys {
 			vkey := key.PublicKey()
 			addr := types.NewEnterpriseAddress(vkey, w.network)
-			if reflect.DeepEqual(addr, utxo.Spender) {
+			if addr.String() == utxo.Spender.String() {
 				keys[i] = key
 			}
 		}

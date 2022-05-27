@@ -90,9 +90,10 @@ func (c *CardanoCli) UTXOs(addr types.Address) ([]tx.UTXO, error) {
 		}
 
 		utxos = append(utxos, tx.UTXO{
-			TxHash: txHash,
-			Index:  uint64(index),
-			Amount: types.Coin(amount),
+			Spender: addr,
+			TxHash:  txHash,
+			Index:   uint64(index),
+			Amount:  types.Coin(amount),
 		})
 	}
 
@@ -133,12 +134,14 @@ func (c *CardanoCli) SubmitTx(tx *tx.Transaction) (*types.Hash32, error) {
 		return nil, err
 	}
 
-	var txHash types.Hash32
 	out, err := c.runCommand("transaction", "submit", "--tx-file", txFile.Name())
 	if err != nil {
 		return nil, err
 	}
-	copy(txHash[:], out)
+	txHash, err := types.NewHash32FromHex(string(out))
+	if err != nil {
+		return nil, err
+	}
 
 	return &txHash, nil
 }
