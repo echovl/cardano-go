@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	protocolMagic = 1097911063
+	ProtocolMagic = 1097911063
 )
 
 // Node is the interface required for a Cardano backend/node.
@@ -14,10 +14,10 @@ const (
 // sending transactions and fetching state.
 type Node interface {
 	// UTXOs returns a list of unspent transaction outputs for a given address
-	UTXOs(types.Address) ([]tx.Utxo, error)
+	UTXOs(types.Address) ([]tx.UTXO, error)
 
 	// Tip returns the node's current tip
-	Tip() (NodeTip, error)
+	Tip() (*NodeTip, error)
 
 	// SubmitTx submits a transaction to the node using cbor encoding
 	SubmitTx(tx.Transaction) (*types.Hash32, error)
@@ -27,7 +27,7 @@ type Node interface {
 }
 
 type NodeTip struct {
-	Block uint64
-	Epoch uint64
-	Slot  uint64
+	Block int
+	Epoch int
+	Slot  int
 }

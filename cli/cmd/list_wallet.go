@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/echovl/cardano-go/node"
+	"github.com/echovl/cardano-go/node/cli"
 	"github.com/echovl/cardano-go/types"
 	"github.com/echovl/cardano-go/wallet"
 	"github.com/spf13/cobra"
@@ -21,7 +21,7 @@ var listWalletCmd = &cobra.Command{
 			network = types.Testnet
 		}
 		opts := &wallet.Options{
-			Node: node.NewCli(network),
+			Node: cli.NewNode(network),
 		}
 		client := wallet.NewClient(opts)
 		defer client.Close()

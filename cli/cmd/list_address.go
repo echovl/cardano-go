@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/echovl/cardano-go/node"
+	"github.com/echovl/cardano-go/node/cli"
 	"github.com/echovl/cardano-go/types"
 	"github.com/echovl/cardano-go/wallet"
 	"github.com/spf13/cobra"
@@ -24,7 +24,7 @@ var listAddressCmd = &cobra.Command{
 		}
 
 		opts := &wallet.Options{
-			Node: node.NewCli(network),
+			Node: cli.NewNode(network),
 		}
 		client := wallet.NewClient(opts)
 		defer client.Close()

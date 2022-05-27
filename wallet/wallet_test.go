@@ -48,15 +48,15 @@ func TestGenerateAddress(t *testing.T) {
 }
 
 type MockNode struct {
-	utxos []tx.Utxo
+	utxos []tx.UTXO
 }
 
-func (n *MockNode) UTXOs(addr types.Address) ([]tx.Utxo, error) {
+func (n *MockNode) UTXOs(addr types.Address) ([]tx.UTXO, error) {
 	return n.utxos, nil
 }
 
-func (n *MockNode) Tip() (node.NodeTip, error) {
-	return node.NodeTip{}, nil
+func (n *MockNode) Tip() (*node.NodeTip, error) {
+	return &node.NodeTip{}, nil
 }
 
 func (n *MockNode) SubmitTx(tx tx.Transaction) (*types.Hash32, error) {
@@ -70,7 +70,7 @@ func (n *MockNode) Network() types.Network {
 func TestWalletBalance(t *testing.T) {
 	client := NewClient(&Options{
 		DB:   &MockDB{},
-		Node: &MockNode{utxos: []tx.Utxo{{Amount: 100}, {Amount: 33}}},
+		Node: &MockNode{utxos: []tx.UTXO{{Amount: 100}, {Amount: 33}}},
 	})
 	w, _, err := client.CreateWallet("test", "")
 	if err != nil {

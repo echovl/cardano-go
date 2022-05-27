@@ -15,6 +15,14 @@ const (
 	Mainnet Network = 1
 )
 
+func (n Network) String() string {
+	if n == Mainnet {
+		return "mainnet"
+	} else {
+		return "testnet"
+	}
+}
+
 type Coin uint64
 
 type ProtocolParams struct {

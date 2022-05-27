@@ -23,9 +23,9 @@ func LiveTTL() uint64 {
 	return uint64(shelleyStartSlot + time.Since(shelleyStart).Seconds())
 }
 
-type Utxo struct {
-	Address types.Address
+type UTXO struct {
 	TxHash  types.Hash32
+	Spender types.Address
 	Amount  types.Coin
 	Index   uint64
 }
@@ -35,7 +35,7 @@ type TXBodyBuilder struct {
 	TTL      uint64
 }
 
-func (builder TXBodyBuilder) Build(receiver types.Address, pickedUtxos []Utxo, amount types.Coin, change types.Address) (*TransactionBody, error) {
+func (builder TXBodyBuilder) Build(receiver types.Address, pickedUtxos []UTXO, amount types.Coin, change types.Address) (*TransactionBody, error) {
 	var inputAmount types.Coin
 	var inputs []TransactionInput
 	for _, utxo := range pickedUtxos {

@@ -44,7 +44,7 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 	}
 
 	// Find utxos that cover the amount to transfer
-	pickedUtxos := []tx.Utxo{}
+	pickedUtxos := []tx.UTXO{}
 	utxos, err := w.findUtxos()
 	pickedUtxosAmount := types.Coin(0)
 	for _, utxo := range utxos {
@@ -65,8 +65,8 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 	for i, utxo := range pickedUtxos {
 		for _, key := range w.skeys {
 			vkey := key.ExtendedVerificationKey()
-			address := types.NewEnterpriseAddress(vkey, w.network)
-			if address == utxo.Address {
+			addr := types.NewEnterpriseAddress(vkey, w.network)
+			if addr == utxo.Spender {
 				keys[i] = key
 			}
 		}
@@ -88,9 +88,9 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 	if err != nil {
 		return nil, err
 	}
-	builder.SetTtl(tip.Slot + 1200)
+	builder.SetTtl(uint64(tip.Slot + 1200))
 
-	changeAddress := pickedUtxos[0].Address
+	changeAddress := pickedUtxos[0].Spender
 	err = builder.AddFee(changeAddress)
 	if err != nil {
 		return nil, err
@@ -116,10 +116,10 @@ func (w *Wallet) Balance() (types.Coin, error) {
 	return balance, nil
 }
 
-func (w *Wallet) findUtxos() ([]tx.Utxo, error) {
-	addresses := w.Addresses()
-	walletUtxos := []tx.Utxo{}
-	for _, addr := range addresses {
+func (w *Wallet) findUtxos() ([]tx.UTXO, error) {
+	addrs := w.Addresses()
+	walletUtxos := []tx.UTXO{}
+	for _, addr := range addrs {
 		addrUtxos, err := w.node.UTXOs(addr)
 		if err != nil {
 			return nil, err
