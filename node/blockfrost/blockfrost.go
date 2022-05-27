@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/blockfrost/blockfrost-go"
 	"github.com/echovl/cardano-go/node"
@@ -106,8 +107,7 @@ func (b *BlockfrostNode) SubmitTx(tx tx.Transaction) (*types.Hash32, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New(string(body))
 	}
-
-	txHash, err := types.NewHash32FromHex(string(body))
+	txHash, err := types.NewHash32FromHex(strings.ReplaceAll(string(body), `"`, ""))
 	if err != nil {
 		return nil, err
 	}
