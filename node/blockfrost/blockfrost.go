@@ -42,7 +42,7 @@ func (b *BlockfrostNode) UTXOs(addr types.Address) ([]tx.UTXO, error) {
 	utxos := make([]tx.UTXO, len(butxos))
 
 	for i, butxo := range butxos {
-		txHash, err := types.NewHash32FromHex(butxo.TxHash)
+		txHash, err := types.NewHash32(butxo.TxHash)
 		if err != nil {
 			return nil, err
 		}

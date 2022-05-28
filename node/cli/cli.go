@@ -77,7 +77,7 @@ func (c *CardanoCli) UTXOs(addr types.Address) ([]tx.UTXO, error) {
 		if len(args) < 4 {
 			return nil, fmt.Errorf("malformed cli response")
 		}
-		txHash, err := types.NewHash32FromHex(args[0])
+		txHash, err := types.NewHash32(args[0])
 		if err != nil {
 			return nil, err
 		}

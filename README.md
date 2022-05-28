@@ -43,7 +43,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	txInputHash, err := types.NewHash32FromHex("tx-hash")
+	txInputHash, err := types.NewHash32("tx-hash")
 	if err != nil {
 		panic(err)
 	}

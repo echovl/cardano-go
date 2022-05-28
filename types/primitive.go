@@ -39,8 +39,19 @@ type PoolKeyHash = Hash28
 
 type Hash28 [28]byte
 
-// NewHash28 creates a new Hash28 from bytes
-func NewHash28(b []byte) (Hash28, error) {
+// NewHash28 creates a new Hash28 from a hex encoded string.
+func NewHash28(h string) (Hash28, error) {
+	hash := [28]byte{}
+	b, err := hex.DecodeString(h)
+	if err != nil {
+		return hash, err
+	}
+	copy(hash[:], b)
+	return hash, nil
+}
+
+// NewHash28FromBytes creates a new Hash28 from raw bytes.
+func NewHash28FromBytes(b []byte) (Hash28, error) {
 	hash := [28]byte{}
 	if len(b) != 28 {
 		return hash, fmt.Errorf("length should be 28")
@@ -49,15 +60,26 @@ func NewHash28(b []byte) (Hash28, error) {
 	return hash, nil
 }
 
-// String returns the hex encoding representation of a Hash28
+// String returns the hex encoding representation of a Hash28.
 func (h Hash28) String() string {
 	return hex.EncodeToString(h[:])
 }
 
 type Hash32 [32]byte
 
-// NewHash32 creates a new Hash32 from bytes
-func NewHash32(b []byte) (Hash32, error) {
+// NewHash32 creates a new Hash32 from a hex encoded string.
+func NewHash32(h string) (Hash32, error) {
+	hash := [32]byte{}
+	b, err := hex.DecodeString(h)
+	if err != nil {
+		return hash, err
+	}
+	copy(hash[:], b)
+	return hash, nil
+}
+
+// NewHash32FromBytes creates a new Hash32 from raw bytes.
+func NewHash32FromBytes(b []byte) (Hash32, error) {
 	hash := [32]byte{}
 	if len(b) != 28 {
 		return hash, fmt.Errorf("length should be 32")
@@ -69,17 +91,6 @@ func NewHash32(b []byte) (Hash32, error) {
 // String returns the hex encoding representation of a Hash32
 func (h Hash32) String() string {
 	return hex.EncodeToString(h[:])
-}
-
-// NewHash32FromHex creates a new Hash32 from a hex encoded string
-func NewHash32FromHex(h string) (Hash32, error) {
-	hash := [32]byte{}
-	b, err := hex.DecodeString(h)
-	if err != nil {
-		return hash, err
-	}
-	copy(hash[:], b)
-	return hash, nil
 }
 
 type Uint64 *uint64
