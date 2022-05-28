@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/echovl/cardano-go/node/cli"
+	"github.com/echovl/cardano-go/node/blockfrost"
 	"github.com/echovl/cardano-go/types"
 	"github.com/echovl/cardano-go/wallet"
 	"github.com/spf13/cobra"
@@ -11,7 +11,7 @@ import (
 
 // listWalletCmd represents the listWallet command
 var listWalletCmd = &cobra.Command{
-	Use:     "list-wallets",
+	Use:     "list-wallet",
 	Short:   "Print a list of known wallets",
 	Aliases: []string{"lsw"},
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -20,9 +20,9 @@ var listWalletCmd = &cobra.Command{
 		if useTestnet {
 			network = types.Testnet
 		}
-		opts := &wallet.Options{
-			Node: cli.NewNode(network),
-		}
+
+		node := blockfrost.NewNode(network, cfg.BlockfrostProjectID)
+		opts := &wallet.Options{Node: node}
 		client := wallet.NewClient(opts)
 		defer client.Close()
 		wallets, err := client.Wallets()

@@ -110,7 +110,7 @@ func (w *Wallet) Balance() (types.Coin, error) {
 	var balance types.Coin
 	utxos, err := w.findUtxos()
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 	for _, utxo := range utxos {
 		balance += utxo.Amount

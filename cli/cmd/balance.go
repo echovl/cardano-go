@@ -3,14 +3,14 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/echovl/cardano-go/node/cli"
+	"github.com/echovl/cardano-go/node/blockfrost"
 	"github.com/echovl/cardano-go/types"
 	"github.com/echovl/cardano-go/wallet"
 	"github.com/spf13/cobra"
 )
 
 var balanceCmd = &cobra.Command{
-	Use:     "balance [cardano.id]",
+	Use:     "balance [wallet]",
 	Short:   "Get cardano.s balance",
 	Aliases: []string{"bal"},
 	Args:    cobra.ExactArgs(1),
@@ -21,9 +21,8 @@ var balanceCmd = &cobra.Command{
 			network = types.Testnet
 		}
 
-		opts := &wallet.Options{
-			Node: cli.NewNode(network),
-		}
+		node := blockfrost.NewNode(network, cfg.BlockfrostProjectID)
+		opts := &wallet.Options{Node: node}
 		client := wallet.NewClient(opts)
 		defer client.Close()
 

@@ -1,11 +1,11 @@
 GOBUILD = go build
 GOTEST = go test
 
-cardano-wallet:
-	$(GOBUILD) -o ./cli/build/cardano-wallet cli/main.go
+cwallet:
+	$(GOBUILD) -o ./cli/build/cwallet cli/main.go
 
 install:
-	@cp ./cli/build/cardano-wallet /usr/bin/
+	@cp ./cli/build/cwallet /usr/bin/
 
 test:
 	$(GOTEST) ./...

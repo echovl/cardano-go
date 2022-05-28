@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/echovl/cardano-go/node/cli"
+	"github.com/echovl/cardano-go/node/blockfrost"
 	"github.com/echovl/cardano-go/types"
 	"github.com/echovl/cardano-go/wallet"
 	"github.com/spf13/cobra"
 )
 
 var newWalletCmd = &cobra.Command{
-	Use:   "new-wallet [wallet-name]",
+	Use:   "new-wallet [name]",
 	Short: "Create or restore a wallet",
 	Long: `Create or restore a wallet. If the mnemonic flag is present 
 it will restore a wallet using the mnemonic and password.`,
@@ -24,9 +24,8 @@ it will restore a wallet using the mnemonic and password.`,
 			network = types.Testnet
 		}
 
-		opts := &wallet.Options{
-			Node: cli.NewNode(network),
-		}
+		node := blockfrost.NewNode(network, cfg.BlockfrostProjectID)
+		opts := &wallet.Options{Node: node}
 		client := wallet.NewClient(opts)
 		defer client.Close()
 		password, _ := cmd.Flags().GetString("password")

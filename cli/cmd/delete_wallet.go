@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/echovl/cardano-go/node/cli"
+	"github.com/echovl/cardano-go/node/blockfrost"
 	"github.com/echovl/cardano-go/types"
 	"github.com/echovl/cardano-go/wallet"
 	"github.com/spf13/cobra"
@@ -9,7 +9,7 @@ import (
 
 // deleteWalletCmd represents the deleteWallet command
 var deleteWalletCmd = &cobra.Command{
-	Use:     "delete-wallet [wallet-id]",
+	Use:     "delete-wallet [wallet]",
 	Short:   "Delete a wallet",
 	Aliases: []string{"delw"},
 	Args:    cobra.ExactArgs(1),
@@ -20,9 +20,8 @@ var deleteWalletCmd = &cobra.Command{
 			network = types.Testnet
 		}
 
-		opts := &wallet.Options{
-			Node: cli.NewNode(network),
-		}
+		node := blockfrost.NewNode(network, cfg.BlockfrostProjectID)
+		opts := &wallet.Options{Node: node}
 		client := wallet.NewClient(opts)
 		id := args[0]
 		return client.DeleteWallet(id)

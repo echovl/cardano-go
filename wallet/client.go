@@ -83,7 +83,7 @@ func (c *Client) Wallet(id string) (*Wallet, error) {
 		return nil, err
 	}
 	for _, w := range wallets {
-		if w.ID == id {
+		if w.ID == id || w.Name == id {
 			return w, nil
 		}
 	}

@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/echovl/cardano-go/node/cli"
+	"github.com/echovl/cardano-go/node/blockfrost"
 	"github.com/echovl/cardano-go/types"
 	"github.com/echovl/cardano-go/wallet"
 	"github.com/spf13/cobra"
@@ -20,9 +20,8 @@ var newAddressCmd = &cobra.Command{
 			network = types.Testnet
 		}
 
-		opts := &wallet.Options{
-			Node: cli.NewNode(network),
-		}
+		node := blockfrost.NewNode(network, cfg.BlockfrostProjectID)
+		opts := &wallet.Options{Node: node}
 		client := wallet.NewClient(opts)
 		defer client.Close()
 

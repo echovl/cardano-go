@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/echovl/cardano-go/node/cli"
+	"github.com/echovl/cardano-go/node/blockfrost"
 	"github.com/echovl/cardano-go/types"
 	"github.com/echovl/cardano-go/wallet"
 	"github.com/spf13/cobra"
@@ -13,7 +13,7 @@ import (
 // TODO: Ask for password if present
 // Experimental feature, only for testnet
 var transferCmd = &cobra.Command{
-	Use:   "transfer [wallet-id] [amount] [receiver-address]",
+	Use:   "transfer [wallet] [receiver] [amount]",
 	Short: "Transfer an amount of lovelace to the given address",
 	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -22,17 +22,16 @@ var transferCmd = &cobra.Command{
 		if useTestnet {
 			network = types.Testnet
 		}
-		opts := &wallet.Options{
-			Node: cli.NewNode(network),
-		}
+		node := blockfrost.NewNode(network, cfg.BlockfrostProjectID)
+		opts := &wallet.Options{Node: node}
 		client := wallet.NewClient(opts)
 		defer client.Close()
 		senderId := args[0]
-		receiver, err := types.NewAddress(args[2])
+		receiver, err := types.NewAddress(args[1])
 		if err != nil {
 			return err
 		}
-		amount, err := strconv.ParseUint(args[1], 10, 64)
+		amount, err := strconv.ParseUint(args[2], 10, 64)
 		if err != nil {
 			return err
 		}

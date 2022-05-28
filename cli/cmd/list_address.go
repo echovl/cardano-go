@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/echovl/cardano-go/node/cli"
+	"github.com/echovl/cardano-go/node/blockfrost"
 	"github.com/echovl/cardano-go/types"
 	"github.com/echovl/cardano-go/wallet"
 	"github.com/spf13/cobra"
@@ -12,7 +12,7 @@ import (
 
 // listAddressCmd represents the listAddress command
 var listAddressCmd = &cobra.Command{
-	Use:     "list-address [wallet-id]",
+	Use:     "list-address [wallet]",
 	Short:   "Print a list of known wallet's addresses",
 	Aliases: []string{"lsa"},
 	Args:    cobra.ExactArgs(1),
@@ -23,9 +23,8 @@ var listAddressCmd = &cobra.Command{
 			network = types.Testnet
 		}
 
-		opts := &wallet.Options{
-			Node: cli.NewNode(network),
-		}
+		node := blockfrost.NewNode(network, cfg.BlockfrostProjectID)
+		opts := &wallet.Options{Node: node}
 		client := wallet.NewClient(opts)
 		defer client.Close()
 
