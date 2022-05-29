@@ -148,6 +148,10 @@ func (c *CardanoCli) SubmitTx(tx *tx.Transaction) (*types.Hash32, error) {
 	return &txHash, nil
 }
 
+func (c *CardanoCli) ProtocolParams() (*tx.ProtocolParams, error) {
+	return nil, nil
+}
+
 func (c *CardanoCli) Network() types.Network {
 	return c.network
 }

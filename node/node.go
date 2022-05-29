@@ -22,6 +22,9 @@ type Node interface {
 	// SubmitTx submits a transaction to the node using cbor encoding
 	SubmitTx(*tx.Transaction) (*types.Hash32, error)
 
+	// ProtocolParams returns the Node's Protocol Parameters
+	ProtocolParams() (*tx.ProtocolParams, error)
+
 	// Network returns the node's current network type
 	Network() types.Network
 }

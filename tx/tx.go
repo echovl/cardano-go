@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/echovl/cardano-go/crypto"
 	"github.com/echovl/cardano-go/types"
 	"github.com/echovl/ed25519"
 	"github.com/fxamacker/cbor/v2"
@@ -23,7 +22,7 @@ type Transaction struct {
 	Body          TransactionBody
 	WitnessSet    WitnessSet
 	IsValid       bool
-	AuxiliaryData interface{} // or null
+	AuxiliaryData *AuxiliaryData // or null
 }
 
 // Bytes returns the CBOR encoding of the transaction as bytes.
@@ -46,10 +45,10 @@ func (tx *Transaction) Hash() (types.Hash32, error) {
 }
 
 // CalculateFee computes the minimal fee required for a transaction.
-func CalculateFee(tx *Transaction, protocol types.ProtocolParams) types.Coin {
+func CalculateFee(tx *Transaction, protocol *ProtocolParams) types.Coin {
 	txBytes := tx.Bytes()
 	txLength := uint64(len(txBytes))
-	return protocol.MinFeeA*types.Coin(txLength) + protocol.MinFeeB + 1000
+	return protocol.MinFeeA*types.Coin(txLength) + protocol.MinFeeB
 }
 
 type WitnessSet struct {
@@ -127,39 +126,18 @@ func (body *TransactionBody) AddSignatures(publicKeys [][]byte, signatures [][]b
 		Body:          *body,
 		WitnessSet:    witnessSet,
 		AuxiliaryData: nil,
+		IsValid:       true,
 	}, nil
 }
 
-func (body *TransactionBody) calculateMinFee(protocol types.ProtocolParams) types.Coin {
-	fakeXSigningKey := crypto.NewXPrv([]byte{
-		0x0c, 0xcb, 0x74, 0xf3, 0x6b, 0x7d, 0xa1, 0x64, 0x9a, 0x81,
-		0x44, 0x67, 0x55, 0x22, 0xd4, 0xd8, 0x09, 0x7c, 0x64, 0x12,
-	}, "")
-
-	witnessSet := WitnessSet{}
-	for range body.Inputs {
-		witness := VKeyWitness{
-			VKey:      fakeXSigningKey.PublicKey()[:32],
-			Signature: fakeXSigningKey.Sign(fakeXSigningKey.PublicKey()),
-		}
-		witnessSet.VKeyWitnessSet = append(witnessSet.VKeyWitnessSet, witness)
-	}
-
-	return CalculateFee(&Transaction{
-		Body:          *body,
-		WitnessSet:    witnessSet,
-		AuxiliaryData: nil,
-	}, protocol)
-}
-
-func (body *TransactionBody) addFee(inputAmount types.Coin, changeAddress types.Address, protocol types.ProtocolParams) error {
+func (t *Transaction) addFee(inputAmount types.Coin, changeAddress types.Address, protocol *ProtocolParams) error {
 	// Set a temporary realistic fee in order to serialize a valid transaction
-	body.Fee = 200000
+	t.Body.Fee = 200000
 
-	minFee := body.calculateMinFee(protocol)
+	minFee := CalculateFee(t, protocol)
 
 	outputAmount := types.Coin(0)
-	for _, txOut := range body.Outputs {
+	for _, txOut := range t.Body.Outputs {
 		outputAmount += txOut.Amount
 	}
 	outputWithFeeAmount := outputAmount + minFee
@@ -173,32 +151,32 @@ func (body *TransactionBody) addFee(inputAmount types.Coin, changeAddress types.
 	}
 
 	if inputAmount == outputWithFeeAmount {
-		body.Fee = minFee
+		t.Body.Fee = minFee
 		return nil
 	}
 
 	change := inputAmount - outputWithFeeAmount
-	if change < protocol.MinimumUtxoValue {
-		body.Fee = minFee + change // burn change
+	if change < protocol.MinUTXO {
+		t.Body.Fee = minFee + change // burn change
 		return nil
 	}
 
-	newBody := TransactionBody{
-		Inputs: body.Inputs,
-		Outputs: append([]TransactionOutput{{
-			Address: changeAddress,
-			Amount:  change, // set a temporary value
-		}}, body.Outputs...), // change will always be outputs[0] if present
-		TTL: body.TTL,
+	changeOutput := TransactionOutput{
+		Address: changeAddress,
+		Amount:  change,
 	}
-	newMinFee := newBody.calculateMinFee(protocol)
-	if change+minFee-newMinFee < protocol.MinimumUtxoValue {
-		body.Fee = minFee + change // burn change
+	t.Body.Outputs = append([]TransactionOutput{changeOutput}, t.Body.Outputs...)
+
+	newMinFee := CalculateFee(t, protocol)
+	if change+minFee-newMinFee < protocol.MinUTXO {
+		t.Body.Fee = minFee + change        // burn change
+		t.Body.Outputs = t.Body.Outputs[1:] // remove change output
 		return nil
 	}
-	body.Outputs = newBody.Outputs
-	body.Outputs[0].Amount = change + minFee - newMinFee
-	body.Fee = newMinFee
+
+	t.Body.Outputs[0].Amount = change + minFee - newMinFee
+	t.Body.Fee = newMinFee
+
 	return nil
 }
 

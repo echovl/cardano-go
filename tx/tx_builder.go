@@ -5,22 +5,25 @@ import (
 
 	"github.com/echovl/cardano-go/crypto"
 	"github.com/echovl/cardano-go/types"
+	"github.com/fxamacker/cbor/v2"
+	"golang.org/x/crypto/blake2b"
 )
 
 const maxUint64 uint64 = 1<<64 - 1
 
 type TXBuilder struct {
-	tx       Transaction
-	protocol types.ProtocolParams
-	inputs   []TransactionInput
-	outputs  []TransactionOutput
-	ttl      int
-	fee      types.Coin
-	pkeys    []crypto.XPrv
+	tx            Transaction
+	protocol      *ProtocolParams
+	inputs        []TransactionInput
+	outputs       []TransactionOutput
+	ttl           int
+	fee           types.Coin
+	auxiliaryData *AuxiliaryData
+	pkeys         []crypto.XPrv
 }
 
 // NewTxBuilder returns a new instance of TxBuilder.
-func NewTxBuilder(protocol types.ProtocolParams) *TXBuilder {
+func NewTxBuilder(protocol *ProtocolParams) *TXBuilder {
 	return &TXBuilder{
 		protocol: protocol,
 		pkeys:    []crypto.XPrv{},
@@ -47,6 +50,10 @@ func (builder *TXBuilder) SetFee(fee types.Coin) {
 	builder.fee = fee
 }
 
+func (builder *TXBuilder) AddAuxiliaryData(data *AuxiliaryData) {
+	builder.auxiliaryData = data
+}
+
 // AddFee calculates the required fee for the transaction and adds
 // an aditional output for the change if there is any.
 // This assumes that the builder inputs and outputs are defined.
@@ -55,19 +62,25 @@ func (builder *TXBuilder) AddFee(changeAddr types.Address) error {
 	for _, txIn := range builder.inputs {
 		inputAmount += txIn.Amount
 	}
-	body := builder.buildBody()
 
-	if err := body.addFee(inputAmount, changeAddr, builder.protocol); err != nil {
+	tx, err := builder.Build()
+	if err != nil {
 		return err
 	}
-	builder.outputs = body.Outputs
-	builder.fee = body.Fee
+
+	if err := tx.addFee(inputAmount, changeAddr, builder.protocol); err != nil {
+		return err
+	}
+
+	builder.outputs = tx.Body.Outputs
+	builder.fee = tx.Body.Fee
+
 	return nil
 }
 
-// Sign adds a signing key to create a signature for the witness set.
-func (builder *TXBuilder) Sign(xsk crypto.XPrv) {
-	builder.pkeys = append(builder.pkeys, xsk)
+// Sign adds signing keys to create signatures for the witness set.
+func (builder *TXBuilder) Sign(xsk ...crypto.XPrv) {
+	builder.pkeys = append(builder.pkeys, xsk...)
 }
 
 // Build creates a new transaction using the inputs, outputs and keys provided.
@@ -76,7 +89,11 @@ func (builder *TXBuilder) Build() (*Transaction, error) {
 		return nil, errors.New("missing signing keys")
 	}
 
-	body := builder.buildBody()
+	body, err := builder.buildBody()
+	if err != nil {
+		return nil, err
+	}
+
 	witnessSet := WitnessSet{}
 	txHash, err := body.Hash()
 	if err != nil {
@@ -93,14 +110,14 @@ func (builder *TXBuilder) Build() (*Transaction, error) {
 	tx := &Transaction{
 		Body:          body,
 		WitnessSet:    witnessSet,
-		AuxiliaryData: nil,
+		AuxiliaryData: builder.auxiliaryData,
 		IsValid:       true,
 	}
 
 	return tx, nil
 }
 
-func (builder *TXBuilder) buildBody() TransactionBody {
+func (builder *TXBuilder) buildBody() (TransactionBody, error) {
 	inputs := make([]TransactionInput, len(builder.inputs))
 	for i, txInput := range builder.inputs {
 		inputs[i] = TransactionInput{
@@ -109,10 +126,22 @@ func (builder *TXBuilder) buildBody() TransactionBody {
 		}
 	}
 
-	return TransactionBody{
+	body := TransactionBody{
 		Inputs:  inputs,
 		Outputs: builder.outputs,
 		Fee:     builder.fee,
 		TTL:     types.NewUint64(uint64(builder.ttl)),
 	}
+
+	if builder.auxiliaryData != nil {
+		auxBytes, err := cbor.Marshal(builder.auxiliaryData)
+		if err != nil {
+			return body, err
+		}
+		auxHash := types.Hash32(blake2b.Sum256(auxBytes))
+		body.AuxiliaryDataHash = &auxHash
+
+	}
+
+	return body, nil
 }

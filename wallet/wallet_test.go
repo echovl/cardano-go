@@ -63,6 +63,10 @@ func (n *MockNode) SubmitTx(tx *tx.Transaction) (*types.Hash32, error) {
 	return nil, nil
 }
 
+func (n *MockNode) ProtocolParams() (*tx.ProtocolParams, error) {
+	return &tx.ProtocolParams{}, nil
+}
+
 func (n *MockNode) Network() types.Network {
 	return types.Testnet
 }

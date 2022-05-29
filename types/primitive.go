@@ -25,14 +25,6 @@ func (n Network) String() string {
 
 type Coin uint64
 
-type ProtocolParams struct {
-	MinimumUtxoValue Coin
-	PoolDeposit      uint64
-	KeyDeposit       uint64
-	MinFeeA          Coin
-	MinFeeB          Coin
-}
-
 type AddrKeyHash = Hash28
 
 type PoolKeyHash = Hash28

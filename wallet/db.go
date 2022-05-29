@@ -1,6 +1,9 @@
 package wallet
 
 import (
+	"os"
+	"path"
+
 	"github.com/dgraph-io/badger/v3"
 	"github.com/echovl/cardano-go/types"
 )
@@ -17,7 +20,8 @@ type badgerDB struct {
 }
 
 func newBadgerDB() *badgerDB {
-	db, err := badger.Open(badger.DefaultOptions("/tmp/badger").WithLoggingLevel(badger.ERROR))
+	home, _ := os.UserHomeDir()
+	db, err := badger.Open(badger.DefaultOptions(path.Join(home, ".cwallet/db")).WithLoggingLevel(badger.ERROR))
 	if err != nil {
 		panic(err)
 	}

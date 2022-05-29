@@ -33,7 +33,6 @@ type Wallet struct {
 }
 
 // Transfer sends an amount of lovelace to the receiver address and returns the transaction hash
-//TODO: remove hardcoded protocol parameters, these parameters must be obtained using the cardano node
 func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Hash32, error) {
 	// Calculate if the account has enough balance
 	balance, err := w.Balance()
@@ -56,11 +55,12 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 		pickedUtxosAmount += utxo.Amount
 	}
 
-	builder := tx.NewTxBuilder(types.ProtocolParams{
-		MinimumUtxoValue: 1000000,
-		MinFeeA:          44,
-		MinFeeB:          155381,
-	})
+	pparams, err := w.node.ProtocolParams()
+	if err != nil {
+		return nil, err
+	}
+
+	builder := tx.NewTxBuilder(pparams)
 
 	keys := make(map[int]crypto.XPrv)
 	for i, utxo := range pickedUtxos {
@@ -89,14 +89,14 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 	}
 	builder.SetTTL(tip.Slot + 1200)
 
-	changeAddress := pickedUtxos[0].Spender
-	err = builder.AddFee(changeAddress)
-	if err != nil {
-		return nil, err
-	}
 	for _, key := range keys {
 		builder.Sign(key)
 	}
+	changeAddress := pickedUtxos[0].Spender
+	if err = builder.AddFee(changeAddress); err != nil {
+		return nil, err
+	}
+
 	tx, err := builder.Build()
 	if err != nil {
 		return nil, err

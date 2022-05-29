@@ -36,6 +36,12 @@ func NewNode(network types.Network, projectID string) node.Node {
 func (b *BlockfrostNode) UTXOs(addr types.Address) ([]tx.UTXO, error) {
 	butxos, err := b.client.AddressUTXOs(context.Background(), addr.String(), blockfrost.APIQueryParams{})
 	if err != nil {
+		// Addresses without UTXOs return NotFound error
+		if err, ok := err.(*blockfrost.APIError); ok {
+			if _, ok := err.Response.(blockfrost.NotFound); ok {
+				return []tx.UTXO{}, nil
+			}
+		}
 		return nil, err
 	}
 
@@ -115,6 +121,32 @@ func (b *BlockfrostNode) SubmitTx(tx *tx.Transaction) (*types.Hash32, error) {
 	}
 
 	return &txHash, nil
+}
+
+func (b *BlockfrostNode) ProtocolParams() (*tx.ProtocolParams, error) {
+	eparams, err := b.client.LatestEpochParameters(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	minUTXO, err := strconv.ParseUint(eparams.MinUtxo, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	poolDeposit, err := strconv.ParseUint(eparams.PoolDeposit, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	pparams := &tx.ProtocolParams{
+		MinUTXO:     types.Coin(minUTXO),
+		PoolDeposit: types.Coin(poolDeposit),
+		MinFeeA:     types.Coin(eparams.MinFeeA),
+		MinFeeB:     types.Coin(eparams.MinFeeB),
+	}
+
+	return pparams, nil
 }
 
 func (b *BlockfrostNode) Network() types.Network {
