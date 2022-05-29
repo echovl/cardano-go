@@ -82,16 +82,6 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 	}
 	builder.AddOutputs(tx.TransactionOutput{Address: receiver, Amount: amount})
 
-	builder.AddAuxiliaryData(&tx.AuxiliaryData{
-		Metadata: tx.Metadata{
-			0: map[string]interface{}{
-				"number": 32,
-				"string": "cardano-go",
-			},
-			1: "second label!",
-		},
-	})
-
 	tip, err := w.node.Tip()
 	if err != nil {
 		return nil, err
