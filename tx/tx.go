@@ -10,6 +10,8 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
+var utxoEntrySizeWithoutVal = 27
+
 type UTXO struct {
 	TxHash  types.Hash32
 	Spender types.Address
@@ -27,7 +29,7 @@ type Transaction struct {
 
 // Bytes returns the CBOR encoding of the transaction as bytes.
 func (tx *Transaction) Bytes() []byte {
-	bytes, err := cbor.Marshal(tx)
+	bytes, err := cborEnc.Marshal(tx)
 	if err != nil {
 		panic(err)
 	}
@@ -96,7 +98,7 @@ type TransactionBody struct {
 
 // Hash returns the transaction body hash using blake2b.
 func (body *TransactionBody) Hash() (types.Hash32, error) {
-	bytes, err := cbor.Marshal(body)
+	bytes, err := cborEnc.Marshal(body)
 	if err != nil {
 		return types.Hash32{}, err
 	}
@@ -156,19 +158,20 @@ func (t *Transaction) addFee(inputAmount types.Coin, changeAddress types.Address
 	}
 
 	change := inputAmount - outputWithFeeAmount
-	if change < protocol.MinUTXO {
-		t.Body.Fee = minFee + change // burn change
-		return nil
-	}
-
 	changeOutput := TransactionOutput{
 		Address: changeAddress,
 		Amount:  change,
 	}
+	changeMinUTXO := minUTXO(&changeOutput, protocol)
+	if change < changeMinUTXO {
+		t.Body.Fee = minFee + change // burn change
+		return nil
+	}
+
 	t.Body.Outputs = append([]TransactionOutput{changeOutput}, t.Body.Outputs...)
 
 	newMinFee := CalculateFee(t, protocol)
-	if change+minFee-newMinFee < protocol.MinUTXO {
+	if change+minFee-newMinFee < changeMinUTXO {
 		t.Body.Fee = minFee + change        // burn change
 		t.Body.Outputs = t.Body.Outputs[1:] // remove change output
 		return nil
@@ -178,6 +181,10 @@ func (t *Transaction) addFee(inputAmount types.Coin, changeAddress types.Address
 	t.Body.Fee = newMinFee
 
 	return nil
+}
+
+func minUTXO(txOut *TransactionOutput, protocol *ProtocolParams) types.Coin {
+	return types.Coin(utxoEntrySizeWithoutVal+1) * protocol.CoinsPerUTXOWord
 }
 
 type CertificateType uint
@@ -310,7 +317,7 @@ func (c *Certificate) MarshalCBOR() ([]byte, error) {
 		}
 	}
 
-	return cbor.Marshal(cert)
+	return cborEnc.Marshal(cert)
 }
 
 // UnmarshalCBOR implements cbor.Unmarshaler.
@@ -414,7 +421,7 @@ func (s *StakeCredential) MarshalCBOR() ([]byte, error) {
 		cred = append(cred, s.Type, s.ScriptHash)
 	}
 
-	return cbor.Marshal(cred)
+	return cborEnc.Marshal(cred)
 
 }
 
@@ -512,7 +519,7 @@ func (r *Relay) MarshalCBOR() ([]byte, error) {
 		}
 	}
 
-	return cbor.Marshal(relay)
+	return cborEnc.Marshal(relay)
 }
 
 // UnmarshalCBOR implements cbor.Unmarshaler.

@@ -30,7 +30,7 @@ type Node interface {
 }
 
 type NodeTip struct {
-	Block int
-	Epoch int
-	Slot  int
+	Block uint64
+	Epoch uint64
+	Slot  uint64
 }

@@ -1,11 +1,5 @@
 package tx
 
-import (
-	"reflect"
-
-	"github.com/fxamacker/cbor/v2"
-)
-
 type Metadata map[uint]interface{}
 
 type AuxiliaryData struct {
@@ -14,57 +8,57 @@ type AuxiliaryData struct {
 	PlutusScripts interface{} `cbor:"2,keyasint,omitempty"`
 }
 
-// MarshalCBOR implements cbor.Marshaler
-func (d *AuxiliaryData) MarshalCBOR() ([]byte, error) {
-	type auxiliaryData AuxiliaryData
+// // MarshalCBOR implements cbor.Marshaler
+// func (d *AuxiliaryData) MarshalCBOR() ([]byte, error) {
+// 	type auxiliaryData AuxiliaryData
 
-	// Register tag 259 for maps
-	tags, err := d.tagSet(auxiliaryData{})
-	if err != nil {
-		return nil, err
-	}
+// 	// Register tag 259 for maps
+// 	tags, err := d.tagSet(auxiliaryData{})
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	em, err := cbor.EncOptions{}.EncModeWithTags(tags)
-	if err != nil {
-		return nil, err
-	}
+// 	em, err := cbor.EncOptions{}.EncModeWithTags(tags)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	return em.Marshal(auxiliaryData(*d))
-}
+// 	return em.Marshal(auxiliaryData(*d))
+// }
 
-// UnmarshalCBOR implements cbor.Unmarshaler
-func (d *AuxiliaryData) UnmarshalCBOR(data []byte) error {
-	type auxiliaryData AuxiliaryData
+// // UnmarshalCBOR implements cbor.Unmarshaler
+// func (d *AuxiliaryData) UnmarshalCBOR(data []byte) error {
+// 	type auxiliaryData AuxiliaryData
 
-	// Register tag 259 for maps
-	tags, err := d.tagSet(auxiliaryData{})
-	if err != nil {
-		return err
-	}
+// 	// Register tag 259 for maps
+// 	tags, err := d.tagSet(auxiliaryData{})
+// 	if err != nil {
+// 		return err
+// 	}
 
-	dm, err := cbor.DecOptions{}.DecModeWithTags(tags)
-	if err != nil {
-		return err
-	}
+// 	dm, err := cbor.DecOptions{}.DecModeWithTags(tags)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	var dd auxiliaryData
-	if err := dm.Unmarshal(data, &dd); err != nil {
-		return err
-	}
-	d.Metadata = dd.Metadata
+// 	var dd auxiliaryData
+// 	if err := dm.Unmarshal(data, &dd); err != nil {
+// 		return err
+// 	}
+// 	d.Metadata = dd.Metadata
 
-	return nil
-}
+// 	return nil
+// }
 
-func (d *AuxiliaryData) tagSet(contentType interface{}) (cbor.TagSet, error) {
-	tags := cbor.NewTagSet()
-	err := tags.Add(
-		cbor.TagOptions{EncTag: cbor.EncTagRequired, DecTag: cbor.DecTagRequired},
-		reflect.TypeOf(contentType),
-		259)
-	if err != nil {
-		return nil, err
-	}
+// func (d *AuxiliaryData) tagSet(contentType interface{}) (cbor.TagSet, error) {
+// 	tags := cbor.NewTagSet()
+// 	err := tags.Add(
+// 		cbor.TagOptions{EncTag: cbor.EncTagRequired, DecTag: cbor.DecTagRequired},
+// 		reflect.TypeOf(contentType),
+// 		259)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	return tags, nil
-}
+// 	return tags, nil
+// }

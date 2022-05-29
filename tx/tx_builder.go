@@ -5,21 +5,15 @@ import (
 
 	"github.com/echovl/cardano-go/crypto"
 	"github.com/echovl/cardano-go/types"
-	"github.com/fxamacker/cbor/v2"
 	"golang.org/x/crypto/blake2b"
 )
 
 const maxUint64 uint64 = 1<<64 - 1
 
 type TXBuilder struct {
-	tx            Transaction
-	protocol      *ProtocolParams
-	inputs        []TransactionInput
-	outputs       []TransactionOutput
-	ttl           int
-	fee           types.Coin
-	auxiliaryData *AuxiliaryData
-	pkeys         []crypto.XPrv
+	tx       *Transaction
+	protocol *ProtocolParams
+	pkeys    []crypto.XPrv
 }
 
 // NewTxBuilder returns a new instance of TxBuilder.
@@ -27,121 +21,97 @@ func NewTxBuilder(protocol *ProtocolParams) *TXBuilder {
 	return &TXBuilder{
 		protocol: protocol,
 		pkeys:    []crypto.XPrv{},
+		tx: &Transaction{
+			IsValid: true,
+		},
 	}
 }
 
 // AddInputs adds inputs to the transaction being builded.
-func (builder *TXBuilder) AddInputs(inputs ...TransactionInput) {
-	builder.inputs = append(builder.inputs, inputs...)
+func (tb *TXBuilder) AddInputs(inputs ...TransactionInput) {
+	tb.tx.Body.Inputs = append(tb.tx.Body.Inputs, inputs...)
 }
 
 // AddOutputs adds outputs to the transaction being builded.
-func (builder *TXBuilder) AddOutputs(outputs ...TransactionOutput) {
-	builder.outputs = append(builder.outputs, outputs...)
+func (tb *TXBuilder) AddOutputs(outputs ...TransactionOutput) {
+	tb.tx.Body.Outputs = append(tb.tx.Body.Outputs, outputs...)
 }
 
 // SetTtl sets the transaction's time to live.
-func (builder *TXBuilder) SetTTL(ttl int) {
-	builder.ttl = ttl
+func (tb *TXBuilder) SetTTL(ttl uint64) {
+	tb.tx.Body.TTL = types.NewUint64(ttl)
 }
 
 // SetFee sets the transactions's fee.
-func (builder *TXBuilder) SetFee(fee types.Coin) {
-	builder.fee = fee
+func (tb *TXBuilder) SetFee(fee types.Coin) {
+	tb.tx.Body.Fee = fee
 }
 
-func (builder *TXBuilder) AddAuxiliaryData(data *AuxiliaryData) {
-	builder.auxiliaryData = data
+func (tb *TXBuilder) AddAuxiliaryData(data *AuxiliaryData) {
+	tb.tx.AuxiliaryData = data
 }
 
 // AddFee calculates the required fee for the transaction and adds
 // an aditional output for the change if there is any.
-// This assumes that the builder inputs and outputs are defined.
-func (builder *TXBuilder) AddFee(changeAddr types.Address) error {
+// This assumes that the tb inputs and outputs are defined.
+func (tb *TXBuilder) AddFee(changeAddr types.Address) error {
 	inputAmount := types.Coin(0)
-	for _, txIn := range builder.inputs {
+	for _, txIn := range tb.tx.Body.Inputs {
 		inputAmount += txIn.Amount
 	}
 
-	tx, err := builder.Build()
+	tx, err := tb.Build()
 	if err != nil {
 		return err
 	}
 
-	if err := tx.addFee(inputAmount, changeAddr, builder.protocol); err != nil {
+	if err := tx.addFee(inputAmount, changeAddr, tb.protocol); err != nil {
 		return err
 	}
-
-	builder.outputs = tx.Body.Outputs
-	builder.fee = tx.Body.Fee
 
 	return nil
 }
 
 // Sign adds signing keys to create signatures for the witness set.
-func (builder *TXBuilder) Sign(xsk ...crypto.XPrv) {
-	builder.pkeys = append(builder.pkeys, xsk...)
+func (tb *TXBuilder) Sign(xsk ...crypto.XPrv) {
+	tb.pkeys = append(tb.pkeys, xsk...)
 }
 
 // Build creates a new transaction using the inputs, outputs and keys provided.
-func (builder *TXBuilder) Build() (*Transaction, error) {
-	if len(builder.pkeys) == 0 {
+func (tb *TXBuilder) Build() (*Transaction, error) {
+	if len(tb.pkeys) == 0 {
 		return nil, errors.New("missing signing keys")
 	}
 
-	body, err := builder.buildBody()
+	if err := tb.buildBody(); err != nil {
+		return nil, err
+	}
+
+	txHash, err := tb.tx.Hash()
 	if err != nil {
 		return nil, err
 	}
 
-	witnessSet := WitnessSet{}
-	txHash, err := body.Hash()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, pkey := range builder.pkeys {
+	vkeyWitnsessSet := make([]VKeyWitness, len(tb.pkeys))
+	for i, pkey := range tb.pkeys {
 		publicKey := pkey.PublicKey()[:32]
 		signature := pkey.Sign(txHash[:])
 		witness := VKeyWitness{VKey: publicKey, Signature: signature}
-		witnessSet.VKeyWitnessSet = append(witnessSet.VKeyWitnessSet, witness)
+		vkeyWitnsessSet[i] = witness
 	}
+	tb.tx.WitnessSet.VKeyWitnessSet = vkeyWitnsessSet
 
-	tx := &Transaction{
-		Body:          body,
-		WitnessSet:    witnessSet,
-		AuxiliaryData: builder.auxiliaryData,
-		IsValid:       true,
-	}
-
-	return tx, nil
+	return tb.tx, nil
 }
 
-func (builder *TXBuilder) buildBody() (TransactionBody, error) {
-	inputs := make([]TransactionInput, len(builder.inputs))
-	for i, txInput := range builder.inputs {
-		inputs[i] = TransactionInput{
-			TxHash: txInput.TxHash,
-			Index:  txInput.Index,
-		}
-	}
-
-	body := TransactionBody{
-		Inputs:  inputs,
-		Outputs: builder.outputs,
-		Fee:     builder.fee,
-		TTL:     types.NewUint64(uint64(builder.ttl)),
-	}
-
-	if builder.auxiliaryData != nil {
-		auxBytes, err := cbor.Marshal(builder.auxiliaryData)
+func (tb *TXBuilder) buildBody() error {
+	if tb.tx.AuxiliaryData != nil {
+		auxBytes, err := cborEnc.Marshal(tb.tx.AuxiliaryData)
 		if err != nil {
-			return body, err
+			return err
 		}
 		auxHash := types.Hash32(blake2b.Sum256(auxBytes))
-		body.AuxiliaryDataHash = &auxHash
-
+		tb.tx.Body.AuxiliaryDataHash = &auxHash
 	}
-
-	return body, nil
+	return nil
 }

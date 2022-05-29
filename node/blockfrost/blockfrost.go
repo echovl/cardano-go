@@ -82,9 +82,9 @@ func (b *BlockfrostNode) Tip() (*node.NodeTip, error) {
 	}
 
 	return &node.NodeTip{
-		Block: block.Height,
-		Epoch: block.Epoch,
-		Slot:  block.Slot,
+		Block: uint64(block.Height),
+		Epoch: uint64(block.Epoch),
+		Slot:  uint64(block.Slot),
 	}, nil
 }
 
@@ -140,10 +140,10 @@ func (b *BlockfrostNode) ProtocolParams() (*tx.ProtocolParams, error) {
 	}
 
 	pparams := &tx.ProtocolParams{
-		MinUTXO:     types.Coin(minUTXO),
-		PoolDeposit: types.Coin(poolDeposit),
-		MinFeeA:     types.Coin(eparams.MinFeeA),
-		MinFeeB:     types.Coin(eparams.MinFeeB),
+		CoinsPerUTXOWord: types.Coin(minUTXO),
+		PoolDeposit:      types.Coin(poolDeposit),
+		MinFeeA:          types.Coin(eparams.MinFeeA),
+		MinFeeB:          types.Coin(eparams.MinFeeB),
 	}
 
 	return pparams, nil

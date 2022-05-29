@@ -22,10 +22,10 @@ type CardanoCli struct {
 }
 
 type tip struct {
-	Epoch int
+	Epoch uint64
 	Hash  string
-	Slot  int
-	Block int
+	Slot  uint64
+	Block uint64
 	Era   string
 }
 

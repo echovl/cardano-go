@@ -8,9 +8,9 @@ import (
 )
 
 var shelleyProtocol = &ProtocolParams{
-	MinUTXO: 1000000,
-	MinFeeA: 44,
-	MinFeeB: 155381,
+	CoinsPerUTXOWord: 34482,
+	MinFeeA:          44,
+	MinFeeB:          155381,
 }
 
 func TestTXBuilder_AddFee(t *testing.T) {
@@ -22,7 +22,7 @@ func TestTXBuilder_AddFee(t *testing.T) {
 		protocol *ProtocolParams
 		inputs   []TransactionInput
 		outputs  []TransactionOutput
-		ttl      int
+		ttl      uint64
 		fee      uint64
 		vkeys    map[string]crypto.XPub
 		pkeys    map[string]crypto.XPrv
@@ -61,13 +61,13 @@ func TestTXBuilder_AddFee(t *testing.T) {
 					{
 						TxHash: [32]byte{},
 						Index:  0,
-						Amount: shelleyProtocol.MinUTXO + 1162729,
+						Amount: minUTXO(nil, shelleyProtocol) + 165501,
 					},
 				},
 				outputs: []TransactionOutput{
 					{
 						Address: receiver,
-						Amount:  shelleyProtocol.MinUTXO,
+						Amount:  minUTXO(nil, shelleyProtocol),
 					},
 				},
 			},
@@ -80,13 +80,13 @@ func TestTXBuilder_AddFee(t *testing.T) {
 					{
 						TxHash: [32]byte{},
 						Index:  0,
-						Amount: 2*shelleyProtocol.MinUTXO - 1,
+						Amount: 2*minUTXO(nil, shelleyProtocol) - 1,
 					},
 				},
 				outputs: []TransactionOutput{
 					{
 						Address: receiver,
-						Amount:  shelleyProtocol.MinUTXO,
+						Amount:  minUTXO(nil, shelleyProtocol),
 					},
 				},
 			},
@@ -99,13 +99,13 @@ func TestTXBuilder_AddFee(t *testing.T) {
 					{
 						TxHash: [32]byte{},
 						Index:  0,
-						Amount: 2*shelleyProtocol.MinUTXO + 162685,
+						Amount: 2*minUTXO(nil, shelleyProtocol) + 162685,
 					},
 				},
 				outputs: []TransactionOutput{
 					{
 						Address: receiver,
-						Amount:  shelleyProtocol.MinUTXO,
+						Amount:  minUTXO(nil, shelleyProtocol),
 					},
 				},
 			},
@@ -118,13 +118,13 @@ func TestTXBuilder_AddFee(t *testing.T) {
 					{
 						TxHash: [32]byte{},
 						Index:  0,
-						Amount: 3 * shelleyProtocol.MinUTXO,
+						Amount: 3 * minUTXO(nil, shelleyProtocol),
 					},
 				},
 				outputs: []TransactionOutput{
 					{
 						Address: receiver,
-						Amount:  shelleyProtocol.MinUTXO,
+						Amount:  minUTXO(nil, shelleyProtocol),
 					},
 				},
 			},
@@ -138,13 +138,13 @@ func TestTXBuilder_AddFee(t *testing.T) {
 					{
 						TxHash: [32]byte{},
 						Index:  0,
-						Amount: 2*shelleyProtocol.MinUTXO + 164137,
+						Amount: 2*minUTXO(nil, shelleyProtocol) + 164137,
 					},
 				},
 				outputs: []TransactionOutput{
 					{
 						Address: receiver,
-						Amount:  shelleyProtocol.MinUTXO,
+						Amount:  minUTXO(nil, shelleyProtocol),
 					},
 				},
 				ttl: 100,
@@ -155,13 +155,11 @@ func TestTXBuilder_AddFee(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			key := crypto.NewXPrv([]byte("change address"), "foo")
 			change := types.NewEnterpriseAddress(key.PublicKey(), types.Testnet)
-			builder := &TXBuilder{
-				protocol: tt.fields.protocol,
-				inputs:   tt.fields.inputs,
-				outputs:  tt.fields.outputs,
-				ttl:      tt.fields.ttl,
-				pkeys:    []crypto.XPrv{key},
-			}
+			builder := NewTxBuilder(shelleyProtocol)
+			builder.AddInputs(tt.fields.inputs...)
+			builder.AddOutputs(tt.fields.outputs...)
+			builder.SetTTL(tt.fields.ttl)
+			builder.Sign(key)
 			if err := builder.AddFee(change); err != nil {
 				if tt.wantErr {
 					return
@@ -169,24 +167,24 @@ func TestTXBuilder_AddFee(t *testing.T) {
 				t.Fatalf("AddFee() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var totalIn types.Coin
-			for _, input := range builder.inputs {
+			for _, input := range builder.tx.Body.Inputs {
 				totalIn += input.Amount
 			}
 			var totalOut types.Coin
-			for _, output := range builder.outputs {
+			for _, output := range builder.tx.Body.Outputs {
 				totalOut += output.Amount
 			}
-			if got, want := builder.fee+totalOut, totalIn; got != want {
+			if got, want := builder.tx.Body.Fee+totalOut, totalIn; got != want {
 				t.Errorf("got %v want %v", got, want)
 			}
 			expectedReceiver := receiver
 			if tt.hasChange {
 				expectedReceiver = change
-				if got, want := builder.outputs[0].Amount, builder.protocol.MinUTXO; got < want {
+				if got, want := builder.tx.Body.Outputs[0].Amount, minUTXO(nil, builder.protocol); got < want {
 					t.Errorf("got %v want greater than %v", got, want)
 				}
 			}
-			firstOutputReceiver := builder.outputs[0].Address
+			firstOutputReceiver := builder.tx.Body.Outputs[0].Address
 			if got, want := firstOutputReceiver.String(), expectedReceiver.String(); got != want {
 				t.Errorf("got %v want %v", got, want)
 			}

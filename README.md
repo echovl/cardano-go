@@ -64,14 +64,24 @@ func main() {
 	builder.AddInputs(txInput)
 	builder.AddOutputs(txOutput)
 
-	// Add fee and change output
-	builder.AddFee(sender)
+    // Add metadata
+	builder.AddAuxiliaryData(&tx.AuxiliaryData{
+		Metadata: tx.Metadata{
+			0: map[string]interface{}{
+				"number": 32,
+				"string": "cardano-go",
+			},
+		},
+	})
 
 	// Set time to live
-	builder.SetTTL(tip.Slot + 100)
+	builder.SetTTL(tip.Slot + uint64(100))
 
 	// Sign transaction
 	builder.Sign(xprv)
+
+	// Add fee and change output if needed
+	builder.AddFee(sender)
 
 	// Build transaction
 	tx, err := builder.Build()

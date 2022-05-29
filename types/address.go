@@ -33,7 +33,8 @@ func (a Address) String() string {
 
 // MarshalCBOR implements cbor.Marshaler.
 func (a *Address) MarshalCBOR() ([]byte, error) {
-	return cbor.Marshal(a.B)
+	em, _ := cbor.CanonicalEncOptions().EncMode()
+	return em.Marshal(a.B)
 }
 
 // UnmarshalCBOR implements cbor.Unmarshaler.

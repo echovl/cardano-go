@@ -115,7 +115,7 @@ func (r *RationalNumber) MarshalCBOR() ([]byte, error) {
 		return nil, err
 	}
 
-	em, err := cbor.EncOptions{}.EncModeWithTags(tags)
+	em, err := cbor.CanonicalEncOptions().EncModeWithTags(tags)
 	if err != nil {
 		return nil, err
 	}
