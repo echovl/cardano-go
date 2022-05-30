@@ -2,6 +2,7 @@ package tx
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/echovl/cardano-go/crypto"
 	"github.com/echovl/cardano-go/types"
@@ -10,75 +11,143 @@ import (
 
 const maxUint64 uint64 = 1<<64 - 1
 
-type TXBuilder struct {
-	tx       *Transaction
+type TxBuilder struct {
+	tx       *Tx
 	protocol *ProtocolParams
 	pkeys    []crypto.XPrv
 }
 
 // NewTxBuilder returns a new instance of TxBuilder.
-func NewTxBuilder(protocol *ProtocolParams) *TXBuilder {
-	return &TXBuilder{
+func NewTxBuilder(protocol *ProtocolParams) *TxBuilder {
+	return &TxBuilder{
 		protocol: protocol,
 		pkeys:    []crypto.XPrv{},
-		tx: &Transaction{
+		tx: &Tx{
 			IsValid: true,
 		},
 	}
 }
 
 // AddInputs adds inputs to the transaction being builded.
-func (tb *TXBuilder) AddInputs(inputs ...TransactionInput) {
+func (tb *TxBuilder) AddInputs(inputs ...*TxInput) {
 	tb.tx.Body.Inputs = append(tb.tx.Body.Inputs, inputs...)
 }
 
 // AddOutputs adds outputs to the transaction being builded.
-func (tb *TXBuilder) AddOutputs(outputs ...TransactionOutput) {
+func (tb *TxBuilder) AddOutputs(outputs ...*TxOutput) {
 	tb.tx.Body.Outputs = append(tb.tx.Body.Outputs, outputs...)
 }
 
 // SetTtl sets the transaction's time to live.
-func (tb *TXBuilder) SetTTL(ttl uint64) {
+func (tb *TxBuilder) SetTTL(ttl uint64) {
 	tb.tx.Body.TTL = types.NewUint64(ttl)
 }
 
 // SetFee sets the transactions's fee.
-func (tb *TXBuilder) SetFee(fee types.Coin) {
+func (tb *TxBuilder) SetFee(fee types.Coin) {
 	tb.tx.Body.Fee = fee
 }
 
-func (tb *TXBuilder) AddAuxiliaryData(data *AuxiliaryData) {
+func (tb *TxBuilder) AddAuxiliaryData(data *AuxiliaryData) {
 	tb.tx.AuxiliaryData = data
 }
 
-// AddFee calculates the required fee for the transaction and adds
+// AddChangeIfNeeded calculates the required fee for the transaction and adds
 // an aditional output for the change if there is any.
 // This assumes that the tb inputs and outputs are defined.
-func (tb *TXBuilder) AddFee(changeAddr types.Address) error {
+func (tb *TxBuilder) AddChangeIfNeeded(changeAddr string) error {
+	addr, err := types.NewAddress(changeAddr)
+	if err != nil {
+		return err
+	}
 	inputAmount := types.Coin(0)
 	for _, txIn := range tb.tx.Body.Inputs {
 		inputAmount += txIn.Amount
 	}
 
-	tx, err := tb.Build()
-	if err != nil {
+	if _, err := tb.Build(); err != nil {
 		return err
 	}
 
-	if err := tx.addFee(inputAmount, changeAddr, tb.protocol); err != nil {
+	if err := tb.addFee(inputAmount, addr, tb.protocol); err != nil {
 		return err
 	}
 
 	return nil
 }
 
+func (builder *TxBuilder) addFee(inputAmount types.Coin, changeAddress types.Address, protocol *ProtocolParams) error {
+	// Set a temporary realistic fee in order to serialize a valid transaction
+	builder.tx.Body.Fee = 200000
+
+	minFee := builder.CalculateFee(protocol)
+
+	outputAmount := types.Coin(0)
+	for _, txOut := range builder.tx.Body.Outputs {
+		outputAmount += txOut.Amount
+	}
+	outputWithFeeAmount := outputAmount + minFee
+
+	if inputAmount < outputWithFeeAmount {
+		return fmt.Errorf(
+			"insuficient input in transaction, got %v want atleast %v",
+			inputAmount,
+			outputWithFeeAmount,
+		)
+	}
+
+	if inputAmount == outputWithFeeAmount {
+		builder.tx.Body.Fee = minFee
+		return nil
+	}
+
+	change := inputAmount - outputWithFeeAmount
+	changeOutput := &TxOutput{
+		Address: changeAddress,
+		Amount:  change,
+	}
+	changeMinUTXO := minUTXO(changeOutput, protocol)
+	if change < changeMinUTXO {
+		builder.tx.Body.Fee = minFee + change // burn change
+		return nil
+	}
+
+	builder.tx.Body.Outputs = append([]*TxOutput{changeOutput}, builder.tx.Body.Outputs...)
+
+	newMinFee := builder.CalculateFee(protocol)
+	if change+minFee-newMinFee < changeMinUTXO {
+		builder.tx.Body.Fee = minFee + change                 // burn change
+		builder.tx.Body.Outputs = builder.tx.Body.Outputs[1:] // remove change output
+		return nil
+	}
+
+	builder.tx.Body.Outputs[0].Amount = change + minFee - newMinFee
+	builder.tx.Body.Fee = newMinFee
+
+	return nil
+}
+
+// CalculateFee computes the minimal fee required for the transaction.
+func (builder *TxBuilder) CalculateFee(protocol *ProtocolParams) types.Coin {
+	txBytes := builder.tx.Bytes()
+	txLength := uint64(len(txBytes))
+	return protocol.MinFeeA*types.Coin(txLength) + protocol.MinFeeB
+}
+
 // Sign adds signing keys to create signatures for the witness set.
-func (tb *TXBuilder) Sign(xsk ...crypto.XPrv) {
-	tb.pkeys = append(tb.pkeys, xsk...)
+func (tb *TxBuilder) Sign(keys ...string) error {
+	for _, key := range keys {
+		xprv, err := crypto.NewXPrvFromBech32(key)
+		if err != nil {
+			return err
+		}
+		tb.pkeys = append(tb.pkeys, xprv)
+	}
+	return nil
 }
 
 // Build creates a new transaction using the inputs, outputs and keys provided.
-func (tb *TXBuilder) Build() (*Transaction, error) {
+func (tb *TxBuilder) Build() (*Tx, error) {
 	if len(tb.pkeys) == 0 {
 		return nil, errors.New("missing signing keys")
 	}
@@ -104,7 +173,7 @@ func (tb *TXBuilder) Build() (*Transaction, error) {
 	return tb.tx, nil
 }
 
-func (tb *TXBuilder) buildBody() error {
+func (tb *TxBuilder) buildBody() error {
 	if tb.tx.AuxiliaryData != nil {
 		auxBytes, err := cborEnc.Marshal(tb.tx.AuxiliaryData)
 		if err != nil {

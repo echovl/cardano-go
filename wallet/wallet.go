@@ -44,7 +44,7 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 	}
 
 	// Find utxos that cover the amount to transfer
-	pickedUtxos := []tx.UTXO{}
+	pickedUtxos := []tx.UTxO{}
 	utxos, err := w.findUtxos()
 	pickedUtxosAmount := types.Coin(0)
 	for _, utxo := range utxos {
@@ -78,9 +78,9 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 	}
 
 	for _, utxo := range pickedUtxos {
-		builder.AddInputs(tx.TransactionInput{TxHash: utxo.TxHash, Index: utxo.Index, Amount: utxo.Amount})
+		builder.AddInputs(&tx.TxInput{TxHash: utxo.TxHash, Index: utxo.Index, Amount: utxo.Amount})
 	}
-	builder.AddOutputs(tx.TransactionOutput{Address: receiver, Amount: amount})
+	builder.AddOutputs(&tx.TxOutput{Address: receiver, Amount: amount})
 
 	tip, err := w.node.Tip()
 	if err != nil {
@@ -88,10 +88,10 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 	}
 	builder.SetTTL(tip.Slot + 1200)
 	for _, key := range keys {
-		builder.Sign(key)
+		builder.Sign(key.String())
 	}
 	changeAddress := pickedUtxos[0].Spender
-	if err = builder.AddFee(changeAddress); err != nil {
+	if err = builder.AddChangeIfNeeded(changeAddress.String()); err != nil {
 		return nil, err
 	}
 
@@ -116,11 +116,11 @@ func (w *Wallet) Balance() (types.Coin, error) {
 	return balance, nil
 }
 
-func (w *Wallet) findUtxos() ([]tx.UTXO, error) {
+func (w *Wallet) findUtxos() ([]tx.UTxO, error) {
 	addrs := w.Addresses()
-	walletUtxos := []tx.UTXO{}
+	walletUtxos := []tx.UTxO{}
 	for _, addr := range addrs {
-		addrUtxos, err := w.node.UTXOs(addr)
+		addrUtxos, err := w.node.UTxOs(addr)
 		if err != nil {
 			return nil, err
 		}

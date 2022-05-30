@@ -10,92 +10,137 @@ $ go get github.com/echovl/cardano-node/node
 $ go get github.com/echovl/cardano-node/tx
 ```
 
-## Quickstart
+## Usage
+
+### Get protocol parameters
 
 ```go
+package main
+
 import (
 	"fmt"
 
-	"github.com/echovl/cardano-go/crypto"
+	"github.com/echovl/cardano-go/node/blockfrost"
+	"github.com/echovl/cardano-go/types"
+)
+
+func main() {
+	node := blockfrost.NewNode(types.Mainnet, "project-id")
+
+	pparams, err := node.ProtocolParams()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(pparams)
+}
+```
+
+### Create simple transaction
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/echovl/cardano-go/tx"
+	"github.com/echovl/cardano-go/types"
+)
+
+func main() {
+	txBuilder := tx.NewTxBuilder(&tx.ProtocolParams{})
+
+	txInput, err := tx.NewTxInput("txhash", 0, types.Coin(2000000))
+	if err != nil {
+		panic(err)
+	}
+	txOut, err := tx.NewTxOutput("addr", types.Coin(1300000))
+	if err != nil {
+		panic(err)
+	}
+
+	txBuilder.AddInputs(txInput)
+	txBuilder.AddOutputs(txOut)
+	txBuilder.SetTTL(100000)
+	txBuilder.SetFee(types.Coin(160000))
+	txBuilder.Sign("xprv")
+
+	tx, err := txBuilder.Build()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(tx.Hex())
+}
+```
+
+### Set fee and change output
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/echovl/cardano-go/tx"
+)
+
+func main() {
+	txBuilder := tx.NewTxBuilder(&tx.ProtocolParams{})
+
+	// Transaction should be signed at this point
+	err := txBuilder.AddChangeIfNeeded("addr")
+	if err != nil {
+		panic(err)
+	}
+}
+```
+
+### Submit transaction
+
+```go
+package main
+
+import (
+	"fmt"
+
 	"github.com/echovl/cardano-go/node/blockfrost"
 	"github.com/echovl/cardano-go/tx"
 	"github.com/echovl/cardano-go/types"
 )
 
 func main() {
-	// Node using blockfrost
 	node := blockfrost.NewNode(types.Mainnet, "project-id")
 
-	// New transaction builder
-	builder := tx.NewTxBuilder(types.ProtocolParams{
-		MinimumUtxoValue: 1000000,
-		MinFeeA:          44,
-		MinFeeB:          155381,
-	})
-
-	// Fetch node tip information
-	tip, err := node.Tip()
-	if err != nil {
-		panic(err)
-	}
-
-	xprv, err := crypto.NewXPrvFromBech32("xpriv")
-	if err != nil {
-		panic(err)
-	}
-	txInputHash, err := types.NewHash32("tx-hash")
-	if err != nil {
-		panic(err)
-	}
-	sender, err := types.NewAddress("addr")
-	if err != nil {
-		panic(err)
-	}
-	receiver, err := types.NewAddress("addr")
-	if err != nil {
-		panic(err)
-	}
-
-	// Build inputs and ouputs
-	txInput := tx.TransactionInput{TxHash: txInputHash, Index: 0, Amount: types.Coin(14838997)}
-	txOutput := tx.TransactionOutput{Address: receiver, Amount: 1000000}
-
-	// Add inputs and outputs
-	builder.AddInputs(txInput)
-	builder.AddOutputs(txOutput)
-
-    // Add metadata
-	builder.AddAuxiliaryData(&tx.AuxiliaryData{
-		Metadata: tx.Metadata{
-			0: map[string]interface{}{
-				"number": 32,
-				"string": "cardano-go",
-			},
-		},
-	})
-
-	// Set time to live
-	builder.SetTTL(tip.Slot + uint64(100))
-
-	// Sign transaction
-	builder.Sign(xprv)
-
-	// Add fee and change output if needed
-	builder.AddFee(sender)
-
-	// Build transaction
-	tx, err := builder.Build()
-	if err != nil {
-		panic(err)
-	}
-
-	// Submit transaction to node
-	txHash, err := node.SubmitTx(tx)
+	txHash, err := node.SubmitTx(&tx.Tx{})
 	if err != nil {
 		panic(err)
 	}
 
 	fmt.Println(txHash)
+}
+```
+
+### Add transaction metadata
+
+```go
+package main
+
+import (
+	"github.com/echovl/cardano-go/tx"
+)
+
+func main() {
+	txBuilder := tx.NewTxBuilder(&tx.ProtocolParams{})
+
+	txBuilder.AddAuxiliaryData(&tx.AuxiliaryData{
+		Metadata: tx.Metadata{
+			0: map[string]interface{}{
+				"hello": "cardano-go",
+			},
+		},
+	})
 }
 ```
 

@@ -59,13 +59,13 @@ func (c *CardanoCli) runCommand(args ...string) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func (c *CardanoCli) UTXOs(addr types.Address) ([]tx.UTXO, error) {
+func (c *CardanoCli) UTxOs(addr types.Address) ([]tx.UTxO, error) {
 	out, err := c.runCommand("query", "utxo", "--address", addr.String())
 	if err != nil {
 		return nil, err
 	}
 
-	utxos := []tx.UTXO{}
+	utxos := []tx.UTxO{}
 	lines := strings.Split(string(out), "\n")
 
 	if len(lines) < 3 {
@@ -90,7 +90,7 @@ func (c *CardanoCli) UTXOs(addr types.Address) ([]tx.UTXO, error) {
 			return nil, err
 		}
 
-		utxos = append(utxos, tx.UTXO{
+		utxos = append(utxos, tx.UTxO{
 			Spender: addr,
 			TxHash:  txHash,
 			Index:   uint64(index),
@@ -119,10 +119,10 @@ func (c *CardanoCli) Tip() (*node.NodeTip, error) {
 	}, nil
 }
 
-func (c *CardanoCli) SubmitTx(tx *tx.Transaction) (*types.Hash32, error) {
+func (c *CardanoCli) SubmitTx(tx *tx.Tx) (*types.Hash32, error) {
 	txOut := cliTx{
 		Type:    "Witnessed Tx AlonzoEra",
-		CborHex: tx.CborHex(),
+		CborHex: tx.Hex(),
 	}
 
 	txFile, err := ioutil.TempFile(os.TempDir(), "tx_")

@@ -18,10 +18,10 @@ func TestTXBuilder_AddFee(t *testing.T) {
 	receiver := types.NewEnterpriseAddress(key.PublicKey(), types.Testnet)
 
 	type fields struct {
-		tx       Transaction
+		tx       Tx
 		protocol *ProtocolParams
-		inputs   []TransactionInput
-		outputs  []TransactionOutput
+		inputs   []*TxInput
+		outputs  []*TxOutput
 		ttl      uint64
 		fee      uint64
 		vkeys    map[string]crypto.XPub
@@ -37,14 +37,14 @@ func TestTXBuilder_AddFee(t *testing.T) {
 			name: "input < output + fee",
 			fields: fields{
 				protocol: shelleyProtocol,
-				inputs: []TransactionInput{
+				inputs: []*TxInput{
 					{
 						TxHash: [32]byte{},
 						Index:  uint64(0),
 						Amount: 200000,
 					},
 				},
-				outputs: []TransactionOutput{
+				outputs: []*TxOutput{
 					{
 						Address: receiver,
 						Amount:  200000,
@@ -57,14 +57,14 @@ func TestTXBuilder_AddFee(t *testing.T) {
 			name: "input == output + fee",
 			fields: fields{
 				protocol: shelleyProtocol,
-				inputs: []TransactionInput{
+				inputs: []*TxInput{
 					{
 						TxHash: [32]byte{},
 						Index:  0,
 						Amount: minUTXO(nil, shelleyProtocol) + 165501,
 					},
 				},
-				outputs: []TransactionOutput{
+				outputs: []*TxOutput{
 					{
 						Address: receiver,
 						Amount:  minUTXO(nil, shelleyProtocol),
@@ -76,14 +76,14 @@ func TestTXBuilder_AddFee(t *testing.T) {
 			name: "input > output + fee AND change < min utxo value -> burned",
 			fields: fields{
 				protocol: shelleyProtocol,
-				inputs: []TransactionInput{
+				inputs: []*TxInput{
 					{
 						TxHash: [32]byte{},
 						Index:  0,
 						Amount: 2*minUTXO(nil, shelleyProtocol) - 1,
 					},
 				},
-				outputs: []TransactionOutput{
+				outputs: []*TxOutput{
 					{
 						Address: receiver,
 						Amount:  minUTXO(nil, shelleyProtocol),
@@ -95,14 +95,14 @@ func TestTXBuilder_AddFee(t *testing.T) {
 			name: "input > output + fee AND change > min utxo BUT change - change output fee < min utxo -> burned",
 			fields: fields{
 				protocol: shelleyProtocol,
-				inputs: []TransactionInput{
+				inputs: []*TxInput{
 					{
 						TxHash: [32]byte{},
 						Index:  0,
 						Amount: 2*minUTXO(nil, shelleyProtocol) + 162685,
 					},
 				},
-				outputs: []TransactionOutput{
+				outputs: []*TxOutput{
 					{
 						Address: receiver,
 						Amount:  minUTXO(nil, shelleyProtocol),
@@ -114,14 +114,14 @@ func TestTXBuilder_AddFee(t *testing.T) {
 			name: "input > output + fee AND change > min utxo AND change - change output fee > min utxo -> sent",
 			fields: fields{
 				protocol: shelleyProtocol,
-				inputs: []TransactionInput{
+				inputs: []*TxInput{
 					{
 						TxHash: [32]byte{},
 						Index:  0,
 						Amount: 3 * minUTXO(nil, shelleyProtocol),
 					},
 				},
-				outputs: []TransactionOutput{
+				outputs: []*TxOutput{
 					{
 						Address: receiver,
 						Amount:  minUTXO(nil, shelleyProtocol),
@@ -134,14 +134,14 @@ func TestTXBuilder_AddFee(t *testing.T) {
 			name: "take in account ttl -> burned",
 			fields: fields{
 				protocol: shelleyProtocol,
-				inputs: []TransactionInput{
+				inputs: []*TxInput{
 					{
 						TxHash: [32]byte{},
 						Index:  0,
 						Amount: 2*minUTXO(nil, shelleyProtocol) + 164137,
 					},
 				},
-				outputs: []TransactionOutput{
+				outputs: []*TxOutput{
 					{
 						Address: receiver,
 						Amount:  minUTXO(nil, shelleyProtocol),
@@ -151,6 +151,7 @@ func TestTXBuilder_AddFee(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			key := crypto.NewXPrv([]byte("change address"), "foo")
@@ -159,8 +160,8 @@ func TestTXBuilder_AddFee(t *testing.T) {
 			builder.AddInputs(tt.fields.inputs...)
 			builder.AddOutputs(tt.fields.outputs...)
 			builder.SetTTL(tt.fields.ttl)
-			builder.Sign(key)
-			if err := builder.AddFee(change); err != nil {
+			builder.Sign(key.String())
+			if err := builder.AddChangeIfNeeded(change.String()); err != nil {
 				if tt.wantErr {
 					return
 				}

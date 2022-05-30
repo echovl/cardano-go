@@ -33,19 +33,19 @@ func NewNode(network types.Network, projectID string) node.Node {
 	}
 }
 
-func (b *BlockfrostNode) UTXOs(addr types.Address) ([]tx.UTXO, error) {
+func (b *BlockfrostNode) UTxOs(addr types.Address) ([]tx.UTxO, error) {
 	butxos, err := b.client.AddressUTXOs(context.Background(), addr.String(), blockfrost.APIQueryParams{})
 	if err != nil {
 		// Addresses without UTXOs return NotFound error
 		if err, ok := err.(*blockfrost.APIError); ok {
 			if _, ok := err.Response.(blockfrost.NotFound); ok {
-				return []tx.UTXO{}, nil
+				return []tx.UTxO{}, nil
 			}
 		}
 		return nil, err
 	}
 
-	utxos := make([]tx.UTXO, len(butxos))
+	utxos := make([]tx.UTxO, len(butxos))
 
 	for i, butxo := range butxos {
 		txHash, err := types.NewHash32(butxo.TxHash)
@@ -64,7 +64,7 @@ func (b *BlockfrostNode) UTXOs(addr types.Address) ([]tx.UTXO, error) {
 			}
 		}
 
-		utxos[i] = tx.UTXO{
+		utxos[i] = tx.UTxO{
 			Spender: addr,
 			TxHash:  txHash,
 			Amount:  types.Coin(amount),
@@ -88,7 +88,7 @@ func (b *BlockfrostNode) Tip() (*node.NodeTip, error) {
 	}, nil
 }
 
-func (b *BlockfrostNode) SubmitTx(tx *tx.Transaction) (*types.Hash32, error) {
+func (b *BlockfrostNode) SubmitTx(tx *tx.Tx) (*types.Hash32, error) {
 	url := fmt.Sprintf("https://cardano-%s.blockfrost.io/api/v0/tx/submit", b.network.String())
 	txBytes := tx.Bytes()
 

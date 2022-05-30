@@ -12,23 +12,23 @@ import (
 
 var utxoEntrySizeWithoutVal = 27
 
-type UTXO struct {
+type UTxO struct {
 	TxHash  types.Hash32
 	Spender types.Address
 	Amount  types.Coin
 	Index   uint64
 }
 
-type Transaction struct {
+type Tx struct {
 	_             struct{} `cbor:",toarray"`
-	Body          TransactionBody
+	Body          TxBody
 	WitnessSet    WitnessSet
 	IsValid       bool
 	AuxiliaryData *AuxiliaryData // or null
 }
 
 // Bytes returns the CBOR encoding of the transaction as bytes.
-func (tx *Transaction) Bytes() []byte {
+func (tx *Tx) Bytes() []byte {
 	bytes, err := cborEnc.Marshal(tx)
 	if err != nil {
 		panic(err)
@@ -36,21 +36,14 @@ func (tx *Transaction) Bytes() []byte {
 	return bytes
 }
 
-// CborHex returns the CBOR encoding of the transaction as string.
-func (tx *Transaction) CborHex() string {
+// Hex returns the CBOR encoding of the transaction as hex.
+func (tx Tx) Hex() string {
 	return hex.EncodeToString(tx.Bytes())
 }
 
 // Hash returns the transaction body hash using blake2b.
-func (tx *Transaction) Hash() (types.Hash32, error) {
+func (tx *Tx) Hash() (types.Hash32, error) {
 	return tx.Body.Hash()
-}
-
-// CalculateFee computes the minimal fee required for a transaction.
-func CalculateFee(tx *Transaction, protocol *ProtocolParams) types.Coin {
-	txBytes := tx.Bytes()
-	txLength := uint64(len(txBytes))
-	return protocol.MinFeeA*types.Coin(txLength) + protocol.MinFeeB
 }
 
 type WitnessSet struct {
@@ -64,23 +57,43 @@ type VKeyWitness struct {
 	Signature []byte   // ed25519 signature
 }
 
-type TransactionInput struct {
+type TxInput struct {
 	_      struct{} `cbor:",toarray"`
 	TxHash types.Hash32
 	Index  uint64
 	Amount types.Coin `cbor:"-"`
 }
 
-type TransactionOutput struct {
+// NewTxInput creates a new instance of TxInput
+func NewTxInput(txHash string, index uint, amount types.Coin) (*TxInput, error) {
+	txHash32, err := types.NewHash32(txHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TxInput{TxHash: txHash32, Index: uint64(index), Amount: amount}, nil
+}
+
+type TxOutput struct {
 	_       struct{} `cbor:",toarray"`
 	Address types.Address
 	Amount  types.Coin
 }
 
-type TransactionBody struct {
-	Inputs  []TransactionInput  `cbor:"0,keyasint"`
-	Outputs []TransactionOutput `cbor:"1,keyasint"`
-	Fee     types.Coin          `cbor:"2,keyasint"`
+// NewTxOutput creates a new instance of TxOutput
+func NewTxOutput(addr string, amount types.Coin) (*TxOutput, error) {
+	addrOut, err := types.NewAddress(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TxOutput{Address: addrOut, Amount: amount}, nil
+}
+
+type TxBody struct {
+	Inputs  []*TxInput  `cbor:"0,keyasint"`
+	Outputs []*TxOutput `cbor:"1,keyasint"`
+	Fee     types.Coin  `cbor:"2,keyasint"`
 
 	// Optionals
 	TTL                   types.Uint64        `cbor:"3,keyasint,omitempty"`
@@ -91,13 +104,13 @@ type TransactionBody struct {
 	ValidityIntervalStart types.Uint64        `cbor:"8,keyasint,omitempty"`
 	Mint                  interface{}         `cbor:"9,keyasint,omitempty"` // unsupported
 	ScriptDataHash        *types.Hash32       `cbor:"10,keyasint,omitempty"`
-	Collateral            []TransactionInput  `cbor:"11,keyasint,omitempty"`
+	Collateral            []TxInput           `cbor:"11,keyasint,omitempty"`
 	RequiredSigners       []types.AddrKeyHash `cbor:"12,keyasint,omitempty"`
 	NetworkID             types.Uint64        `cbor:"13,keyasint,omitempty"`
 }
 
 // Hash returns the transaction body hash using blake2b.
-func (body *TransactionBody) Hash() (types.Hash32, error) {
+func (body *TxBody) Hash() (types.Hash32, error) {
 	bytes, err := cborEnc.Marshal(body)
 	if err != nil {
 		return types.Hash32{}, err
@@ -106,7 +119,7 @@ func (body *TransactionBody) Hash() (types.Hash32, error) {
 }
 
 // AddSignatures sets the transaction's witness set.
-func (body *TransactionBody) AddSignatures(publicKeys [][]byte, signatures [][]byte) (*Transaction, error) {
+func (body *TxBody) AddSignatures(publicKeys [][]byte, signatures [][]byte) (*Tx, error) {
 	if len(publicKeys) != len(signatures) {
 		return nil, fmt.Errorf("missmatch length of publicKeys and signatures")
 	}
@@ -124,7 +137,7 @@ func (body *TransactionBody) AddSignatures(publicKeys [][]byte, signatures [][]b
 		witnessSet.VKeyWitnessSet = append(witnessSet.VKeyWitnessSet, witness)
 	}
 
-	return &Transaction{
+	return &Tx{
 		Body:          *body,
 		WitnessSet:    witnessSet,
 		AuxiliaryData: nil,
@@ -132,58 +145,7 @@ func (body *TransactionBody) AddSignatures(publicKeys [][]byte, signatures [][]b
 	}, nil
 }
 
-func (t *Transaction) addFee(inputAmount types.Coin, changeAddress types.Address, protocol *ProtocolParams) error {
-	// Set a temporary realistic fee in order to serialize a valid transaction
-	t.Body.Fee = 200000
-
-	minFee := CalculateFee(t, protocol)
-
-	outputAmount := types.Coin(0)
-	for _, txOut := range t.Body.Outputs {
-		outputAmount += txOut.Amount
-	}
-	outputWithFeeAmount := outputAmount + minFee
-
-	if inputAmount < outputWithFeeAmount {
-		return fmt.Errorf(
-			"insuficient input in transaction, got %v want atleast %v",
-			inputAmount,
-			outputWithFeeAmount,
-		)
-	}
-
-	if inputAmount == outputWithFeeAmount {
-		t.Body.Fee = minFee
-		return nil
-	}
-
-	change := inputAmount - outputWithFeeAmount
-	changeOutput := TransactionOutput{
-		Address: changeAddress,
-		Amount:  change,
-	}
-	changeMinUTXO := minUTXO(&changeOutput, protocol)
-	if change < changeMinUTXO {
-		t.Body.Fee = minFee + change // burn change
-		return nil
-	}
-
-	t.Body.Outputs = append([]TransactionOutput{changeOutput}, t.Body.Outputs...)
-
-	newMinFee := CalculateFee(t, protocol)
-	if change+minFee-newMinFee < changeMinUTXO {
-		t.Body.Fee = minFee + change        // burn change
-		t.Body.Outputs = t.Body.Outputs[1:] // remove change output
-		return nil
-	}
-
-	t.Body.Outputs[0].Amount = change + minFee - newMinFee
-	t.Body.Fee = newMinFee
-
-	return nil
-}
-
-func minUTXO(txOut *TransactionOutput, protocol *ProtocolParams) types.Coin {
+func minUTXO(txOut *TxOutput, protocol *ProtocolParams) types.Coin {
 	return types.Coin(utxoEntrySizeWithoutVal+1) * protocol.CoinsPerUTXOWord
 }
 

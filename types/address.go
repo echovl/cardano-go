@@ -22,12 +22,17 @@ func NewAddress(addr string) (Address, error) {
 	return Address{B: bytes, Hrp: hrp}, nil
 }
 
+// String returns the Address encoded as string
 func (a Address) String() string {
+	return a.Bech32()
+}
+
+// String returns the Address encoded as bech32
+func (a Address) Bech32() string {
 	addr, err := bech32.EncodeFromBase256(a.Hrp, a.B)
 	if err != nil {
 		panic(err)
 	}
-
 	return addr
 }
 

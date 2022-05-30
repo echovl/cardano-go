@@ -13,14 +13,14 @@ const (
 // A backend/node is used to interact with the Cardano Blockchain,
 // sending transactions and fetching state.
 type Node interface {
-	// UTXOs returns a list of unspent transaction outputs for a given address
-	UTXOs(types.Address) ([]tx.UTXO, error)
+	// UTxOs returns a list of unspent transaction outputs for a given address
+	UTxOs(types.Address) ([]tx.UTxO, error)
 
 	// Tip returns the node's current tip
 	Tip() (*NodeTip, error)
 
 	// SubmitTx submits a transaction to the node using cbor encoding
-	SubmitTx(*tx.Transaction) (*types.Hash32, error)
+	SubmitTx(*tx.Tx) (*types.Hash32, error)
 
 	// ProtocolParams returns the Node's Protocol Parameters
 	ProtocolParams() (*tx.ProtocolParams, error)
