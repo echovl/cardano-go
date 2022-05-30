@@ -9,8 +9,8 @@ import (
 	"github.com/echovl/ed25519"
 )
 
-// DeriveXPrv derives a children XPrv using BIP32-Ed25519
-func (xsk XPrv) DeriveXPrv(index uint32) XPrv {
+// Derive derives a children XPrv using BIP32-Ed25519
+func (xsk XPrvKey) Derive(index uint32) XPrvKey {
 	xpriv := xsk[:64]
 	chainCode := xsk[64:]
 	zmac := hmac.New(sha512.New, chainCode)
@@ -51,8 +51,8 @@ func (xsk XPrv) DeriveXPrv(index uint32) XPrv {
 	return cxsk
 }
 
-// DeriveXPub derives a children XPub using BIP32-Ed25519
-func (xvk XPub) DeriveXPub(index uint32) (XPub, error) {
+// Derive derives a children XPub using BIP32-Ed25519
+func (xvk XPubKey) Derive(index uint32) (XPubKey, error) {
 	pub := []byte(xvk[:32])
 	chainCode := []byte(xvk[32:64])
 	zmac := hmac.New(sha512.New, chainCode)
@@ -60,7 +60,7 @@ func (xvk XPub) DeriveXPub(index uint32) (XPub, error) {
 
 	sindex := serializeIndex(index)
 	if isHardenedDerivation(index) {
-		return XPub{}, fmt.Errorf("expected soft derivation")
+		return XPubKey{}, fmt.Errorf("expected soft derivation")
 	}
 
 	zmac.Write([]byte{0x2})
@@ -103,7 +103,7 @@ func (xvk XPub) DeriveXPub(index uint32) (XPub, error) {
 	copy(cxvk[:32], c.Bytes())
 	copy(cxvk[32:64], cc)
 
-	return XPub(cxvk), nil
+	return XPubKey(cxvk), nil
 }
 
 func serializeIndex(index uint32) []byte {

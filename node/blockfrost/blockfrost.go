@@ -34,7 +34,7 @@ func NewNode(network types.Network, projectID string) node.Node {
 }
 
 func (b *BlockfrostNode) UTxOs(addr types.Address) ([]tx.UTxO, error) {
-	butxos, err := b.client.AddressUTXOs(context.Background(), addr.String(), blockfrost.APIQueryParams{})
+	butxos, err := b.client.AddressUTXOs(context.Background(), addr.Bech32(), blockfrost.APIQueryParams{})
 	if err != nil {
 		// Addresses without UTXOs return NotFound error
 		if err, ok := err.(*blockfrost.APIError); ok {

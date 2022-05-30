@@ -1,6 +1,7 @@
 package tx
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/echovl/cardano-go/crypto"
@@ -14,8 +15,15 @@ var shelleyProtocol = &ProtocolParams{
 }
 
 func TestTXBuilder_AddFee(t *testing.T) {
-	key := crypto.NewXPrv([]byte("receiver address"), "foo")
-	receiver := types.NewEnterpriseAddress(key.PublicKey(), types.Testnet)
+	key := crypto.NewXPrvKeyFromEntropy([]byte("receiver address"), "foo")
+	payment, err := types.NewAddrKeyCredential(key.PubKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	receiver, err := types.NewEnterpriseAddress(types.Testnet, payment)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	type fields struct {
 		tx       Tx
@@ -24,8 +32,8 @@ func TestTXBuilder_AddFee(t *testing.T) {
 		outputs  []*TxOutput
 		ttl      uint64
 		fee      uint64
-		vkeys    map[string]crypto.XPub
-		pkeys    map[string]crypto.XPrv
+		vkeys    map[string]crypto.XPubKey
+		pkeys    map[string]crypto.XPrvKey
 	}
 	tests := []struct {
 		name      string
@@ -39,7 +47,7 @@ func TestTXBuilder_AddFee(t *testing.T) {
 				protocol: shelleyProtocol,
 				inputs: []*TxInput{
 					{
-						TxHash: [32]byte{},
+						TxHash: make([]byte, 32),
 						Index:  uint64(0),
 						Amount: 200000,
 					},
@@ -59,7 +67,7 @@ func TestTXBuilder_AddFee(t *testing.T) {
 				protocol: shelleyProtocol,
 				inputs: []*TxInput{
 					{
-						TxHash: [32]byte{},
+						TxHash: make([]byte, 32),
 						Index:  0,
 						Amount: minUTXO(nil, shelleyProtocol) + 165501,
 					},
@@ -78,7 +86,7 @@ func TestTXBuilder_AddFee(t *testing.T) {
 				protocol: shelleyProtocol,
 				inputs: []*TxInput{
 					{
-						TxHash: [32]byte{},
+						TxHash: make([]byte, 32),
 						Index:  0,
 						Amount: 2*minUTXO(nil, shelleyProtocol) - 1,
 					},
@@ -97,7 +105,7 @@ func TestTXBuilder_AddFee(t *testing.T) {
 				protocol: shelleyProtocol,
 				inputs: []*TxInput{
 					{
-						TxHash: [32]byte{},
+						TxHash: make([]byte, 32),
 						Index:  0,
 						Amount: 2*minUTXO(nil, shelleyProtocol) + 162685,
 					},
@@ -116,7 +124,7 @@ func TestTXBuilder_AddFee(t *testing.T) {
 				protocol: shelleyProtocol,
 				inputs: []*TxInput{
 					{
-						TxHash: [32]byte{},
+						TxHash: make([]byte, 32),
 						Index:  0,
 						Amount: 3 * minUTXO(nil, shelleyProtocol),
 					},
@@ -136,7 +144,7 @@ func TestTXBuilder_AddFee(t *testing.T) {
 				protocol: shelleyProtocol,
 				inputs: []*TxInput{
 					{
-						TxHash: [32]byte{},
+						TxHash: make([]byte, 32),
 						Index:  0,
 						Amount: 2*minUTXO(nil, shelleyProtocol) + 164137,
 					},
@@ -154,14 +162,21 @@ func TestTXBuilder_AddFee(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			key := crypto.NewXPrv([]byte("change address"), "foo")
-			change := types.NewEnterpriseAddress(key.PublicKey(), types.Testnet)
+			key := crypto.NewXPrvKeyFromEntropy([]byte("change address"), "foo")
+			payment, err := types.NewAddrKeyCredential(key.PubKey())
+			if err != nil {
+				t.Fatal(err)
+			}
+			change, err := types.NewEnterpriseAddress(types.Testnet, payment)
+			if err != nil {
+				t.Fatal(err)
+			}
 			builder := NewTxBuilder(shelleyProtocol)
 			builder.AddInputs(tt.fields.inputs...)
 			builder.AddOutputs(tt.fields.outputs...)
 			builder.SetTTL(tt.fields.ttl)
-			builder.Sign(key.String())
-			if err := builder.AddChangeIfNeeded(change.String()); err != nil {
+			builder.Sign(key.Bech32("addr_xsk"))
+			if err := builder.AddChangeIfNeeded(change.Bech32()); err != nil {
 				if tt.wantErr {
 					return
 				}
@@ -186,7 +201,10 @@ func TestTXBuilder_AddFee(t *testing.T) {
 				}
 			}
 			firstOutputReceiver := builder.tx.Body.Outputs[0].Address
-			if got, want := firstOutputReceiver.String(), expectedReceiver.String(); got != want {
+			if got, want := firstOutputReceiver.Bech32(), expectedReceiver.Bech32(); got != want {
+				for _, out := range builder.tx.Body.Outputs {
+					fmt.Printf("%+v", out)
+				}
 				t.Errorf("got %v want %v", got, want)
 			}
 		})

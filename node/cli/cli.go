@@ -60,7 +60,7 @@ func (c *CardanoCli) runCommand(args ...string) ([]byte, error) {
 }
 
 func (c *CardanoCli) UTxOs(addr types.Address) ([]tx.UTxO, error) {
-	out, err := c.runCommand("query", "utxo", "--address", addr.String())
+	out, err := c.runCommand("query", "utxo", "--address", addr.Bech32())
 	if err != nil {
 		return nil, err
 	}

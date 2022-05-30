@@ -25,9 +25,9 @@ const (
 type Wallet struct {
 	ID      string
 	Name    string
-	skeys   []crypto.XPrv
-	pkeys   []crypto.XPub
-	rootKey crypto.XPrv
+	skeys   []crypto.XPrvKey
+	pkeys   []crypto.XPubKey
+	rootKey crypto.XPrvKey
 	node    node.Node
 	network types.Network
 }
@@ -62,12 +62,18 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 
 	builder := tx.NewTxBuilder(pparams)
 
-	keys := make(map[int]crypto.XPrv)
+	keys := make(map[int]crypto.XPrvKey)
 	for i, utxo := range pickedUtxos {
 		for _, key := range w.skeys {
-			vkey := key.PublicKey()
-			addr := types.NewEnterpriseAddress(vkey, w.network)
-			if addr.String() == utxo.Spender.String() {
+			payment, err := types.NewAddrKeyCredential(key.PubKey())
+			if err != nil {
+				return nil, err
+			}
+			addr, err := types.NewEnterpriseAddress(w.network, payment)
+			if err != nil {
+				return nil, err
+			}
+			if addr.Bech32() == utxo.Spender.Bech32() {
 				keys[i] = key
 			}
 		}
@@ -88,10 +94,10 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 	}
 	builder.SetTTL(tip.Slot + 1200)
 	for _, key := range keys {
-		builder.Sign(key.String())
+		builder.Sign(key.Bech32("addr_xsk"))
 	}
 	changeAddress := pickedUtxos[0].Spender
-	if err = builder.AddChangeIfNeeded(changeAddress.String()); err != nil {
+	if err = builder.AddChangeIfNeeded(changeAddress.Bech32()); err != nil {
 		return nil, err
 	}
 
@@ -117,7 +123,10 @@ func (w *Wallet) Balance() (types.Coin, error) {
 }
 
 func (w *Wallet) findUtxos() ([]tx.UTxO, error) {
-	addrs := w.Addresses()
+	addrs, err := w.Addresses()
+	if err != nil {
+		return nil, err
+	}
 	walletUtxos := []tx.UTxO{}
 	for _, addr := range addrs {
 		addrUtxos, err := w.node.UTxOs(addr)
@@ -130,20 +139,32 @@ func (w *Wallet) findUtxos() ([]tx.UTxO, error) {
 }
 
 // AddAddress generates a new payment address and adds it to the wallet.
-func (w *Wallet) AddAddress() types.Address {
+func (w *Wallet) AddAddress() (types.Address, error) {
 	index := uint32(len(w.skeys))
-	newKey := w.rootKey.DeriveXPrv(index)
+	newKey := w.rootKey.Derive(index)
 	w.skeys = append(w.skeys, newKey)
-	return types.NewEnterpriseAddress(newKey.PublicKey(), w.network)
+	payment, err := types.NewAddrKeyCredential(newKey.PubKey())
+	if err != nil {
+		return types.Address{}, err
+	}
+	return types.NewEnterpriseAddress(w.network, payment)
 }
 
 // Addresses returns all wallet's addresss.
-func (w *Wallet) Addresses() []types.Address {
+func (w *Wallet) Addresses() ([]types.Address, error) {
 	addresses := make([]types.Address, len(w.skeys))
 	for i, key := range w.skeys {
-		addresses[i] = types.NewEnterpriseAddress(key.PublicKey(), w.network)
+		payment, err := types.NewAddrKeyCredential(key.PubKey())
+		if err != nil {
+			return nil, err
+		}
+		addr, err := types.NewEnterpriseAddress(w.network, payment)
+		if err != nil {
+			return nil, err
+		}
+		addresses[i] = addr
 	}
-	return addresses
+	return addresses, nil
 }
 
 func newWalletID() string {
@@ -153,22 +174,22 @@ func newWalletID() string {
 
 func newWallet(name, password string, entropy []byte) *Wallet {
 	wallet := &Wallet{Name: name, ID: newWalletID()}
-	rootKey := crypto.NewXPrv(entropy, password)
-	chainKey := rootKey.DeriveXPrv(purposeIndex).
-		DeriveXPrv(coinTypeIndex).
-		DeriveXPrv(accountIndex).
-		DeriveXPrv(externalChainIndex)
-	addr0Key := chainKey.DeriveXPrv(0)
+	rootKey := crypto.NewXPrvKeyFromEntropy(entropy, password)
+	chainKey := rootKey.Derive(purposeIndex).
+		Derive(coinTypeIndex).
+		Derive(accountIndex).
+		Derive(externalChainIndex)
+	addr0Key := chainKey.Derive(0)
 	wallet.rootKey = chainKey
-	wallet.skeys = []crypto.XPrv{addr0Key}
+	wallet.skeys = []crypto.XPrvKey{addr0Key}
 	return wallet
 }
 
 type walletDump struct {
 	ID      string
 	Name    string
-	Keys    []crypto.XPrv
-	RootKey crypto.XPrv
+	Keys    []crypto.XPrvKey
+	RootKey crypto.XPrvKey
 	Network types.Network
 }
 

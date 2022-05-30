@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/echovl/cardano-go/internal/encoding"
 	"github.com/echovl/cardano-go/types"
 	"github.com/echovl/ed25519"
 	"github.com/fxamacker/cbor/v2"
@@ -29,7 +30,7 @@ type Tx struct {
 
 // Bytes returns the CBOR encoding of the transaction as bytes.
 func (tx *Tx) Bytes() []byte {
-	bytes, err := cborEnc.Marshal(tx)
+	bytes, err := encoding.CBOR.Marshal(tx)
 	if err != nil {
 		panic(err)
 	}
@@ -111,11 +112,12 @@ type TxBody struct {
 
 // Hash returns the transaction body hash using blake2b.
 func (body *TxBody) Hash() (types.Hash32, error) {
-	bytes, err := cborEnc.Marshal(body)
+	bytes, err := encoding.CBOR.Marshal(body)
 	if err != nil {
 		return types.Hash32{}, err
 	}
-	return blake2b.Sum256(bytes), nil
+	hash := blake2b.Sum256(bytes)
+	return hash[:], nil
 }
 
 // AddSignatures sets the transaction's witness set.
@@ -279,12 +281,12 @@ func (c *Certificate) MarshalCBOR() ([]byte, error) {
 		}
 	}
 
-	return cborEnc.Marshal(cert)
+	return encoding.CBOR.Marshal(cert)
 }
 
 // UnmarshalCBOR implements cbor.Unmarshaler.
 func (c *Certificate) UnmarshalCBOR(data []byte) error {
-	certType, err := getTypeFromCBORArray(data)
+	certType, err := encoding.GetTypeFromCBORArray(data)
 	if err != nil {
 		return fmt.Errorf("cbor: cannot unmarshal CBOR array into StakeCredential (%v)", err)
 	}
@@ -383,13 +385,13 @@ func (s *StakeCredential) MarshalCBOR() ([]byte, error) {
 		cred = append(cred, s.Type, s.ScriptHash)
 	}
 
-	return cborEnc.Marshal(cred)
+	return encoding.CBOR.Marshal(cred)
 
 }
 
 // UnmarshalCBOR implements cbor.Unmarshaler.
 func (s *StakeCredential) UnmarshalCBOR(data []byte) error {
-	credType, err := getTypeFromCBORArray(data)
+	credType, err := encoding.GetTypeFromCBORArray(data)
 	if err != nil {
 		return fmt.Errorf("cbor: cannot unmarshal CBOR array into StakeCredential (%v)", err)
 	}
@@ -481,12 +483,12 @@ func (r *Relay) MarshalCBOR() ([]byte, error) {
 		}
 	}
 
-	return cborEnc.Marshal(relay)
+	return encoding.CBOR.Marshal(relay)
 }
 
 // UnmarshalCBOR implements cbor.Unmarshaler.
 func (r *Relay) UnmarshalCBOR(data []byte) error {
-	relayType, err := getTypeFromCBORArray(data)
+	relayType, err := encoding.GetTypeFromCBORArray(data)
 	if err != nil {
 		return fmt.Errorf("cbor: cannot unmarshal CBOR array into Relay (%v)", err)
 	}
@@ -519,22 +521,4 @@ func (r *Relay) UnmarshalCBOR(data []byte) error {
 	}
 
 	return nil
-}
-
-func getTypeFromCBORArray(data []byte) (uint64, error) {
-	raw := []interface{}{}
-	if err := cbor.Unmarshal(data, &raw); err != nil {
-		return 0, err
-	}
-
-	if len(raw) == 0 {
-		return 0, fmt.Errorf("empty CBOR array")
-	}
-
-	t, ok := raw[0].(uint64)
-	if !ok {
-		return 0, fmt.Errorf("invalid Type")
-	}
-
-	return t, nil
 }

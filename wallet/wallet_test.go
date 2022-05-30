@@ -28,10 +28,13 @@ func TestGenerateAddress(t *testing.T) {
 			t.Error(err)
 		}
 
-		paymentAddr1 := w.AddAddress()
+		paymentAddr1, err := w.AddAddress()
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		addrXsk1 := bech32From("addr_xsk", w.skeys[1])
-		addrXvk1 := bech32From("addr_xvk", w.skeys[1].PublicKey())
+		addrXvk1 := bech32From("addr_xvk", w.skeys[1].XPubKey())
 
 		if addrXsk1 != testVector.addrXsk1 {
 			t.Errorf("invalid addrXsk1 :\ngot: %v\nwant: %v", addrXsk1, testVector.addrXsk1)
@@ -41,7 +44,7 @@ func TestGenerateAddress(t *testing.T) {
 			t.Errorf("invalid addrXvk1 :\ngot: %v\nwant: %v", addrXvk1, testVector.addrXvk1)
 		}
 
-		if paymentAddr1.String() != testVector.paymentAddr1 {
+		if paymentAddr1.Bech32() != testVector.paymentAddr1 {
 			t.Errorf("invalid paymentAddr1:\ngot: %v\nwant: %v", paymentAddr1, testVector.paymentAddr1)
 		}
 	}

@@ -32,8 +32,8 @@ var D0 = []byte{
 }
 
 func TestDerivePrivateKey(t *testing.T) {
-	pkey := XPrv(D)
-	got := pkey.DeriveXPrv(0x80000000)
+	pkey := XPrvKey(D)
+	got := pkey.Derive(0x80000000)
 	want := Dh0
 
 	if equal := bytes.Compare(got, want); equal != 0 {
@@ -42,12 +42,12 @@ func TestDerivePrivateKey(t *testing.T) {
 }
 
 func TestDerivePublicKey(t *testing.T) {
-	pkey := XPrv(D)
-	vkey := pkey.PublicKey()
+	pkey := XPrvKey(D)
+	vkey := pkey.XPubKey()
 
-	pkey0 := pkey.DeriveXPrv(0)
-	want := pkey0.PublicKey()
-	got, err := vkey.DeriveXPub(0)
+	pkey0 := pkey.Derive(0)
+	want := pkey0.XPubKey()
+	got, err := vkey.Derive(0)
 	if err != nil {
 		t.Error(err)
 	}

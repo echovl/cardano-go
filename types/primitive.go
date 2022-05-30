@@ -2,7 +2,6 @@ package types
 
 import (
 	"encoding/hex"
-	"fmt"
 	"reflect"
 
 	"github.com/fxamacker/cbor/v2"
@@ -29,24 +28,14 @@ type AddrKeyHash = Hash28
 
 type PoolKeyHash = Hash28
 
-type Hash28 [28]byte
+type Hash28 []byte
 
 // NewHash28 creates a new Hash28 from a hex encoded string.
 func NewHash28(h string) (Hash28, error) {
-	hash := [28]byte{}
+	hash := make([]byte, 28)
 	b, err := hex.DecodeString(h)
 	if err != nil {
 		return hash, err
-	}
-	copy(hash[:], b)
-	return hash, nil
-}
-
-// NewHash28FromBytes creates a new Hash28 from raw bytes.
-func NewHash28FromBytes(b []byte) (Hash28, error) {
-	hash := [28]byte{}
-	if len(b) != 28 {
-		return hash, fmt.Errorf("length should be 28")
 	}
 	copy(hash[:], b)
 	return hash, nil
@@ -57,24 +46,14 @@ func (h Hash28) String() string {
 	return hex.EncodeToString(h[:])
 }
 
-type Hash32 [32]byte
+type Hash32 []byte
 
 // NewHash32 creates a new Hash32 from a hex encoded string.
 func NewHash32(h string) (Hash32, error) {
-	hash := [32]byte{}
+	hash := make([]byte, 32)
 	b, err := hex.DecodeString(h)
 	if err != nil {
 		return hash, err
-	}
-	copy(hash[:], b)
-	return hash, nil
-}
-
-// NewHash32FromBytes creates a new Hash32 from raw bytes.
-func NewHash32FromBytes(b []byte) (Hash32, error) {
-	hash := [32]byte{}
-	if len(b) != 28 {
-		return hash, fmt.Errorf("length should be 32")
 	}
 	copy(hash[:], b)
 	return hash, nil

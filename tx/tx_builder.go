@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/echovl/cardano-go/crypto"
+	"github.com/echovl/cardano-go/internal/encoding"
 	"github.com/echovl/cardano-go/types"
 	"golang.org/x/crypto/blake2b"
 )
@@ -14,14 +15,14 @@ const maxUint64 uint64 = 1<<64 - 1
 type TxBuilder struct {
 	tx       *Tx
 	protocol *ProtocolParams
-	pkeys    []crypto.XPrv
+	pkeys    []crypto.XPrvKey
 }
 
 // NewTxBuilder returns a new instance of TxBuilder.
 func NewTxBuilder(protocol *ProtocolParams) *TxBuilder {
 	return &TxBuilder{
 		protocol: protocol,
-		pkeys:    []crypto.XPrv{},
+		pkeys:    []crypto.XPrvKey{},
 		tx: &Tx{
 			IsValid: true,
 		},
@@ -137,7 +138,7 @@ func (builder *TxBuilder) CalculateFee(protocol *ProtocolParams) types.Coin {
 // Sign adds signing keys to create signatures for the witness set.
 func (tb *TxBuilder) Sign(keys ...string) error {
 	for _, key := range keys {
-		xprv, err := crypto.NewXPrvFromBech32(key)
+		xprv, err := crypto.NewXPrvKey(key)
 		if err != nil {
 			return err
 		}
@@ -163,7 +164,7 @@ func (tb *TxBuilder) Build() (*Tx, error) {
 
 	vkeyWitnsessSet := make([]VKeyWitness, len(tb.pkeys))
 	for i, pkey := range tb.pkeys {
-		publicKey := pkey.PublicKey()[:32]
+		publicKey := pkey.XPubKey()[:32]
 		signature := pkey.Sign(txHash[:])
 		witness := VKeyWitness{VKey: publicKey, Signature: signature}
 		vkeyWitnsessSet[i] = witness
@@ -175,12 +176,13 @@ func (tb *TxBuilder) Build() (*Tx, error) {
 
 func (tb *TxBuilder) buildBody() error {
 	if tb.tx.AuxiliaryData != nil {
-		auxBytes, err := cborEnc.Marshal(tb.tx.AuxiliaryData)
+		auxBytes, err := encoding.CBOR.Marshal(tb.tx.AuxiliaryData)
 		if err != nil {
 			return err
 		}
-		auxHash := types.Hash32(blake2b.Sum256(auxBytes))
-		tb.tx.Body.AuxiliaryDataHash = &auxHash
+		auxHash := blake2b.Sum256(auxBytes)
+		auxHash32 := types.Hash32(auxHash[:])
+		tb.tx.Body.AuxiliaryDataHash = &auxHash32
 	}
 	return nil
 }
