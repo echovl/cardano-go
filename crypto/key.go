@@ -27,7 +27,13 @@ func NewXPrvFromBech32(bech string) (XPrv, error) {
 	return xsk, err
 }
 
+// String returns the private key encoded as string.
 func (xsk XPrv) String() string {
+	return xsk.Bech32()
+}
+
+// Bech32 returns the private key encoded as bech32.
+func (xsk XPrv) Bech32() string {
 	bech, err := bech32.EncodeFromBase256("xprv", xsk)
 	if err != nil {
 		panic(err)
