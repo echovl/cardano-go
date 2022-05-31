@@ -64,7 +64,7 @@ func main() {
 	txBuilder.AddOutputs(txOut)
 	txBuilder.SetTTL(100000)
 	txBuilder.SetFee(types.Coin(160000))
-	txBuilder.Sign("xprv")
+	txBuilder.Sign("addr_sk")
 
 	tx, err := txBuilder.Build()
 	if err != nil {

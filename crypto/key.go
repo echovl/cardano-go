@@ -35,13 +35,18 @@ func (prv XPrvKey) Bech32(prefix string) string {
 	return bech
 }
 
+// PrvKey returns the ed25519 extended private key.
+func (prv XPrvKey) PrvKey() PrvKey {
+	return PrvKey(prv[:64])
+}
+
 // XPubKey returns the XPubKey derived from the extended private key.
 func (prv XPrvKey) XPubKey() XPubKey {
 	xvk := make([]byte, 64)
-	pk := ed25519.PublicKeyFrom(ed25519.ExtendedPrivateKey(prv[:64]))
+	vk := prv.PrvKey().PubKey()
 	cc := prv[64:]
 
-	copy(xvk[:32], pk)
+	copy(xvk[:32], vk)
 	copy(xvk[32:], cc)
 
 	return xvk
@@ -53,8 +58,8 @@ func (prv XPrvKey) PubKey() PubKey {
 }
 
 func (prv *XPrvKey) Sign(message []byte) []byte {
-	pk := ed25519.ExtendedPrivateKey((*prv)[:64])
-	return ed25519.SignExtended(pk, message)
+	pk := prv.PrvKey()
+	return pk.Sign(message)
 }
 
 // XPubKey is the public key (32 bytes) appended with the chain code (32 bytes).
@@ -88,4 +93,37 @@ type PubKey []byte
 // Verify reports whether sig is a valid signature of message by the public key.
 func (pub PubKey) Verify(message, signature []byte) bool {
 	return ed25519.Verify(ed25519.PublicKey(pub), message, signature)
+}
+
+// PrvKey is a ed25519 extended private key.
+type PrvKey []byte
+
+// NewPrvKey creates a new private key from a bech32 encoded private key.
+func NewPrvKey(bech string) (PrvKey, error) {
+	_, xsk, err := bech32.DecodeToBase256(bech)
+	return xsk, err
+}
+
+// XPubKey returns the XPubKey derived from the private key.
+func (prv PrvKey) PubKey() PubKey {
+	vk := make([]byte, 32)
+	pk := ed25519.PublicKeyFrom(ed25519.ExtendedPrivateKey(prv[:64]))
+
+	copy(vk[:32], pk)
+
+	return vk
+}
+
+// Bech32 returns the private key encoded as bech32.
+func (prv PrvKey) Bech32(prefix string) string {
+	bech, err := bech32.EncodeFromBase256(prefix, prv)
+	if err != nil {
+		panic(err)
+	}
+	return bech
+}
+
+func (prv *PrvKey) Sign(message []byte) []byte {
+	pk := ed25519.ExtendedPrivateKey((*prv)[:64])
+	return ed25519.SignExtended(pk, message)
 }

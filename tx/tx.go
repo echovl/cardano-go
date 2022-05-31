@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/echovl/cardano-go/crypto"
 	"github.com/echovl/cardano-go/internal/encoding"
 	"github.com/echovl/cardano-go/types"
 	"github.com/echovl/ed25519"
@@ -53,9 +54,9 @@ type WitnessSet struct {
 }
 
 type VKeyWitness struct {
-	_         struct{} `cbor:",toarray"`
-	VKey      []byte   // ed25519 public key
-	Signature []byte   // ed25519 signature
+	_         struct{}      `cbor:",toarray"`
+	VKey      crypto.PubKey // ed25519 public key
+	Signature []byte        // ed25519 signature
 }
 
 type TxInput struct {
