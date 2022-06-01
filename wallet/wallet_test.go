@@ -4,9 +4,7 @@ import (
 	"testing"
 
 	"github.com/echovl/bech32"
-	"github.com/echovl/cardano-go/node"
-	"github.com/echovl/cardano-go/tx"
-	"github.com/echovl/cardano-go/types"
+	"github.com/echovl/cardano-go"
 	"github.com/tyler-smith/go-bip39"
 )
 
@@ -51,33 +49,33 @@ func TestGenerateAddress(t *testing.T) {
 }
 
 type MockNode struct {
-	utxos []tx.UTxO
+	utxos []cardano.UTxO
 }
 
-func (n *MockNode) UTxOs(addr types.Address) ([]tx.UTxO, error) {
+func (n *MockNode) UTxOs(addr cardano.Address) ([]cardano.UTxO, error) {
 	return n.utxos, nil
 }
 
-func (n *MockNode) Tip() (*node.NodeTip, error) {
-	return &node.NodeTip{}, nil
+func (n *MockNode) Tip() (*cardano.NodeTip, error) {
+	return &cardano.NodeTip{}, nil
 }
 
-func (n *MockNode) SubmitTx(tx *tx.Tx) (*types.Hash32, error) {
+func (n *MockNode) SubmitTx(tx *cardano.Tx) (*cardano.Hash32, error) {
 	return nil, nil
 }
 
-func (n *MockNode) ProtocolParams() (*tx.ProtocolParams, error) {
-	return &tx.ProtocolParams{}, nil
+func (n *MockNode) ProtocolParams() (*cardano.ProtocolParams, error) {
+	return &cardano.ProtocolParams{}, nil
 }
 
-func (n *MockNode) Network() types.Network {
-	return types.Testnet
+func (n *MockNode) Network() cardano.Network {
+	return cardano.Testnet
 }
 
 func TestWalletBalance(t *testing.T) {
 	client := NewClient(&Options{
 		DB:   &MockDB{},
-		Node: &MockNode{utxos: []tx.UTxO{{Amount: 100}, {Amount: 33}}},
+		Node: &MockNode{utxos: []cardano.UTxO{{Amount: 100}, {Amount: 33}}},
 	})
 	w, _, err := client.CreateWallet("test", "")
 	if err != nil {
@@ -88,7 +86,7 @@ func TestWalletBalance(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	want := types.Coin(133)
+	want := cardano.Coin(133)
 
 	if got != want {
 		t.Errorf("invalid balance :\ngot: %v\nwant: %v", got, want)

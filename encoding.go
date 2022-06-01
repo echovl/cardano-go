@@ -1,4 +1,4 @@
-package encoding
+package cardano
 
 import (
 	"fmt"
@@ -6,9 +6,9 @@ import (
 	"github.com/fxamacker/cbor/v2"
 )
 
-var CBOR, _ = cbor.CanonicalEncOptions().EncMode()
+var cborEnc, _ = cbor.CanonicalEncOptions().EncMode()
 
-func GetTypeFromCBORArray(data []byte) (uint64, error) {
+func getTypeFromCBORArray(data []byte) (uint64, error) {
 	raw := []interface{}{}
 	if err := cbor.Unmarshal(data, &raw); err != nil {
 		return 0, err

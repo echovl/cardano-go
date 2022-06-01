@@ -1,10 +1,9 @@
-package types
+package cardano
 
 import (
 	"fmt"
 
 	"github.com/echovl/cardano-go/crypto"
-	"github.com/echovl/cardano-go/internal/encoding"
 	"github.com/fxamacker/cbor/v2"
 )
 
@@ -67,13 +66,13 @@ func (s *StakeCredential) MarshalCBOR() ([]byte, error) {
 		cred = append(cred, s.Type, s.ScriptHash)
 	}
 
-	return encoding.CBOR.Marshal(cred)
+	return cborEnc.Marshal(cred)
 
 }
 
 // UnmarshalCBOR implements cbor.Unmarshaler.
 func (s *StakeCredential) UnmarshalCBOR(data []byte) error {
-	credType, err := encoding.GetTypeFromCBORArray(data)
+	credType, err := getTypeFromCBORArray(data)
 	if err != nil {
 		return fmt.Errorf("cbor: cannot unmarshal CBOR array into StakeCredential (%v)", err)
 	}

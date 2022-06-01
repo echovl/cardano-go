@@ -1,9 +1,4 @@
-package node
-
-import (
-	"github.com/echovl/cardano-go/tx"
-	"github.com/echovl/cardano-go/types"
-)
+package cardano
 
 const (
 	ProtocolMagic = 1097911063
@@ -14,19 +9,19 @@ const (
 // sending transactions and fetching state.
 type Node interface {
 	// UTxOs returns a list of unspent transaction outputs for a given address
-	UTxOs(types.Address) ([]tx.UTxO, error)
+	UTxOs(Address) ([]UTxO, error)
 
 	// Tip returns the node's current tip
 	Tip() (*NodeTip, error)
 
 	// SubmitTx submits a transaction to the node using cbor encoding
-	SubmitTx(*tx.Tx) (*types.Hash32, error)
+	SubmitTx(*Tx) (*Hash32, error)
 
 	// ProtocolParams returns the Node's Protocol Parameters
-	ProtocolParams() (*tx.ProtocolParams, error)
+	ProtocolParams() (*ProtocolParams, error)
 
 	// Network returns the node's current network type
-	Network() types.Network
+	Network() Network
 }
 
 type NodeTip struct {

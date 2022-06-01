@@ -5,12 +5,12 @@ import (
 	"path"
 
 	"github.com/dgraph-io/badger/v3"
-	"github.com/echovl/cardano-go/types"
+	"github.com/echovl/cardano-go"
 )
 
 type DB interface {
 	SaveWallet(*Wallet) error
-	GetWallets(types.Network) ([]*Wallet, error)
+	GetWallets(cardano.Network) ([]*Wallet, error)
 	DeleteWallet(string) error
 	Close()
 }
@@ -46,7 +46,7 @@ func (bdb *badgerDB) SaveWallet(w *Wallet) error {
 	return nil
 }
 
-func (bdb *badgerDB) GetWallets(network types.Network) ([]*Wallet, error) {
+func (bdb *badgerDB) GetWallets(network cardano.Network) ([]*Wallet, error) {
 	wallets := []*Wallet{}
 	err := bdb.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)

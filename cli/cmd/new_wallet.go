@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/echovl/cardano-go/node/blockfrost"
-	"github.com/echovl/cardano-go/types"
+	"github.com/echovl/cardano-go"
+	"github.com/echovl/cardano-go/blockfrost"
 	"github.com/echovl/cardano-go/wallet"
 	"github.com/spf13/cobra"
 )
@@ -19,9 +19,9 @@ it will restore a wallet using the mnemonic and password.`,
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		useTestnet, _ := cmd.Flags().GetBool("testnet")
-		network := types.Mainnet
+		network := cardano.Mainnet
 		if useTestnet {
-			network = types.Testnet
+			network = cardano.Testnet
 		}
 
 		node := blockfrost.NewNode(network, cfg.BlockfrostProjectID)

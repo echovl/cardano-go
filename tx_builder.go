@@ -1,12 +1,10 @@
-package tx
+package cardano
 
 import (
 	"errors"
 	"fmt"
 
 	"github.com/echovl/cardano-go/crypto"
-	"github.com/echovl/cardano-go/internal/encoding"
-	"github.com/echovl/cardano-go/types"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -39,11 +37,11 @@ func (tb *TxBuilder) AddOutputs(outputs ...*TxOutput) {
 
 // SetTtl sets the transaction's time to live.
 func (tb *TxBuilder) SetTTL(ttl uint64) {
-	tb.tx.Body.TTL = types.NewUint64(ttl)
+	tb.tx.Body.TTL = NewUint64(ttl)
 }
 
 // SetFee sets the transactions's fee.
-func (tb *TxBuilder) SetFee(fee types.Coin) {
+func (tb *TxBuilder) SetFee(fee Coin) {
 	tb.tx.Body.Fee = fee
 }
 
@@ -55,7 +53,7 @@ func (tb *TxBuilder) AddAuxiliaryData(data *AuxiliaryData) {
 // an aditional output for the change if there is any.
 // This assumes that the tb inputs and outputs are defined.
 func (tb *TxBuilder) AddChangeIfNeeded(changeAddr string) error {
-	addr, err := types.NewAddress(changeAddr)
+	addr, err := NewAddress(changeAddr)
 	if err != nil {
 		return err
 	}
@@ -110,7 +108,7 @@ func (tb *TxBuilder) AddChangeIfNeeded(changeAddr string) error {
 	return nil
 }
 
-func (tb *TxBuilder) calculateAmounts() (input, output types.Coin) {
+func (tb *TxBuilder) calculateAmounts() (input, output Coin) {
 	for _, in := range tb.tx.Body.Inputs {
 		input += in.Amount
 	}
@@ -172,7 +170,7 @@ func (tb *TxBuilder) calculateAmounts() (input, output types.Coin) {
 // }
 
 // MinFee computes the minimal fee required for the transaction.
-func (tb *TxBuilder) MinFee() (types.Coin, error) {
+func (tb *TxBuilder) MinFee() (Coin, error) {
 	// Set a temporary realistic fee in order to serialize a valid transaction
 	tb.tx.Body.Fee = 200000
 	if _, err := tb.build(); err != nil {
@@ -183,10 +181,10 @@ func (tb *TxBuilder) MinFee() (types.Coin, error) {
 }
 
 // CalculateFee computes the minimal fee required for the transaction.
-func (tb *TxBuilder) calculateMinFee() types.Coin {
+func (tb *TxBuilder) calculateMinFee() Coin {
 	txBytes := tb.tx.Bytes()
 	txLength := uint64(len(txBytes))
-	return tb.protocol.MinFeeA*types.Coin(txLength) + tb.protocol.MinFeeB
+	return tb.protocol.MinFeeA*Coin(txLength) + tb.protocol.MinFeeB
 }
 
 // Sign adds signing keys to create signatures for the witness set.
@@ -251,12 +249,12 @@ func (tb *TxBuilder) build() (*Tx, error) {
 
 func (tb *TxBuilder) buildBody() error {
 	if tb.tx.AuxiliaryData != nil {
-		auxBytes, err := encoding.CBOR.Marshal(tb.tx.AuxiliaryData)
+		auxBytes, err := cborEnc.Marshal(tb.tx.AuxiliaryData)
 		if err != nil {
 			return err
 		}
 		auxHash := blake2b.Sum256(auxBytes)
-		auxHash32 := types.Hash32(auxHash[:])
+		auxHash32 := Hash32(auxHash[:])
 		tb.tx.Body.AuxiliaryDataHash = &auxHash32
 	}
 	return nil

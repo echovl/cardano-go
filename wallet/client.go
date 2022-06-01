@@ -3,14 +3,14 @@ package wallet
 import (
 	"fmt"
 
-	"github.com/echovl/cardano-go/types"
+	"github.com/echovl/cardano-go"
 	"github.com/tyler-smith/go-bip39"
 )
 
 // Client provides a clean interface for creating, saving and deleting Wallets.
 type Client struct {
 	opts    *Options
-	network types.Network
+	network cardano.Network
 }
 
 // NewClient builds a new Client using cardano-cli as the default connection

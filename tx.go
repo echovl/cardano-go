@@ -1,12 +1,10 @@
-package tx
+package cardano
 
 import (
 	"encoding/hex"
 	"fmt"
 
 	"github.com/echovl/cardano-go/crypto"
-	"github.com/echovl/cardano-go/internal/encoding"
-	"github.com/echovl/cardano-go/types"
 	"github.com/echovl/ed25519"
 	"github.com/fxamacker/cbor/v2"
 	"golang.org/x/crypto/blake2b"
@@ -15,9 +13,9 @@ import (
 var utxoEntrySizeWithoutVal = 27
 
 type UTxO struct {
-	TxHash  types.Hash32
-	Spender types.Address
-	Amount  types.Coin
+	TxHash  Hash32
+	Spender Address
+	Amount  Coin
 	Index   uint64
 }
 
@@ -31,7 +29,7 @@ type Tx struct {
 
 // Bytes returns the CBOR encoding of the transaction as bytes.
 func (tx *Tx) Bytes() []byte {
-	bytes, err := encoding.CBOR.Marshal(tx)
+	bytes, err := cborEnc.Marshal(tx)
 	if err != nil {
 		panic(err)
 	}
@@ -44,7 +42,7 @@ func (tx Tx) Hex() string {
 }
 
 // Hash returns the transaction body hash using blake2b.
-func (tx *Tx) Hash() (types.Hash32, error) {
+func (tx *Tx) Hash() (Hash32, error) {
 	return tx.Body.Hash()
 }
 
@@ -61,14 +59,14 @@ type VKeyWitness struct {
 
 type TxInput struct {
 	_      struct{} `cbor:",toarray"`
-	TxHash types.Hash32
+	TxHash Hash32
 	Index  uint64
-	Amount types.Coin `cbor:"-"`
+	Amount Coin `cbor:"-"`
 }
 
 // NewTxInput creates a new instance of TxInput
-func NewTxInput(txHash string, index uint, amount types.Coin) (*TxInput, error) {
-	txHash32, err := types.NewHash32(txHash)
+func NewTxInput(txHash string, index uint, amount Coin) (*TxInput, error) {
+	txHash32, err := NewHash32(txHash)
 	if err != nil {
 		return nil, err
 	}
@@ -78,13 +76,13 @@ func NewTxInput(txHash string, index uint, amount types.Coin) (*TxInput, error) 
 
 type TxOutput struct {
 	_       struct{} `cbor:",toarray"`
-	Address types.Address
-	Amount  types.Coin
+	Address Address
+	Amount  Coin
 }
 
 // NewTxOutput creates a new instance of TxOutput
-func NewTxOutput(addr string, amount types.Coin) (*TxOutput, error) {
-	addrOut, err := types.NewAddress(addr)
+func NewTxOutput(addr string, amount Coin) (*TxOutput, error) {
+	addrOut, err := NewAddress(addr)
 	if err != nil {
 		return nil, err
 	}
@@ -95,27 +93,27 @@ func NewTxOutput(addr string, amount types.Coin) (*TxOutput, error) {
 type TxBody struct {
 	Inputs  []*TxInput  `cbor:"0,keyasint"`
 	Outputs []*TxOutput `cbor:"1,keyasint"`
-	Fee     types.Coin  `cbor:"2,keyasint"`
+	Fee     Coin        `cbor:"2,keyasint"`
 
 	// Optionals
-	TTL                   types.Uint64        `cbor:"3,keyasint,omitempty"`
-	Certificates          []Certificate       `cbor:"4,keyasint,omitempty"`
-	Withdrawals           interface{}         `cbor:"5,keyasint,omitempty"` // unsupported
-	Update                interface{}         `cbor:"6,keyasint,omitempty"` // unsupported
-	AuxiliaryDataHash     *types.Hash32       `cbor:"7,keyasint,omitempty"`
-	ValidityIntervalStart types.Uint64        `cbor:"8,keyasint,omitempty"`
-	Mint                  interface{}         `cbor:"9,keyasint,omitempty"` // unsupported
-	ScriptDataHash        *types.Hash32       `cbor:"10,keyasint,omitempty"`
-	Collateral            []TxInput           `cbor:"11,keyasint,omitempty"`
-	RequiredSigners       []types.AddrKeyHash `cbor:"12,keyasint,omitempty"`
-	NetworkID             types.Uint64        `cbor:"13,keyasint,omitempty"`
+	TTL                   Uint64        `cbor:"3,keyasint,omitempty"`
+	Certificates          []Certificate `cbor:"4,keyasint,omitempty"`
+	Withdrawals           interface{}   `cbor:"5,keyasint,omitempty"` // unsupported
+	Update                interface{}   `cbor:"6,keyasint,omitempty"` // unsupported
+	AuxiliaryDataHash     *Hash32       `cbor:"7,keyasint,omitempty"`
+	ValidityIntervalStart Uint64        `cbor:"8,keyasint,omitempty"`
+	Mint                  interface{}   `cbor:"9,keyasint,omitempty"` // unsupported
+	ScriptDataHash        *Hash32       `cbor:"10,keyasint,omitempty"`
+	Collateral            []TxInput     `cbor:"11,keyasint,omitempty"`
+	RequiredSigners       []AddrKeyHash `cbor:"12,keyasint,omitempty"`
+	NetworkID             Uint64        `cbor:"13,keyasint,omitempty"`
 }
 
 // Hash returns the transaction body hash using blake2b.
-func (body *TxBody) Hash() (types.Hash32, error) {
-	bytes, err := encoding.CBOR.Marshal(body)
+func (body *TxBody) Hash() (Hash32, error) {
+	bytes, err := cborEnc.Marshal(body)
 	if err != nil {
-		return types.Hash32{}, err
+		return Hash32{}, err
 	}
 	hash := blake2b.Sum256(bytes)
 	return hash[:], nil
@@ -148,8 +146,8 @@ func (body *TxBody) AddSignatures(publicKeys [][]byte, signatures [][]byte) (*Tx
 	}, nil
 }
 
-func minUTXO(txOut *TxOutput, protocol *ProtocolParams) types.Coin {
-	return types.Coin(utxoEntrySizeWithoutVal+1) * protocol.CoinsPerUTXOWord
+func minUTXO(txOut *TxOutput, protocol *ProtocolParams) Coin {
+	return Coin(utxoEntrySizeWithoutVal+1) * protocol.CoinsPerUTXOWord
 }
 
 type CertificateType uint
@@ -180,18 +178,18 @@ type stakeDelegation struct {
 	_               struct{} `cbor:",toarray"`
 	Type            CertificateType
 	StakeCredential StakeCredential
-	PoolKeyHash     types.PoolKeyHash
+	PoolKeyHash     PoolKeyHash
 }
 
 type poolRegistration struct {
 	_             struct{} `cbor:",toarray"`
 	Type          CertificateType
-	Operator      types.PoolKeyHash
-	VrfKeyHash    types.Hash32
-	Pledge        types.Coin
-	Margin        types.UnitInterval
-	RewardAccount types.Address
-	Owners        []types.AddrKeyHash
+	Operator      PoolKeyHash
+	VrfKeyHash    Hash32
+	Pledge        Coin
+	Margin        UnitInterval
+	RewardAccount Address
+	Owners        []AddrKeyHash
 	Relays        []Relay
 	PoolMetadata  *PoolMetadata // or null
 }
@@ -199,16 +197,16 @@ type poolRegistration struct {
 type poolRetirement struct {
 	_           struct{} `cbor:",toarray"`
 	Type        CertificateType
-	PoolKeyHash types.PoolKeyHash
+	PoolKeyHash PoolKeyHash
 	Epoch       uint64
 }
 
 type genesisKeyDelegation struct {
 	_                   struct{} `cbor:",toarray"`
 	Type                CertificateType
-	GenesisHash         types.Hash28
-	GenesisDelegateHash types.Hash28
-	VrfKeyHash          types.Hash32
+	GenesisHash         Hash28
+	GenesisDelegateHash Hash28
+	VrfKeyHash          Hash32
 }
 
 //	TODO: MoveInstantaneousRewardsCert requires a map with StakeCredential as a key
@@ -217,22 +215,22 @@ type Certificate struct {
 
 	// Common fields
 	StakeCredential StakeCredential
-	PoolKeyHash     types.PoolKeyHash
-	VrfKeyHash      types.Hash32
+	PoolKeyHash     PoolKeyHash
+	VrfKeyHash      Hash32
 
 	// Pool related fields
-	Operator      types.PoolKeyHash
-	Pledge        types.Coin
-	Margin        types.UnitInterval
-	RewardAccount types.Address
-	Owners        []types.AddrKeyHash
+	Operator      PoolKeyHash
+	Pledge        Coin
+	Margin        UnitInterval
+	RewardAccount Address
+	Owners        []AddrKeyHash
 	Relays        []Relay
 	PoolMetadata  *PoolMetadata // or null
 	Epoch         uint64
 
 	// Genesis fields
-	GenesisHash         types.Hash28
-	GenesisDelegateHash types.Hash28
+	GenesisHash         Hash28
+	GenesisDelegateHash Hash28
 }
 
 // MarshalCBOR implements cbor.Marshaler.
@@ -282,12 +280,12 @@ func (c *Certificate) MarshalCBOR() ([]byte, error) {
 		}
 	}
 
-	return encoding.CBOR.Marshal(cert)
+	return cborEnc.Marshal(cert)
 }
 
 // UnmarshalCBOR implements cbor.Unmarshaler.
 func (c *Certificate) UnmarshalCBOR(data []byte) error {
-	certType, err := encoding.GetTypeFromCBORArray(data)
+	certType, err := getTypeFromCBORArray(data)
 	if err != nil {
 		return fmt.Errorf("cbor: cannot unmarshal CBOR array into StakeCredential (%v)", err)
 	}
@@ -351,76 +349,10 @@ func (c *Certificate) UnmarshalCBOR(data []byte) error {
 	return nil
 }
 
-type StakeCredentialType uint64
-
-const (
-	AddrKeyCredential StakeCredentialType = 0
-	ScriptCredential                      = 1
-)
-
-type addrKeyStakeCredential struct {
-	_           struct{} `cbor:",toarray"`
-	Type        StakeCredentialType
-	AddrKeyHash types.AddrKeyHash
-}
-
-type scriptStakeCredential struct {
-	_          struct{} `cbor:",toarray"`
-	Type       StakeCredentialType
-	ScriptHash types.Hash28
-}
-
-type StakeCredential struct {
-	Type        StakeCredentialType
-	AddrKeyHash types.AddrKeyHash
-	ScriptHash  types.Hash28
-}
-
-// MarshalCBOR implements cbor.Marshaler.
-func (s *StakeCredential) MarshalCBOR() ([]byte, error) {
-	var cred []interface{}
-	switch s.Type {
-	case AddrKeyCredential:
-		cred = append(cred, s.Type, s.AddrKeyHash)
-	case ScriptCredential:
-		cred = append(cred, s.Type, s.ScriptHash)
-	}
-
-	return encoding.CBOR.Marshal(cred)
-
-}
-
-// UnmarshalCBOR implements cbor.Unmarshaler.
-func (s *StakeCredential) UnmarshalCBOR(data []byte) error {
-	credType, err := encoding.GetTypeFromCBORArray(data)
-	if err != nil {
-		return fmt.Errorf("cbor: cannot unmarshal CBOR array into StakeCredential (%v)", err)
-	}
-
-	switch StakeCredentialType(credType) {
-	case AddrKeyCredential:
-		cred := &addrKeyStakeCredential{}
-		if err := cbor.Unmarshal(data, cred); err != nil {
-			return err
-		}
-		s.Type = AddrKeyCredential
-		s.AddrKeyHash = cred.AddrKeyHash
-	case ScriptCredential:
-		cred := &scriptStakeCredential{}
-		if err := cbor.Unmarshal(data, cred); err != nil {
-			return err
-		}
-		s.Type = ScriptCredential
-		s.ScriptHash = cred.ScriptHash
-	}
-
-	return nil
-}
-
 type PoolMetadata struct {
 	_    struct{} `cbor:",toarray"`
 	URL  string
-	Hash types.Hash32
+	Hash Hash32
 }
 
 type RelayType uint64
@@ -434,7 +366,7 @@ const (
 type singleHostAddr struct {
 	_    struct{} `cbor:",toarray"`
 	Type RelayType
-	Port types.Uint64
+	Port Uint64
 	Ipv4 []byte
 	Ipv6 []byte
 }
@@ -442,7 +374,7 @@ type singleHostAddr struct {
 type singleHostName struct {
 	_       struct{} `cbor:",toarray"`
 	Type    RelayType
-	Port    types.Uint64
+	Port    Uint64
 	DNSName string
 }
 
@@ -454,7 +386,7 @@ type multiHostName struct {
 
 type Relay struct {
 	Type    RelayType
-	Port    types.Uint64
+	Port    Uint64
 	Ipv4    []byte
 	Ipv6    []byte
 	DNSName string
@@ -484,12 +416,12 @@ func (r *Relay) MarshalCBOR() ([]byte, error) {
 		}
 	}
 
-	return encoding.CBOR.Marshal(relay)
+	return cborEnc.Marshal(relay)
 }
 
 // UnmarshalCBOR implements cbor.Unmarshaler.
 func (r *Relay) UnmarshalCBOR(data []byte) error {
-	relayType, err := encoding.GetTypeFromCBORArray(data)
+	relayType, err := getTypeFromCBORArray(data)
 	if err != nil {
 		return fmt.Errorf("cbor: cannot unmarshal CBOR array into Relay (%v)", err)
 	}

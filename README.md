@@ -20,12 +20,12 @@ package main
 import (
 	"fmt"
 
-	"github.com/echovl/cardano-go/node/blockfrost"
-	"github.com/echovl/cardano-go/types"
+	"github.com/echovl/cardano-go"
+	"github.com/echovl/cardano-go/blockfrost"
 )
 
 func main() {
-	node := blockfrost.NewNode(types.Mainnet, "project-id")
+	node := blockfrost.NewNode(cardano.Mainnet, "project-id")
 
 	pparams, err := node.ProtocolParams()
 	if err != nil {
@@ -44,18 +44,17 @@ package main
 import (
 	"fmt"
 
-	"github.com/echovl/cardano-go/tx"
-	"github.com/echovl/cardano-go/types"
+	"github.com/echovl/cardano-go"
 )
 
 func main() {
-	txBuilder := tx.NewTxBuilder(&tx.ProtocolParams{})
+	txBuilder := cardano.NewTxBuilder(&cardano.ProtocolParams{})
 
-	txInput, err := tx.NewTxInput("txhash", 0, types.Coin(2000000))
+	txInput, err := cardano.NewTxInput("txhash", 0, cardano.Coin(2000000))
 	if err != nil {
 		panic(err)
 	}
-	txOut, err := tx.NewTxOutput("addr", types.Coin(1300000))
+	txOut, err := cardano.NewTxOutput("addr", cardano.Coin(1300000))
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +62,7 @@ func main() {
 	txBuilder.AddInputs(txInput)
 	txBuilder.AddOutputs(txOut)
 	txBuilder.SetTTL(100000)
-	txBuilder.SetFee(types.Coin(160000))
+	txBuilder.SetFee(cardano.Coin(160000))
 	txBuilder.Sign("addr_sk")
 
 	tx, err := txBuilder.Build()
@@ -80,14 +79,10 @@ func main() {
 ```go
 package main
 
-import (
-	"fmt"
-
-	"github.com/echovl/cardano-go/tx"
-)
+import "github.com/echovl/cardano-go"
 
 func main() {
-	txBuilder := tx.NewTxBuilder(&tx.ProtocolParams{})
+	txBuilder := cardano.NewTxBuilder(&cardano.ProtocolParams{})
 
 	// Transaction should be signed at this point
 	err := txBuilder.AddChangeIfNeeded("addr")
@@ -105,15 +100,14 @@ package main
 import (
 	"fmt"
 
-	"github.com/echovl/cardano-go/node/blockfrost"
-	"github.com/echovl/cardano-go/tx"
-	"github.com/echovl/cardano-go/types"
+	"github.com/echovl/cardano-go"
+	"github.com/echovl/cardano-go/blockfrost"
 )
 
 func main() {
-	node := blockfrost.NewNode(types.Mainnet, "project-id")
+	node := blockfrost.NewNode(cardano.Mainnet, "project-id")
 
-	txHash, err := node.SubmitTx(&tx.Tx{})
+	txHash, err := node.SubmitTx(&cardano.Tx{})
 	if err != nil {
 		panic(err)
 	}
@@ -127,15 +121,13 @@ func main() {
 ```go
 package main
 
-import (
-	"github.com/echovl/cardano-go/tx"
-)
+import "github.com/echovl/cardano-go"
 
 func main() {
-	txBuilder := tx.NewTxBuilder(&tx.ProtocolParams{})
+	txBuilder := cardano.NewTxBuilder(&cardano.ProtocolParams{})
 
-	txBuilder.AddAuxiliaryData(&tx.AuxiliaryData{
-		Metadata: tx.Metadata{
+	txBuilder.AddAuxiliaryData(&cardano.AuxiliaryData{
+		Metadata: cardano.Metadata{
 			0: map[string]interface{}{
 				"hello": "cardano-go",
 			},

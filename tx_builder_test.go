@@ -1,11 +1,10 @@
-package tx
+package cardano
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/echovl/cardano-go/crypto"
-	"github.com/echovl/cardano-go/types"
 )
 
 var alonzoProtocol = &ProtocolParams{
@@ -61,11 +60,11 @@ func TestSimpleBuild(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			txIn, err := NewTxInput(tc.txHashIn, 0, types.Coin(tc.input))
+			txIn, err := NewTxInput(tc.txHashIn, 0, Coin(tc.input))
 			if err != nil {
 				t.Fatal(err)
 			}
-			txOut, err := NewTxOutput(tc.addrOut, types.Coin(tc.output))
+			txOut, err := NewTxOutput(tc.addrOut, Coin(tc.output))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -74,7 +73,7 @@ func TestSimpleBuild(t *testing.T) {
 
 			txBuilder.AddInputs(txIn)
 			txBuilder.AddOutputs(txOut)
-			txBuilder.SetFee(types.Coin(tc.fee))
+			txBuilder.SetFee(Coin(tc.fee))
 
 			if err := txBuilder.Sign(tc.sk); err != nil {
 				t.Fatal(err)
@@ -101,11 +100,11 @@ func TestSimpleBuild(t *testing.T) {
 
 func TestAddChangeIfNeeded(t *testing.T) {
 	key := crypto.NewXPrvKeyFromEntropy([]byte("receiver address"), "foo")
-	payment, err := types.NewAddrKeyCredential(key.PubKey())
+	payment, err := NewAddrKeyCredential(key.PubKey())
 	if err != nil {
 		t.Fatal(err)
 	}
-	receiver, err := types.NewEnterpriseAddress(types.Testnet, payment)
+	receiver, err := NewEnterpriseAddress(Testnet, payment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,11 +248,11 @@ func TestAddChangeIfNeeded(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			key := crypto.NewXPrvKeyFromEntropy([]byte("change address"), "foo")
-			payment, err := types.NewAddrKeyCredential(key.PubKey())
+			payment, err := NewAddrKeyCredential(key.PubKey())
 			if err != nil {
 				t.Fatal(err)
 			}
-			change, err := types.NewEnterpriseAddress(types.Testnet, payment)
+			change, err := NewEnterpriseAddress(Testnet, payment)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -268,11 +267,11 @@ func TestAddChangeIfNeeded(t *testing.T) {
 				}
 				t.Fatalf("AddFee() error = %v, wantErr %v", err, tc.wantErr)
 			}
-			var totalIn types.Coin
+			var totalIn Coin
 			for _, input := range builder.tx.Body.Inputs {
 				totalIn += input.Amount
 			}
-			var totalOut types.Coin
+			var totalOut Coin
 			for _, output := range builder.tx.Body.Outputs {
 				totalOut += output.Amount
 			}

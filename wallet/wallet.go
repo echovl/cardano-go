@@ -5,10 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/echovl/cardano-go"
 	"github.com/echovl/cardano-go/crypto"
-	"github.com/echovl/cardano-go/node"
-	"github.com/echovl/cardano-go/tx"
-	"github.com/echovl/cardano-go/types"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/tyler-smith/go-bip39"
 )
@@ -28,12 +26,12 @@ type Wallet struct {
 	skeys   []crypto.XPrvKey
 	pkeys   []crypto.XPubKey
 	rootKey crypto.XPrvKey
-	node    node.Node
-	network types.Network
+	node    cardano.Node
+	network cardano.Network
 }
 
 // Transfer sends an amount of lovelace to the receiver address and returns the transaction hash
-func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Hash32, error) {
+func (w *Wallet) Transfer(receiver cardano.Address, amount cardano.Coin) (*cardano.Hash32, error) {
 	// Calculate if the account has enough balance
 	balance, err := w.Balance()
 	if err != nil {
@@ -44,9 +42,9 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 	}
 
 	// Find utxos that cover the amount to transfer
-	pickedUtxos := []tx.UTxO{}
+	pickedUtxos := []cardano.UTxO{}
 	utxos, err := w.findUtxos()
-	pickedUtxosAmount := types.Coin(0)
+	pickedUtxosAmount := cardano.Coin(0)
 	for _, utxo := range utxos {
 		if pickedUtxosAmount > amount {
 			break
@@ -60,16 +58,16 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 		return nil, err
 	}
 
-	builder := tx.NewTxBuilder(pparams)
+	builder := cardano.NewTxBuilder(pparams)
 
 	keys := make(map[int]crypto.XPrvKey)
 	for i, utxo := range pickedUtxos {
 		for _, key := range w.skeys {
-			payment, err := types.NewAddrKeyCredential(key.PubKey())
+			payment, err := cardano.NewAddrKeyCredential(key.PubKey())
 			if err != nil {
 				return nil, err
 			}
-			addr, err := types.NewEnterpriseAddress(w.network, payment)
+			addr, err := cardano.NewEnterpriseAddress(w.network, payment)
 			if err != nil {
 				return nil, err
 			}
@@ -84,9 +82,9 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 	}
 
 	for _, utxo := range pickedUtxos {
-		builder.AddInputs(&tx.TxInput{TxHash: utxo.TxHash, Index: utxo.Index, Amount: utxo.Amount})
+		builder.AddInputs(&cardano.TxInput{TxHash: utxo.TxHash, Index: utxo.Index, Amount: utxo.Amount})
 	}
-	builder.AddOutputs(&tx.TxOutput{Address: receiver, Amount: amount})
+	builder.AddOutputs(&cardano.TxOutput{Address: receiver, Amount: amount})
 
 	tip, err := w.node.Tip()
 	if err != nil {
@@ -110,8 +108,8 @@ func (w *Wallet) Transfer(receiver types.Address, amount types.Coin) (*types.Has
 }
 
 // Balance returns the total lovelace amount of the wallet.
-func (w *Wallet) Balance() (types.Coin, error) {
-	var balance types.Coin
+func (w *Wallet) Balance() (cardano.Coin, error) {
+	var balance cardano.Coin
 	utxos, err := w.findUtxos()
 	if err != nil {
 		return 0, err
@@ -122,12 +120,12 @@ func (w *Wallet) Balance() (types.Coin, error) {
 	return balance, nil
 }
 
-func (w *Wallet) findUtxos() ([]tx.UTxO, error) {
+func (w *Wallet) findUtxos() ([]cardano.UTxO, error) {
 	addrs, err := w.Addresses()
 	if err != nil {
 		return nil, err
 	}
-	walletUtxos := []tx.UTxO{}
+	walletUtxos := []cardano.UTxO{}
 	for _, addr := range addrs {
 		addrUtxos, err := w.node.UTxOs(addr)
 		if err != nil {
@@ -139,26 +137,26 @@ func (w *Wallet) findUtxos() ([]tx.UTxO, error) {
 }
 
 // AddAddress generates a new payment address and adds it to the wallet.
-func (w *Wallet) AddAddress() (types.Address, error) {
+func (w *Wallet) AddAddress() (cardano.Address, error) {
 	index := uint32(len(w.skeys))
 	newKey := w.rootKey.Derive(index)
 	w.skeys = append(w.skeys, newKey)
-	payment, err := types.NewAddrKeyCredential(newKey.PubKey())
+	payment, err := cardano.NewAddrKeyCredential(newKey.PubKey())
 	if err != nil {
-		return types.Address{}, err
+		return cardano.Address{}, err
 	}
-	return types.NewEnterpriseAddress(w.network, payment)
+	return cardano.NewEnterpriseAddress(w.network, payment)
 }
 
 // Addresses returns all wallet's addresss.
-func (w *Wallet) Addresses() ([]types.Address, error) {
-	addresses := make([]types.Address, len(w.skeys))
+func (w *Wallet) Addresses() ([]cardano.Address, error) {
+	addresses := make([]cardano.Address, len(w.skeys))
 	for i, key := range w.skeys {
-		payment, err := types.NewAddrKeyCredential(key.PubKey())
+		payment, err := cardano.NewAddrKeyCredential(key.PubKey())
 		if err != nil {
 			return nil, err
 		}
-		addr, err := types.NewEnterpriseAddress(w.network, payment)
+		addr, err := cardano.NewEnterpriseAddress(w.network, payment)
 		if err != nil {
 			return nil, err
 		}
@@ -190,7 +188,7 @@ type walletDump struct {
 	Name    string
 	Keys    []crypto.XPrvKey
 	RootKey crypto.XPrvKey
-	Network types.Network
+	Network cardano.Network
 }
 
 func (w *Wallet) marshal() ([]byte, error) {

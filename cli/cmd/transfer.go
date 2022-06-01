@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/echovl/cardano-go/node/blockfrost"
-	"github.com/echovl/cardano-go/types"
+	"github.com/echovl/cardano-go"
+	"github.com/echovl/cardano-go/blockfrost"
 	"github.com/echovl/cardano-go/wallet"
 	"github.com/spf13/cobra"
 )
@@ -18,16 +18,16 @@ var transferCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		useTestnet, _ := cmd.Flags().GetBool("testnet")
-		network := types.Mainnet
+		network := cardano.Mainnet
 		if useTestnet {
-			network = types.Testnet
+			network = cardano.Testnet
 		}
 		node := blockfrost.NewNode(network, cfg.BlockfrostProjectID)
 		opts := &wallet.Options{Node: node}
 		client := wallet.NewClient(opts)
 		defer client.Close()
 		senderId := args[0]
-		receiver, err := types.NewAddress(args[1])
+		receiver, err := cardano.NewAddress(args[1])
 		if err != nil {
 			return err
 		}
@@ -39,7 +39,7 @@ var transferCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		txHash, err := w.Transfer(receiver, types.Coin(amount))
+		txHash, err := w.Transfer(receiver, cardano.Coin(amount))
 		fmt.Println(txHash)
 
 		return err

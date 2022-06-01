@@ -1,4 +1,4 @@
-package cli
+package cardanocli
 
 import (
 	"bytes"
@@ -11,14 +11,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/echovl/cardano-go/node"
-	"github.com/echovl/cardano-go/tx"
-	"github.com/echovl/cardano-go/types"
+	"github.com/echovl/cardano-go"
 )
 
 // CardanoCli implements Node using cardano-cli and a local node.
 type CardanoCli struct {
-	network types.Network
+	network cardano.Network
 }
 
 type tip struct {
@@ -36,17 +34,17 @@ type cliTx struct {
 }
 
 // NewNode returns a new instance of CardanoCli.
-func NewNode(network types.Network) node.Node {
+func NewNode(network cardano.Network) cardano.Node {
 	return &CardanoCli{network: network}
 }
 
 func (c *CardanoCli) runCommand(args ...string) ([]byte, error) {
 	out := &bytes.Buffer{}
 
-	if c.network == types.Mainnet {
+	if c.network == cardano.Mainnet {
 		args = append(args, "--mainnet")
 	} else {
-		args = append(args, "--testnet-magic", strconv.Itoa(node.ProtocolMagic))
+		args = append(args, "--testnet-magic", strconv.Itoa(cardano.ProtocolMagic))
 	}
 
 	cmd := exec.Command("cardano-cli", args...)
@@ -59,13 +57,13 @@ func (c *CardanoCli) runCommand(args ...string) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func (c *CardanoCli) UTxOs(addr types.Address) ([]tx.UTxO, error) {
+func (c *CardanoCli) UTxOs(addr cardano.Address) ([]cardano.UTxO, error) {
 	out, err := c.runCommand("query", "utxo", "--address", addr.Bech32())
 	if err != nil {
 		return nil, err
 	}
 
-	utxos := []tx.UTxO{}
+	utxos := []cardano.UTxO{}
 	lines := strings.Split(string(out), "\n")
 
 	if len(lines) < 3 {
@@ -77,7 +75,7 @@ func (c *CardanoCli) UTxOs(addr types.Address) ([]tx.UTxO, error) {
 		if len(args) < 4 {
 			return nil, fmt.Errorf("malformed cli response")
 		}
-		txHash, err := types.NewHash32(args[0])
+		txHash, err := cardano.NewHash32(args[0])
 		if err != nil {
 			return nil, err
 		}
@@ -90,18 +88,18 @@ func (c *CardanoCli) UTxOs(addr types.Address) ([]tx.UTxO, error) {
 			return nil, err
 		}
 
-		utxos = append(utxos, tx.UTxO{
+		utxos = append(utxos, cardano.UTxO{
 			Spender: addr,
 			TxHash:  txHash,
 			Index:   uint64(index),
-			Amount:  types.Coin(amount),
+			Amount:  cardano.Coin(amount),
 		})
 	}
 
 	return utxos, nil
 }
 
-func (c *CardanoCli) Tip() (*node.NodeTip, error) {
+func (c *CardanoCli) Tip() (*cardano.NodeTip, error) {
 	out, err := c.runCommand("query", "tip")
 	if err != nil {
 		return nil, err
@@ -112,14 +110,14 @@ func (c *CardanoCli) Tip() (*node.NodeTip, error) {
 		return nil, err
 	}
 
-	return &node.NodeTip{
+	return &cardano.NodeTip{
 		Epoch: cliTip.Epoch,
 		Block: cliTip.Block,
 		Slot:  cliTip.Slot,
 	}, nil
 }
 
-func (c *CardanoCli) SubmitTx(tx *tx.Tx) (*types.Hash32, error) {
+func (c *CardanoCli) SubmitTx(tx *cardano.Tx) (*cardano.Hash32, error) {
 	txOut := cliTx{
 		Type:    "Witnessed Tx AlonzoEra",
 		CborHex: tx.Hex(),
@@ -148,10 +146,10 @@ func (c *CardanoCli) SubmitTx(tx *tx.Tx) (*types.Hash32, error) {
 	return &txHash, nil
 }
 
-func (c *CardanoCli) ProtocolParams() (*tx.ProtocolParams, error) {
+func (c *CardanoCli) ProtocolParams() (*cardano.ProtocolParams, error) {
 	return nil, nil
 }
 
-func (c *CardanoCli) Network() types.Network {
+func (c *CardanoCli) Network() cardano.Network {
 	return c.network
 }

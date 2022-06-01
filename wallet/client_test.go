@@ -3,7 +3,7 @@ package wallet
 import (
 	"testing"
 
-	"github.com/echovl/cardano-go/types"
+	"github.com/echovl/cardano-go"
 	"github.com/tyler-smith/go-bip39"
 )
 
@@ -67,7 +67,7 @@ func (db *MockDB) Close() {
 	db.calls++
 }
 
-func (db *MockDB) GetWallets(network types.Network) ([]*Wallet, error) {
+func (db *MockDB) GetWallets(network cardano.Network) ([]*Wallet, error) {
 	db.calls++
 	return []*Wallet{}, nil
 }

@@ -1,19 +1,18 @@
 package wallet
 
 import (
-	"github.com/echovl/cardano-go/node"
-	"github.com/echovl/cardano-go/node/cli"
-	"github.com/echovl/cardano-go/types"
+	"github.com/echovl/cardano-go"
+	cardanocli "github.com/echovl/cardano-go/cardano-cli"
 )
 
 type Options struct {
-	Node node.Node
+	Node cardano.Node
 	DB   DB
 }
 
 func (o *Options) init() {
 	if o.Node == nil {
-		o.Node = cli.NewNode(types.Testnet)
+		o.Node = cardanocli.NewNode(cardano.Testnet)
 	}
 	if o.DB == nil {
 		o.DB = newBadgerDB()

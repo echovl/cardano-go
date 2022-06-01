@@ -10,20 +10,18 @@ import (
 	"strconv"
 
 	"github.com/blockfrost/blockfrost-go"
-	"github.com/echovl/cardano-go/node"
-	"github.com/echovl/cardano-go/tx"
-	"github.com/echovl/cardano-go/types"
+	"github.com/echovl/cardano-go"
 )
 
 // BlockfrostNode implements Node using the blockfrost API.
 type BlockfrostNode struct {
 	client    blockfrost.APIClient
 	projectID string
-	network   types.Network
+	network   cardano.Network
 }
 
 // NewNode returns a new instance of BlockfrostNode.
-func NewNode(network types.Network, projectID string) node.Node {
+func NewNode(network cardano.Network, projectID string) cardano.Node {
 	return &BlockfrostNode{
 		network:   network,
 		projectID: projectID,
@@ -33,22 +31,22 @@ func NewNode(network types.Network, projectID string) node.Node {
 	}
 }
 
-func (b *BlockfrostNode) UTxOs(addr types.Address) ([]tx.UTxO, error) {
+func (b *BlockfrostNode) UTxOs(addr cardano.Address) ([]cardano.UTxO, error) {
 	butxos, err := b.client.AddressUTXOs(context.Background(), addr.Bech32(), blockfrost.APIQueryParams{})
 	if err != nil {
 		// Addresses without UTXOs return NotFound error
 		if err, ok := err.(*blockfrost.APIError); ok {
 			if _, ok := err.Response.(blockfrost.NotFound); ok {
-				return []tx.UTxO{}, nil
+				return []cardano.UTxO{}, nil
 			}
 		}
 		return nil, err
 	}
 
-	utxos := make([]tx.UTxO, len(butxos))
+	utxos := make([]cardano.UTxO, len(butxos))
 
 	for i, butxo := range butxos {
-		txHash, err := types.NewHash32(butxo.TxHash)
+		txHash, err := cardano.NewHash32(butxo.TxHash)
 		if err != nil {
 			return nil, err
 		}
@@ -64,10 +62,10 @@ func (b *BlockfrostNode) UTxOs(addr types.Address) ([]tx.UTxO, error) {
 			}
 		}
 
-		utxos[i] = tx.UTxO{
+		utxos[i] = cardano.UTxO{
 			Spender: addr,
 			TxHash:  txHash,
-			Amount:  types.Coin(amount),
+			Amount:  cardano.Coin(amount),
 			Index:   uint64(butxo.OutputIndex),
 		}
 	}
@@ -75,20 +73,20 @@ func (b *BlockfrostNode) UTxOs(addr types.Address) ([]tx.UTxO, error) {
 	return utxos, nil
 }
 
-func (b *BlockfrostNode) Tip() (*node.NodeTip, error) {
+func (b *BlockfrostNode) Tip() (*cardano.NodeTip, error) {
 	block, err := b.client.BlockLatest(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
-	return &node.NodeTip{
+	return &cardano.NodeTip{
 		Block: uint64(block.Height),
 		Epoch: uint64(block.Epoch),
 		Slot:  uint64(block.Slot),
 	}, nil
 }
 
-func (b *BlockfrostNode) SubmitTx(tx *tx.Tx) (*types.Hash32, error) {
+func (b *BlockfrostNode) SubmitTx(tx *cardano.Tx) (*cardano.Hash32, error) {
 	url := fmt.Sprintf("https://cardano-%s.blockfrost.io/api/v0/tx/submit", b.network.String())
 	txBytes := tx.Bytes()
 
@@ -123,7 +121,7 @@ func (b *BlockfrostNode) SubmitTx(tx *tx.Tx) (*types.Hash32, error) {
 	return &txHash, nil
 }
 
-func (b *BlockfrostNode) ProtocolParams() (*tx.ProtocolParams, error) {
+func (b *BlockfrostNode) ProtocolParams() (*cardano.ProtocolParams, error) {
 	eparams, err := b.client.LatestEpochParameters(context.Background())
 	if err != nil {
 		return nil, err
@@ -139,16 +137,16 @@ func (b *BlockfrostNode) ProtocolParams() (*tx.ProtocolParams, error) {
 		return nil, err
 	}
 
-	pparams := &tx.ProtocolParams{
-		CoinsPerUTXOWord: types.Coin(minUTXO),
-		PoolDeposit:      types.Coin(poolDeposit),
-		MinFeeA:          types.Coin(eparams.MinFeeA),
-		MinFeeB:          types.Coin(eparams.MinFeeB),
+	pparams := &cardano.ProtocolParams{
+		CoinsPerUTXOWord: cardano.Coin(minUTXO),
+		PoolDeposit:      cardano.Coin(poolDeposit),
+		MinFeeA:          cardano.Coin(eparams.MinFeeA),
+		MinFeeB:          cardano.Coin(eparams.MinFeeB),
 	}
 
 	return pparams, nil
 }
 
-func (b *BlockfrostNode) Network() types.Network {
+func (b *BlockfrostNode) Network() cardano.Network {
 	return b.network
 }

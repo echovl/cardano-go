@@ -37,4 +37,4 @@
 //
 //      fmt.Println(utxos)
 //  }
-package cardanogo
+package cardano
