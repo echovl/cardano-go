@@ -49,6 +49,10 @@ func (tb *TxBuilder) AddAuxiliaryData(data *AuxiliaryData) {
 	tb.tx.AuxiliaryData = data
 }
 
+func (tb *TxBuilder) AddCertificate(cert Certificate) {
+	tb.tx.Body.Certificates = append(tb.tx.Body.Certificates, cert)
+}
+
 // AddChangeIfNeeded calculates the required fee for the transaction and adds
 // an aditional output for the change if there is any.
 // This assumes that the tb inputs and outputs are defined.
@@ -59,6 +63,7 @@ func (tb *TxBuilder) AddChangeIfNeeded(changeAddr string) error {
 	}
 
 	inputAmount, outputAmount := tb.calculateAmounts()
+	totalDeposits := tb.totalDeposits()
 
 	// Set a temporary realistic fee in order to serialize a valid transaction
 	tb.tx.Body.Fee = 200000
@@ -67,22 +72,22 @@ func (tb *TxBuilder) AddChangeIfNeeded(changeAddr string) error {
 	}
 
 	minFee := tb.calculateMinFee()
-	outputWithFeeAmount := outputAmount + minFee
+	totalProduced := outputAmount + minFee + totalDeposits
 
-	if inputAmount < outputWithFeeAmount {
+	if inputAmount < totalProduced {
 		return fmt.Errorf(
 			"insuficient input in transaction, got %v want atleast %v",
 			inputAmount,
-			outputWithFeeAmount,
+			totalProduced,
 		)
 	}
 
-	if inputAmount == outputWithFeeAmount {
+	if inputAmount == totalProduced {
 		tb.tx.Body.Fee = minFee
 		return nil
 	}
 
-	change := inputAmount - outputWithFeeAmount
+	change := inputAmount - totalProduced
 	changeOutput := &TxOutput{
 		Address: addr,
 		Amount:  change,
@@ -116,6 +121,19 @@ func (tb *TxBuilder) calculateAmounts() (input, output Coin) {
 		output += out.Amount
 	}
 	return
+}
+
+func (tb *TxBuilder) totalDeposits() Coin {
+	certs := tb.tx.Body.Certificates
+	var deposit Coin
+	if len(certs) != 0 {
+		for _, cert := range certs {
+			if cert.Type == StakeRegistration {
+				deposit += tb.protocol.KeyDeposit
+			}
+		}
+	}
+	return deposit
 }
 
 // func (tb *TxBuilder) addFee(inputAmount types.Coin, changeAddress types.Address, protocol *ProtocolParams) error {
@@ -201,22 +219,22 @@ func (tb *TxBuilder) Sign(privateKeys ...string) error {
 
 // Build creates a new transaction using the inputs, outputs and keys provided.
 func (tb *TxBuilder) Build() (*Tx, error) {
-	inputAmount, outputAmount := tb.calculateAmounts()
-	outputAmountWithFee := outputAmount + tb.tx.Body.Fee
+	// inputAmount, outputAmount := tb.calculateAmounts()
+	// outputAmountWithFee := outputAmount + tb.tx.Body.Fee
 
-	if outputAmountWithFee > inputAmount {
-		return nil, fmt.Errorf(
-			"insuficient input in transaction, got %v want %v",
-			inputAmount,
-			outputAmountWithFee,
-		)
-	} else if outputAmountWithFee < inputAmount {
-		return nil, fmt.Errorf(
-			"fee too small, got %v want %v",
-			tb.tx.Body.Fee,
-			inputAmount-outputAmountWithFee,
-		)
-	}
+	// if outputAmountWithFee > inputAmount {
+	// 	return nil, fmt.Errorf(
+	// 		"insuficient input in transaction, got %v want %v",
+	// 		inputAmount,
+	// 		outputAmountWithFee,
+	// 	)
+	// } else if outputAmountWithFee < inputAmount {
+	// 	return nil, fmt.Errorf(
+	// 		"fee too small, got %v want %v",
+	// 		tb.tx.Body.Fee,
+	// 		inputAmount-outputAmountWithFee,
+	// 	)
+	// }
 
 	return tb.build()
 }

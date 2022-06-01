@@ -35,11 +35,11 @@ func TestAddress(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	paymentAddrCred, err := NewAddrKeyCredential(pvk)
+	paymentAddrCred, err := NewKeyCredential(pvk)
 	if err != nil {
 		t.Fatal(err)
 	}
-	stakeAddrCred, err := NewAddrKeyCredential(svk)
+	stakeAddrCred, err := NewKeyCredential(svk)
 	if err != nil {
 		t.Fatal(err)
 	}

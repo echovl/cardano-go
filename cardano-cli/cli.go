@@ -146,8 +146,30 @@ func (c *CardanoCli) SubmitTx(tx *cardano.Tx) (*cardano.Hash32, error) {
 	return &txHash, nil
 }
 
+type protocolParameters struct {
+	MinFeeA          cardano.Coin `json:"txFeePerByte"`
+	MinFeeB          cardano.Coin `json:"txFeeFixed"`
+	CoinsPerUTXOWord cardano.Coin `json:"utxoCostPerWord"`
+}
+
 func (c *CardanoCli) ProtocolParams() (*cardano.ProtocolParams, error) {
-	return nil, nil
+	out, err := c.runCommand("query", "protocol-parameters")
+	if err != nil {
+		return nil, errors.New(string(out))
+	}
+
+	var cparams protocolParameters
+	if err := json.Unmarshal(out, &cparams); err != nil {
+		return nil, err
+	}
+
+	pparams := &cardano.ProtocolParams{
+		MinFeeA:          cparams.MinFeeA,
+		MinFeeB:          cparams.MinFeeB,
+		CoinsPerUTXOWord: cparams.CoinsPerUTXOWord,
+	}
+
+	return pparams, nil
 }
 
 func (c *CardanoCli) Network() cardano.Network {

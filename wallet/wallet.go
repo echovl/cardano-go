@@ -17,17 +17,18 @@ const (
 	coinTypeIndex      uint32 = 1815 + 0x80000000
 	accountIndex       uint32 = 0x80000000
 	externalChainIndex uint32 = 0x0
+	stakingChainIndex  uint32 = 0x02
 	walleIDAlphabet           = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 )
 
 type Wallet struct {
-	ID      string
-	Name    string
-	skeys   []crypto.XPrvKey
-	pkeys   []crypto.XPubKey
-	rootKey crypto.XPrvKey
-	node    cardano.Node
-	network cardano.Network
+	ID       string
+	Name     string
+	addrKeys []crypto.XPrvKey
+	stakeKey crypto.XPrvKey
+	rootKey  crypto.XPrvKey
+	node     cardano.Node
+	network  cardano.Network
 }
 
 // Transfer sends an amount of lovelace to the receiver address and returns the transaction hash
@@ -62,8 +63,8 @@ func (w *Wallet) Transfer(receiver cardano.Address, amount cardano.Coin) (*carda
 
 	keys := make(map[int]crypto.XPrvKey)
 	for i, utxo := range pickedUtxos {
-		for _, key := range w.skeys {
-			payment, err := cardano.NewAddrKeyCredential(key.PubKey())
+		for _, key := range w.addrKeys {
+			payment, err := cardano.NewKeyCredential(key.PubKey())
 			if err != nil {
 				return nil, err
 			}
@@ -92,7 +93,7 @@ func (w *Wallet) Transfer(receiver cardano.Address, amount cardano.Coin) (*carda
 	}
 	builder.SetTTL(tip.Slot + 1200)
 	for _, key := range keys {
-		builder.Sign(key.Bech32("addr_xsk"))
+		builder.Sign(key.PrvKey().Bech32("addr_xsk"))
 	}
 	changeAddress := pickedUtxos[0].Spender
 	if err = builder.AddChangeIfNeeded(changeAddress.Bech32()); err != nil {
@@ -138,10 +139,10 @@ func (w *Wallet) findUtxos() ([]cardano.UTxO, error) {
 
 // AddAddress generates a new payment address and adds it to the wallet.
 func (w *Wallet) AddAddress() (cardano.Address, error) {
-	index := uint32(len(w.skeys))
+	index := uint32(len(w.addrKeys))
 	newKey := w.rootKey.Derive(index)
-	w.skeys = append(w.skeys, newKey)
-	payment, err := cardano.NewAddrKeyCredential(newKey.PubKey())
+	w.addrKeys = append(w.addrKeys, newKey)
+	payment, err := cardano.NewKeyCredential(newKey.PubKey())
 	if err != nil {
 		return cardano.Address{}, err
 	}
@@ -150,17 +151,26 @@ func (w *Wallet) AddAddress() (cardano.Address, error) {
 
 // Addresses returns all wallet's addresss.
 func (w *Wallet) Addresses() ([]cardano.Address, error) {
-	addresses := make([]cardano.Address, len(w.skeys))
-	for i, key := range w.skeys {
-		payment, err := cardano.NewAddrKeyCredential(key.PubKey())
+	addresses := make([]cardano.Address, 2*len(w.addrKeys))
+	for i, key := range w.addrKeys {
+		payment, err := cardano.NewKeyCredential(key.PubKey())
 		if err != nil {
 			return nil, err
 		}
-		addr, err := cardano.NewEnterpriseAddress(w.network, payment)
+		enterpriseAddr, err := cardano.NewEnterpriseAddress(w.network, payment)
 		if err != nil {
 			return nil, err
 		}
-		addresses[i] = addr
+		stake, err := cardano.NewKeyCredential(w.stakeKey.PubKey())
+		if err != nil {
+			return nil, err
+		}
+		baseAddr, err := cardano.NewBaseAddress(w.network, payment, stake)
+		if err != nil {
+			return nil, err
+		}
+		addresses[i] = enterpriseAddr
+		addresses[i+1] = baseAddr
 	}
 	return addresses, nil
 }
@@ -173,31 +183,35 @@ func newWalletID() string {
 func newWallet(name, password string, entropy []byte) *Wallet {
 	wallet := &Wallet{Name: name, ID: newWalletID()}
 	rootKey := crypto.NewXPrvKeyFromEntropy(entropy, password)
-	chainKey := rootKey.Derive(purposeIndex).
+	accountKey := rootKey.Derive(purposeIndex).
 		Derive(coinTypeIndex).
-		Derive(accountIndex).
-		Derive(externalChainIndex)
+		Derive(accountIndex)
+	chainKey := accountKey.Derive(externalChainIndex)
+	stakeKey := accountKey.Derive(2).Derive(0)
 	addr0Key := chainKey.Derive(0)
 	wallet.rootKey = chainKey
-	wallet.skeys = []crypto.XPrvKey{addr0Key}
+	wallet.addrKeys = []crypto.XPrvKey{addr0Key}
+	wallet.stakeKey = stakeKey
 	return wallet
 }
 
 type walletDump struct {
-	ID      string
-	Name    string
-	Keys    []crypto.XPrvKey
-	RootKey crypto.XPrvKey
-	Network cardano.Network
+	ID       string
+	Name     string
+	Keys     []crypto.XPrvKey
+	StakeKey crypto.XPrvKey
+	RootKey  crypto.XPrvKey
+	Network  cardano.Network
 }
 
 func (w *Wallet) marshal() ([]byte, error) {
 	wd := &walletDump{
-		ID:      w.ID,
-		Name:    w.Name,
-		Keys:    w.skeys,
-		RootKey: w.rootKey,
-		Network: w.network,
+		ID:       w.ID,
+		Name:     w.Name,
+		Keys:     w.addrKeys,
+		StakeKey: w.stakeKey,
+		RootKey:  w.rootKey,
+		Network:  w.network,
 	}
 	bytes, err := json.Marshal(wd)
 	if err != nil {
@@ -214,7 +228,8 @@ func (w *Wallet) unmarshal(bytes []byte) error {
 	}
 	w.ID = wd.ID
 	w.Name = wd.Name
-	w.skeys = wd.Keys
+	w.addrKeys = wd.Keys
+	w.stakeKey = wd.StakeKey
 	w.rootKey = wd.RootKey
 	w.network = wd.Network
 	return nil

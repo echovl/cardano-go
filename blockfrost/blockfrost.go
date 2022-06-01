@@ -136,12 +136,22 @@ func (b *BlockfrostNode) ProtocolParams() (*cardano.ProtocolParams, error) {
 	if err != nil {
 		return nil, err
 	}
+	keyDeposit, err := strconv.ParseUint(eparams.KeyDeposit, 10, 64)
+	if err != nil {
+		return nil, err
+	}
 
 	pparams := &cardano.ProtocolParams{
-		CoinsPerUTXOWord: cardano.Coin(minUTXO),
-		PoolDeposit:      cardano.Coin(poolDeposit),
-		MinFeeA:          cardano.Coin(eparams.MinFeeA),
-		MinFeeB:          cardano.Coin(eparams.MinFeeB),
+		MinFeeA:            cardano.Coin(eparams.MinFeeA),
+		MinFeeB:            cardano.Coin(eparams.MinFeeB),
+		MaxBlockBodySize:   uint(eparams.MaxBlockSize),
+		MaxTxSize:          uint(eparams.MaxTxSize),
+		MaxBlockHeaderSize: uint(eparams.MaxBlockHeaderSize),
+		KeyDeposit:         cardano.Coin(keyDeposit),
+		PoolDeposit:        cardano.Coin(poolDeposit),
+		MaxEpoch:           uint(eparams.Epoch),
+		NOpt:               uint(eparams.NOpt),
+		CoinsPerUTXOWord:   cardano.Coin(minUTXO),
 	}
 
 	return pparams, nil

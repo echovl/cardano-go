@@ -49,12 +49,12 @@ func NewAddressFromBytes(bytes []byte) (Address, error) {
 			return addr, errors.New("base address length should be 29")
 		}
 		addr.Payment = StakeCredential{
-			Type:        AddrKeyCredential,
-			AddrKeyHash: bytes[1:29],
+			Type:    KeyCredential,
+			KeyHash: bytes[1:29],
 		}
 		addr.Stake = StakeCredential{
-			Type:        AddrKeyCredential,
-			AddrKeyHash: bytes[29:57],
+			Type:    KeyCredential,
+			KeyHash: bytes[29:57],
 		}
 	case Base + 1:
 		if len(bytes) != 57 {
@@ -65,16 +65,16 @@ func NewAddressFromBytes(bytes []byte) (Address, error) {
 			ScriptHash: bytes[1:29],
 		}
 		addr.Stake = StakeCredential{
-			Type:        AddrKeyCredential,
-			AddrKeyHash: bytes[29:57],
+			Type:    KeyCredential,
+			KeyHash: bytes[29:57],
 		}
 	case Base + 2:
 		if len(bytes) != 57 {
 			return addr, errors.New("base address length should be 29")
 		}
 		addr.Payment = StakeCredential{
-			Type:        AddrKeyCredential,
-			AddrKeyHash: bytes[1:29],
+			Type:    KeyCredential,
+			KeyHash: bytes[1:29],
 		}
 		addr.Stake = StakeCredential{
 			Type:       ScriptCredential,
@@ -114,8 +114,8 @@ func NewAddressFromBytes(bytes []byte) (Address, error) {
 		}
 
 		addr.Payment = StakeCredential{
-			Type:        AddrKeyCredential,
-			AddrKeyHash: bytes[1:29],
+			Type:    KeyCredential,
+			KeyHash: bytes[1:29],
 		}
 		addr.Pointer = Pointer{Slot: slot, TxIndex: txIndex, CertIndex: certIndex}
 	case Ptr + 1:
@@ -149,8 +149,8 @@ func NewAddressFromBytes(bytes []byte) (Address, error) {
 			return addr, errors.New("enterprise address length should be 29")
 		}
 		addr.Payment = StakeCredential{
-			Type:        AddrKeyCredential,
-			AddrKeyHash: bytes[1:29],
+			Type:    KeyCredential,
+			KeyHash: bytes[1:29],
 		}
 	case Enterprise + 1:
 		if len(bytes) != 29 {
@@ -220,9 +220,9 @@ func (addr *Address) Bech32() string {
 
 func NewBaseAddress(network Network, payment StakeCredential, stake StakeCredential) (Address, error) {
 	addrType := Base
-	if payment.Type == ScriptCredential && stake.Type == AddrKeyCredential {
+	if payment.Type == ScriptCredential && stake.Type == KeyCredential {
 		addrType = Base + 1
-	} else if payment.Type == AddrKeyCredential && stake.Type == ScriptCredential {
+	} else if payment.Type == KeyCredential && stake.Type == ScriptCredential {
 		addrType = Base + 2
 	} else if payment.Type == ScriptCredential && stake.Type == ScriptCredential {
 		addrType = Base + 3

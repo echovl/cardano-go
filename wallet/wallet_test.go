@@ -31,8 +31,8 @@ func TestGenerateAddress(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		addrXsk1 := bech32From("addr_xsk", w.skeys[1])
-		addrXvk1 := bech32From("addr_xvk", w.skeys[1].XPubKey())
+		addrXsk1 := bech32From("addr_xsk", w.addrKeys[1])
+		addrXvk1 := bech32From("addr_xvk", w.addrKeys[1].XPubKey())
 
 		if addrXsk1 != testVector.addrXsk1 {
 			t.Errorf("invalid addrXsk1 :\ngot: %v\nwant: %v", addrXsk1, testVector.addrXsk1)

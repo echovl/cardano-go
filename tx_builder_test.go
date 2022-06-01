@@ -100,7 +100,7 @@ func TestSimpleBuild(t *testing.T) {
 
 func TestAddChangeIfNeeded(t *testing.T) {
 	key := crypto.NewXPrvKeyFromEntropy([]byte("receiver address"), "foo")
-	payment, err := NewAddrKeyCredential(key.PubKey())
+	payment, err := NewKeyCredential(key.PubKey())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +248,7 @@ func TestAddChangeIfNeeded(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			key := crypto.NewXPrvKeyFromEntropy([]byte("change address"), "foo")
-			payment, err := NewAddrKeyCredential(key.PubKey())
+			payment, err := NewKeyCredential(key.PubKey())
 			if err != nil {
 				t.Fatal(err)
 			}

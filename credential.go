@@ -10,14 +10,14 @@ import (
 type StakeCredentialType uint64
 
 const (
-	AddrKeyCredential StakeCredentialType = 0
-	ScriptCredential                      = 1
+	KeyCredential    StakeCredentialType = 0
+	ScriptCredential                     = 1
 )
 
-type addrKeyStakeCredential struct {
-	_           struct{} `cbor:",toarray"`
-	Type        StakeCredentialType
-	AddrKeyHash AddrKeyHash
+type keyStakeCredential struct {
+	_       struct{} `cbor:",toarray"`
+	Type    StakeCredentialType
+	KeyHash AddrKeyHash
 }
 
 type scriptStakeCredential struct {
@@ -27,25 +27,25 @@ type scriptStakeCredential struct {
 }
 
 type StakeCredential struct {
-	Type        StakeCredentialType
-	AddrKeyHash AddrKeyHash
-	ScriptHash  Hash28
+	Type       StakeCredentialType
+	KeyHash    AddrKeyHash
+	ScriptHash Hash28
 }
 
 func (s *StakeCredential) Hash() Hash28 {
-	if s.Type == AddrKeyCredential {
-		return s.AddrKeyHash
+	if s.Type == KeyCredential {
+		return s.KeyHash
 	} else {
 		return s.ScriptHash
 	}
 }
 
-func NewAddrKeyCredential(publicKey crypto.PubKey) (StakeCredential, error) {
+func NewKeyCredential(publicKey crypto.PubKey) (StakeCredential, error) {
 	keyHash, err := blake224Hash(publicKey)
 	if err != nil {
 		return StakeCredential{}, err
 	}
-	return StakeCredential{Type: AddrKeyCredential, AddrKeyHash: keyHash}, nil
+	return StakeCredential{Type: KeyCredential, KeyHash: keyHash}, nil
 }
 
 func NewScriptCredential(script []byte) (StakeCredential, error) {
@@ -60,8 +60,8 @@ func NewScriptCredential(script []byte) (StakeCredential, error) {
 func (s *StakeCredential) MarshalCBOR() ([]byte, error) {
 	var cred []interface{}
 	switch s.Type {
-	case AddrKeyCredential:
-		cred = append(cred, s.Type, s.AddrKeyHash)
+	case KeyCredential:
+		cred = append(cred, s.Type, s.KeyHash)
 	case ScriptCredential:
 		cred = append(cred, s.Type, s.ScriptHash)
 	}
@@ -78,13 +78,13 @@ func (s *StakeCredential) UnmarshalCBOR(data []byte) error {
 	}
 
 	switch StakeCredentialType(credType) {
-	case AddrKeyCredential:
-		cred := &addrKeyStakeCredential{}
+	case KeyCredential:
+		cred := &keyStakeCredential{}
 		if err := cbor.Unmarshal(data, cred); err != nil {
 			return err
 		}
-		s.Type = AddrKeyCredential
-		s.AddrKeyHash = cred.AddrKeyHash
+		s.Type = KeyCredential
+		s.KeyHash = cred.KeyHash
 	case ScriptCredential:
 		cred := &scriptStakeCredential{}
 		if err := cbor.Unmarshal(data, cred); err != nil {

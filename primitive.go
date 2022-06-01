@@ -76,17 +76,17 @@ func NewString(s string) String {
 	return String(&s)
 }
 
-type UnitInterval = RationalNumber
+type UnitInterval = Rational
 
-type RationalNumber struct {
+type Rational struct {
 	_ struct{} `cbor:",toarray"`
 	P uint64
 	Q uint64
 }
 
 // MarshalCBOR implements cbor.Marshaler
-func (r *RationalNumber) MarshalCBOR() ([]byte, error) {
-	type rational RationalNumber
+func (r *Rational) MarshalCBOR() ([]byte, error) {
+	type rational Rational
 
 	// Register tag 30 for rational numbers
 	tags, err := r.tagSet(rational{})
@@ -103,8 +103,8 @@ func (r *RationalNumber) MarshalCBOR() ([]byte, error) {
 }
 
 // UnmarshalCBOR implements cbor.Unmarshaler
-func (r *RationalNumber) UnmarshalCBOR(data []byte) error {
-	type rational RationalNumber
+func (r *Rational) UnmarshalCBOR(data []byte) error {
+	type rational Rational
 
 	// Register tag 30 for rational numbers
 	tags, err := r.tagSet(rational{})
@@ -127,7 +127,7 @@ func (r *RationalNumber) UnmarshalCBOR(data []byte) error {
 	return nil
 }
 
-func (r *RationalNumber) tagSet(contentType interface{}) (cbor.TagSet, error) {
+func (r *Rational) tagSet(contentType interface{}) (cbor.TagSet, error) {
 	tags := cbor.NewTagSet()
 	err := tags.Add(
 		cbor.TagOptions{EncTag: cbor.EncTagRequired, DecTag: cbor.DecTagRequired},
