@@ -6,8 +6,6 @@ cardano-go is a library for creating go applicactions that interact with the Car
 
 ```
 $ go get github.com/echovl/cardano-node
-$ go get github.com/echovl/cardano-node/node
-$ go get github.com/echovl/cardano-node/tx
 ```
 
 ## Usage
