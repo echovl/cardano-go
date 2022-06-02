@@ -29,8 +29,6 @@ github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 h1:tdlZCpZ/P9DhczC
 github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2/go.mod h1:SqUrOPUnsFjfmXRMNPybcSiG0BgUW2AuFH8PAnS2iTw=
 github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4zYo=
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
-github.com/echovl/bech32 v0.1.0 h1:ns5t7PgTuN8UPXtDRNT1p1mWmMy+Qh0oynSfd4de1p8=
-github.com/echovl/bech32 v0.1.0/go.mod h1:dXY6CK3Jec8qXD9bq2dGaamTTl6pyRYcc6iZJXhUC10=
 github.com/echovl/ed25519 v0.2.0 h1:H7sxJEXwj9krUvIug2vk8z+l8Yo1qlJ79Ja8ZYNPDkY=
 github.com/echovl/ed25519 v0.2.0/go.mod h1:hDzvQuQmNrDsQJa+ZDgXkJPi6rTiIFNFl2cxCYOdwYo=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=

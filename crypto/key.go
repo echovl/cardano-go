@@ -3,7 +3,7 @@ package crypto
 import (
 	"crypto/sha512"
 
-	"github.com/echovl/bech32"
+	"github.com/echovl/cardano-go/internal/bech32"
 	"github.com/echovl/ed25519"
 	"golang.org/x/crypto/pbkdf2"
 )

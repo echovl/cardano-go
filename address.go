@@ -4,7 +4,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/echovl/bech32"
+	"github.com/echovl/cardano-go/internal/bech32"
 	"github.com/fxamacker/cbor/v2"
 	"golang.org/x/crypto/blake2b"
 )
