@@ -219,22 +219,22 @@ func (tb *TxBuilder) Sign(privateKeys ...string) error {
 
 // Build creates a new transaction using the inputs, outputs and keys provided.
 func (tb *TxBuilder) Build() (*Tx, error) {
-	// inputAmount, outputAmount := tb.calculateAmounts()
-	// outputAmountWithFee := outputAmount + tb.tx.Body.Fee
+	inputAmount, outputAmount := tb.calculateAmounts()
+	totalProduced := outputAmount + tb.tx.Body.Fee + tb.totalDeposits()
 
-	// if outputAmountWithFee > inputAmount {
-	// 	return nil, fmt.Errorf(
-	// 		"insuficient input in transaction, got %v want %v",
-	// 		inputAmount,
-	// 		outputAmountWithFee,
-	// 	)
-	// } else if outputAmountWithFee < inputAmount {
-	// 	return nil, fmt.Errorf(
-	// 		"fee too small, got %v want %v",
-	// 		tb.tx.Body.Fee,
-	// 		inputAmount-outputAmountWithFee,
-	// 	)
-	// }
+	if totalProduced > inputAmount {
+		return nil, fmt.Errorf(
+			"insuficient input in transaction, got %v want %v",
+			inputAmount,
+			totalProduced,
+		)
+	} else if totalProduced < inputAmount {
+		return nil, fmt.Errorf(
+			"fee too small, got %v want %v",
+			tb.tx.Body.Fee,
+			inputAmount-totalProduced,
+		)
+	}
 
 	return tb.build()
 }
