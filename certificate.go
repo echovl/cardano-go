@@ -1,6 +1,7 @@
 package cardano
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	"github.com/echovl/cardano-go/crypto"
@@ -164,8 +165,12 @@ func NewStakeDeregistrationCertificate(stakeKey crypto.PubKey) (Certificate, err
 	}, nil
 }
 
-func NewStakeDelegationCertificate(stakeKey crypto.PubKey, poolKeyHash PoolKeyHash) (Certificate, error) {
+func NewStakeDelegationCertificate(stakeKey crypto.PubKey, poolKeyHash string) (Certificate, error) {
 	cred, err := NewKeyCredential(stakeKey)
+	if err != nil {
+		return Certificate{}, err
+	}
+	keyHash, err := hex.DecodeString(poolKeyHash)
 	if err != nil {
 		return Certificate{}, err
 	}
@@ -173,7 +178,7 @@ func NewStakeDelegationCertificate(stakeKey crypto.PubKey, poolKeyHash PoolKeyHa
 	return Certificate{
 		Type:            StakeDelegation,
 		StakeCredential: cred,
-		PoolKeyHash:     poolKeyHash,
+		PoolKeyHash:     keyHash,
 	}, nil
 }
 

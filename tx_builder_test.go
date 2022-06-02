@@ -60,11 +60,19 @@ func TestSimpleBuild(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
+			addrOut, err := NewAddress(tc.addrOut)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sk, err := crypto.NewPrvKey(tc.sk)
+			if err != nil {
+				t.Fatal(err)
+			}
 			txIn, err := NewTxInput(tc.txHashIn, 0, Coin(tc.input))
 			if err != nil {
 				t.Fatal(err)
 			}
-			txOut, err := NewTxOutput(tc.addrOut, Coin(tc.output))
+			txOut, err := NewTxOutput(addrOut, Coin(tc.output))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -75,7 +83,7 @@ func TestSimpleBuild(t *testing.T) {
 			txBuilder.AddOutputs(txOut)
 			txBuilder.SetFee(Coin(tc.fee))
 
-			if err := txBuilder.Sign(tc.sk); err != nil {
+			if err := txBuilder.Sign(sk); err != nil {
 				t.Fatal(err)
 			}
 
@@ -260,8 +268,8 @@ func TestAddChangeIfNeeded(t *testing.T) {
 			builder.AddInputs(tc.fields.inputs...)
 			builder.AddOutputs(tc.fields.outputs...)
 			builder.SetTTL(tc.fields.ttl)
-			builder.Sign(key.Bech32("addr_xsk"))
-			if err := builder.AddChangeIfNeeded(change.Bech32()); err != nil {
+			builder.Sign(key.PrvKey())
+			if err := builder.AddChangeIfNeeded(change); err != nil {
 				if tc.wantErr {
 					return
 				}

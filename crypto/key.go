@@ -95,6 +95,15 @@ func (pub PubKey) Verify(message, signature []byte) bool {
 	return ed25519.Verify(ed25519.PublicKey(pub), message, signature)
 }
 
+// Bech32 returns the public key encoded as bech32.
+func (pub PubKey) Bech32(prefix string) string {
+	bech, err := bech32.EncodeFromBase256(prefix, pub)
+	if err != nil {
+		panic(err)
+	}
+	return bech
+}
+
 // PrvKey is a ed25519 extended private key.
 type PrvKey []byte
 

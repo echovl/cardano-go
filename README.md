@@ -43,16 +43,23 @@ import (
 	"fmt"
 
 	"github.com/echovl/cardano-go"
+	"github.com/echovl/cardano-go/crypto"
 )
 
 func main() {
 	txBuilder := cardano.NewTxBuilder(&cardano.ProtocolParams{})
 
+	receiver, err := cardano.NewAddress("addr")
+	sk, err := crypto.NewPrvKey("addr_sk")
+	if err != nil {
+		panic(err)
+	}
+
 	txInput, err := cardano.NewTxInput("txhash", 0, cardano.Coin(2000000))
 	if err != nil {
 		panic(err)
 	}
-	txOut, err := cardano.NewTxOutput("addr", cardano.Coin(1300000))
+	txOut, err := cardano.NewTxOutput(receiver, cardano.Coin(1300000))
 	if err != nil {
 		panic(err)
 	}
@@ -61,7 +68,7 @@ func main() {
 	txBuilder.AddOutputs(txOut)
 	txBuilder.SetTTL(100000)
 	txBuilder.SetFee(cardano.Coin(160000))
-	txBuilder.Sign("addr_sk")
+	txBuilder.Sign(sk)
 
 	tx, err := txBuilder.Build()
 	if err != nil {
@@ -77,13 +84,20 @@ func main() {
 ```go
 package main
 
-import "github.com/echovl/cardano-go"
+import (
+	"github.com/echovl/cardano-go"
+)
 
 func main() {
 	txBuilder := cardano.NewTxBuilder(&cardano.ProtocolParams{})
 
+	changeAddr, err := cardano.NewAddress("addr")
+	if err != nil {
+		panic(err)
+	}
+
 	// Transaction should be signed at this point
-	err := txBuilder.AddChangeIfNeeded("addr")
+	err = txBuilder.AddChangeIfNeeded(changeAddr)
 	if err != nil {
 		panic(err)
 	}
@@ -131,6 +145,61 @@ func main() {
 			},
 		},
 	})
+}
+```
+
+### Stake key registration
+
+```go
+package main
+
+import (
+	"github.com/echovl/cardano-go"
+	"github.com/echovl/cardano-go/crypto"
+)
+
+func main() {
+	txBuilder := cardano.NewTxBuilder(&cardano.ProtocolParams{})
+
+	stakeKey, err := crypto.NewPrvKey("stake_sk")
+	if err != nil {
+		panic(err)
+	}
+
+	stakeRegCert, err := cardano.NewStakeRegistrationCertificate(stakeKey.PubKey())
+	if err != nil {
+		panic(err)
+	}
+
+	txBuilder.AddCertificate(stakeRegCert)
+}
+```
+
+### Stake delegation
+
+```go
+package main
+
+import (
+	"github.com/echovl/cardano-go"
+	"github.com/echovl/cardano-go/crypto"
+)
+
+func main() {
+	txBuilder := cardano.NewTxBuilder(&cardano.ProtocolParams{})
+
+	stakeKey, err := crypto.NewPrvKey("stake_sk")
+	if err != nil {
+		panic(err)
+	}
+
+	poolKeyHash := "2d6765748cc86efe862f5abeb0c0271f91d368d300123ecedc078ef2"
+	stakeRegCert, err := cardano.NewStakeDelegationCertificate(stakeKey.PubKey(), poolKeyHash)
+	if err != nil {
+		panic(err)
+	}
+
+	txBuilder.AddCertificate(stakeRegCert)
 }
 ```
 

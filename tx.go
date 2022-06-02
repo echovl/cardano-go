@@ -80,13 +80,8 @@ type TxOutput struct {
 }
 
 // NewTxOutput creates a new instance of TxOutput
-func NewTxOutput(addr string, amount Coin) (*TxOutput, error) {
-	addrOut, err := NewAddress(addr)
-	if err != nil {
-		return nil, err
-	}
-
-	return &TxOutput{Address: addrOut, Amount: amount}, nil
+func NewTxOutput(addr Address, amount Coin) (*TxOutput, error) {
+	return &TxOutput{Address: addr, Amount: amount}, nil
 }
 
 type TxBody struct {

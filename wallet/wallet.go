@@ -93,10 +93,10 @@ func (w *Wallet) Transfer(receiver cardano.Address, amount cardano.Coin) (*carda
 	}
 	builder.SetTTL(tip.Slot + 1200)
 	for _, key := range keys {
-		builder.Sign(key.PrvKey().Bech32("addr_xsk"))
+		builder.Sign(key.PrvKey())
 	}
 	changeAddress := pickedUtxos[0].Spender
-	if err = builder.AddChangeIfNeeded(changeAddress.Bech32()); err != nil {
+	if err = builder.AddChangeIfNeeded(changeAddress); err != nil {
 		return nil, err
 	}
 
@@ -161,15 +161,6 @@ func (w *Wallet) Addresses() ([]cardano.Address, error) {
 		if err != nil {
 			return nil, err
 		}
-		// stake, err := cardano.NewKeyCredential(w.stakeKey.PubKey())
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// baseAddr, err := cardano.NewBaseAddress(w.network, payment, stake)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// addresses[i+1] = baseAddr
 		addresses[i] = enterpriseAddr
 	}
 	return addresses, nil

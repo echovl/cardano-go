@@ -55,13 +55,8 @@ func (tb *TxBuilder) AddCertificate(cert Certificate) {
 
 // AddChangeIfNeeded calculates the required fee for the transaction and adds
 // an aditional output for the change if there is any.
-// This assumes that the tb inputs and outputs are defined.
-func (tb *TxBuilder) AddChangeIfNeeded(changeAddr string) error {
-	addr, err := NewAddress(changeAddr)
-	if err != nil {
-		return err
-	}
-
+// This assumes that the inputs-outputs are defined and signing keys are present.
+func (tb *TxBuilder) AddChangeIfNeeded(changeAddr Address) error {
 	inputAmount, outputAmount := tb.calculateAmounts()
 	totalDeposits := tb.totalDeposits()
 
@@ -89,7 +84,7 @@ func (tb *TxBuilder) AddChangeIfNeeded(changeAddr string) error {
 
 	change := inputAmount - totalProduced
 	changeOutput := &TxOutput{
-		Address: addr,
+		Address: changeAddr,
 		Amount:  change,
 	}
 	changeMinUTXO := minUTXO(changeOutput, tb.protocol)
@@ -136,58 +131,8 @@ func (tb *TxBuilder) totalDeposits() Coin {
 	return deposit
 }
 
-// func (tb *TxBuilder) addFee(inputAmount types.Coin, changeAddress types.Address, protocol *ProtocolParams) error {
-// 	// Set a temporary realistic fee in order to serialize a valid transaction
-// 	tb.tx.Body.Fee = 200000
-
-// 	minFee := tb.CalculateFee()
-
-// 	outputAmount := types.Coin(0)
-// 	for _, txOut := range tb.tx.Body.Outputs {
-// 		outputAmount += txOut.Amount
-// 	}
-// 	outputWithFeeAmount := outputAmount + minFee
-
-// 	if inputAmount < outputWithFeeAmount {
-// 		return fmt.Errorf(
-// 			"insuficient input in transaction, got %v want atleast %v",
-// 			inputAmount,
-// 			outputWithFeeAmount,
-// 		)
-// 	}
-
-// 	if inputAmount == outputWithFeeAmount {
-// 		tb.tx.Body.Fee = minFee
-// 		return nil
-// 	}
-
-// 	change := inputAmount - outputWithFeeAmount
-// 	changeOutput := &TxOutput{
-// 		Address: changeAddress,
-// 		Amount:  change,
-// 	}
-// 	changeMinUTXO := minUTXO(changeOutput, protocol)
-// 	if change < changeMinUTXO {
-// 		tb.tx.Body.Fee = minFee + change // burn change
-// 		return nil
-// 	}
-
-// 	tb.tx.Body.Outputs = append([]*TxOutput{changeOutput}, tb.tx.Body.Outputs...)
-
-// 	newMinFee := tb.calculateMinFeeWithoutBuild()
-// 	if change+minFee-newMinFee < changeMinUTXO {
-// 		tb.tx.Body.Fee = minFee + change            // burn change
-// 		tb.tx.Body.Outputs = tb.tx.Body.Outputs[1:] // remove change output
-// 		return nil
-// 	}
-
-// 	tb.tx.Body.Outputs[0].Amount = change + minFee - newMinFee
-// 	tb.tx.Body.Fee = newMinFee
-
-// 	return nil
-// }
-
 // MinFee computes the minimal fee required for the transaction.
+// This assumes that the inputs-outputs are defined and signing keys are present.
 func (tb *TxBuilder) MinFee() (Coin, error) {
 	// Set a temporary realistic fee in order to serialize a valid transaction
 	tb.tx.Body.Fee = 200000
@@ -206,14 +151,8 @@ func (tb *TxBuilder) calculateMinFee() Coin {
 }
 
 // Sign adds signing keys to create signatures for the witness set.
-func (tb *TxBuilder) Sign(privateKeys ...string) error {
-	for _, key := range privateKeys {
-		xprv, err := crypto.NewPrvKey(key)
-		if err != nil {
-			return err
-		}
-		tb.pkeys = append(tb.pkeys, xprv)
-	}
+func (tb *TxBuilder) Sign(privateKeys ...crypto.PrvKey) error {
+	tb.pkeys = append(tb.pkeys, privateKeys...)
 	return nil
 }
 

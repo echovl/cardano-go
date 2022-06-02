@@ -22,24 +22,25 @@ const (
 )
 
 func TestAddress(t *testing.T) {
-	pvk, err := crypto.NewPubKey(paymentKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	svk, err := crypto.NewPubKey(stakeKey)
-	if err != nil {
-		t.Fatal(err)
-	}
 	_, script, err := bech32.DecodeToBase256(scriptHash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	paymentAddrCred, err := NewKeyCredential(pvk)
+	addrVk, err := crypto.NewPubKey(paymentKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	stakeAddrCred, err := NewKeyCredential(svk)
+	stakeVk, err := crypto.NewPubKey(stakeKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	paymentAddrCred, err := NewKeyCredential(addrVk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stakeAddrCred, err := NewKeyCredential(stakeVk)
 	if err != nil {
 		t.Fatal(err)
 	}
