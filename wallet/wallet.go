@@ -151,7 +151,7 @@ func (w *Wallet) AddAddress() (cardano.Address, error) {
 
 // Addresses returns all wallet's addresss.
 func (w *Wallet) Addresses() ([]cardano.Address, error) {
-	addresses := make([]cardano.Address, 2*len(w.addrKeys))
+	addresses := make([]cardano.Address, len(w.addrKeys))
 	for i, key := range w.addrKeys {
 		payment, err := cardano.NewKeyCredential(key.PubKey())
 		if err != nil {
@@ -161,16 +161,16 @@ func (w *Wallet) Addresses() ([]cardano.Address, error) {
 		if err != nil {
 			return nil, err
 		}
-		stake, err := cardano.NewKeyCredential(w.stakeKey.PubKey())
-		if err != nil {
-			return nil, err
-		}
-		baseAddr, err := cardano.NewBaseAddress(w.network, payment, stake)
-		if err != nil {
-			return nil, err
-		}
+		// stake, err := cardano.NewKeyCredential(w.stakeKey.PubKey())
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// baseAddr, err := cardano.NewBaseAddress(w.network, payment, stake)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// addresses[i+1] = baseAddr
 		addresses[i] = enterpriseAddr
-		addresses[i+1] = baseAddr
 	}
 	return addresses, nil
 }
