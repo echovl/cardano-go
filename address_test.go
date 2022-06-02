@@ -21,7 +21,38 @@ const (
 	addrType7  = "addr1w8phkx6acpnf78fuvxn0mkew3l0fd058hzquvz7w36x4gtcyjy7wx"
 )
 
-func TestAddress(t *testing.T) {
+var (
+	addrTypes = []string{
+		"addr1qx2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3n0d3vllmyqwsx5wktcd8cc3sq835lu7drv2xwl2wywfgse35a3x",
+		"addr1z8phkx6acpnf78fuvxn0mkew3l0fd058hzquvz7w36x4gten0d3vllmyqwsx5wktcd8cc3sq835lu7drv2xwl2wywfgs9yc0hh",
+		"addr1yx2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzerkr0vd4msrxnuwnccdxlhdjar77j6lg0wypcc9uar5d2shs2z78ve",
+		"addr1x8phkx6acpnf78fuvxn0mkew3l0fd058hzquvz7w36x4gt7r0vd4msrxnuwnccdxlhdjar77j6lg0wypcc9uar5d2shskhj42g",
+		"addr1gx2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer5pnz75xxcrzqf96k",
+		"addr128phkx6acpnf78fuvxn0mkew3l0fd058hzquvz7w36x4gtupnz75xxcrtw79hu",
+		"addr1vx2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzers66hrl8",
+		"addr1w8phkx6acpnf78fuvxn0mkew3l0fd058hzquvz7w36x4gtcyjy7wx",
+	}
+)
+
+func TestNewAddressFromBytes(t *testing.T) {
+	for i, addrBech32 := range addrTypes {
+		_, addrBytes, err := bech32.DecodeToBase256(addrBech32)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addr, err := NewAddressFromBytes(addrBytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if got, want := addr.Bech32(), addrBech32; got != want {
+			t.Errorf("invalid address %d\ngot: %s\nwant: %s", i, got, want)
+		}
+	}
+}
+
+func TestNewAddress(t *testing.T) {
 	_, script, err := bech32.DecodeToBase256(scriptHash)
 	if err != nil {
 		t.Fatal(err)
@@ -109,7 +140,6 @@ func TestAddress(t *testing.T) {
 	if got, want := enterprise1.Bech32(), addrType7; got != want {
 		t.Errorf("invalid enterprise address\ngot: %s\nwant: %s", got, want)
 	}
-
 }
 
 func TestNat(t *testing.T) {

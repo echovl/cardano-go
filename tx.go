@@ -2,10 +2,8 @@ package cardano
 
 import (
 	"encoding/hex"
-	"fmt"
 
 	"github.com/echovl/cardano-go/crypto"
-	"github.com/echovl/ed25519"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -111,33 +109,6 @@ func (body *TxBody) Hash() (Hash32, error) {
 	}
 	hash := blake2b.Sum256(bytes)
 	return hash[:], nil
-}
-
-// AddSignatures sets the transaction's witness set.
-func (body *TxBody) AddSignatures(publicKeys [][]byte, signatures [][]byte) (*Tx, error) {
-	if len(publicKeys) != len(signatures) {
-		return nil, fmt.Errorf("missmatch length of publicKeys and signatures")
-	}
-	if len(signatures) != len(body.Inputs) {
-		return nil, fmt.Errorf("missmatch length of signatures and inputs")
-	}
-
-	witnessSet := WitnessSet{}
-
-	for i := 0; i < len(publicKeys); i++ {
-		if len(signatures[i]) != ed25519.SignatureSize {
-			return nil, fmt.Errorf("invalid signature length %v", len(signatures[i]))
-		}
-		witness := VKeyWitness{VKey: publicKeys[i], Signature: signatures[i]}
-		witnessSet.VKeyWitnessSet = append(witnessSet.VKeyWitnessSet, witness)
-	}
-
-	return &Tx{
-		Body:          *body,
-		WitnessSet:    witnessSet,
-		AuxiliaryData: nil,
-		IsValid:       true,
-	}, nil
 }
 
 func minUTXO(txOut *TxOutput, protocol *ProtocolParams) Coin {
