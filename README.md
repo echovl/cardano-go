@@ -1,5 +1,7 @@
 # cardano-go
 
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/echovl/cardano-go)](https://pkg.go.dev/github.com/echovl/cardano-go) ![ci](https://github.com/echovl/cardano-go/workflows/test/badge.svg)
+
 cardano-go is a library for creating go applicactions that interact with the Cardano Blockchain. [WIP]
 
 ## Installation
