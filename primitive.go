@@ -45,7 +45,6 @@ func (v *Value) String() string {
 	vMap := map[string]uint64{"lovelace": uint64(v.Coin)}
 	for _, pool := range v.MultiAsset.Keys() {
 		for _, assets := range v.MultiAsset.Get(pool).Keys() {
-			fmt.Printf("%+v", assets)
 			vMap[assets.String()] = uint64(v.MultiAsset.Get(pool).Get(assets))
 		}
 	}

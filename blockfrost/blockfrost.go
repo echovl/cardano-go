@@ -67,27 +67,20 @@ func (b *BlockfrostNode) UTxOs(addr cardano.Address) ([]cardano.UTxO, error) {
 				}
 				amount.Coin += cardano.Coin(lovelace)
 			} else {
-				asset, err := b.client.Asset(context.Background(), a.Unit)
+				unitBytes, err := hex.DecodeString(a.Unit)
 				if err != nil {
 					return nil, err
 				}
-				scriptHash, err := hex.DecodeString(asset.PolicyId)
-				if err != nil {
-					return nil, err
-				}
-				assetName, err := hex.DecodeString(asset.AssetName)
-				if err != nil {
-					return nil, err
-				}
+				policyID := cardano.NewPolicyIDFromHash(unitBytes[:28])
+				assetName := string(unitBytes[28:])
 				assetValue, err := strconv.ParseUint(a.Quantity, 10, 64)
 				if err != nil {
 					return nil, err
 				}
-				policyID := cardano.NewPolicyIDFromHash(scriptHash)
 				currentAssets := amount.MultiAsset.Get(policyID)
 				if currentAssets != nil {
 					currentAssets.Set(
-						cardano.NewAssetName(string(assetName)),
+						cardano.NewAssetName(assetName),
 						cardano.BigNum(assetValue),
 					)
 				} else {

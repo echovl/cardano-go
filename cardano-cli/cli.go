@@ -2,6 +2,7 @@ package cardanocli
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -71,6 +72,7 @@ func (c *CardanoCli) UTxOs(addr cardano.Address) ([]cardano.UTxO, error) {
 	}
 
 	for _, line := range lines[2 : len(lines)-1] {
+		amount := cardano.NewValue(0)
 		args := strings.Fields(line)
 		if len(args) < 4 {
 			return nil, fmt.Errorf("malformed cli response")
@@ -83,16 +85,50 @@ func (c *CardanoCli) UTxOs(addr cardano.Address) ([]cardano.UTxO, error) {
 		if err != nil {
 			return nil, err
 		}
-		amount, err := strconv.Atoi(args[2])
+		lovelace, err := strconv.Atoi(args[2])
 		if err != nil {
 			return nil, err
+		}
+		amount.Coin = cardano.Coin(lovelace)
+
+		assets := strings.Split(line, "+")
+		for _, asset := range assets[1 : len(assets)-1] {
+			args := strings.Fields(asset)
+			quantity := args[0]
+			unit := strings.ReplaceAll(args[1], ".", "")
+			unitBytes, err := hex.DecodeString(unit)
+			if err != nil {
+				return nil, err
+			}
+			policyID := cardano.NewPolicyIDFromHash(unitBytes[:28])
+			assetName := string(unitBytes[28:])
+			assetValue, err := strconv.ParseUint(quantity, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			currentAssets := amount.MultiAsset.Get(policyID)
+			if currentAssets != nil {
+				currentAssets.Set(
+					cardano.NewAssetName(assetName),
+					cardano.BigNum(assetValue),
+				)
+			} else {
+				amount.MultiAsset.Set(
+					policyID,
+					cardano.NewAssets().
+						Set(
+							cardano.NewAssetName(string(assetName)),
+							cardano.BigNum(assetValue),
+						),
+				)
+			}
 		}
 
 		utxos = append(utxos, cardano.UTxO{
 			Spender: addr,
 			TxHash:  txHash,
 			Index:   uint64(index),
-			Amount:  cardano.NewValue(cardano.Coin(amount)),
+			Amount:  amount,
 		})
 	}
 
