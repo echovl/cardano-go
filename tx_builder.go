@@ -25,12 +25,12 @@ func NewTxBuilder(protocol *ProtocolParams) *TxBuilder {
 	}
 }
 
-// AddInputs adds inputs to the transaction being builded.
+// AddInputs adds inputs to the transaction.
 func (tb *TxBuilder) AddInputs(inputs ...*TxInput) {
 	tb.tx.Body.Inputs = append(tb.tx.Body.Inputs, inputs...)
 }
 
-// AddOutputs adds outputs to the transaction being builded.
+// AddOutputs adds outputs to the transaction.
 func (tb *TxBuilder) AddOutputs(outputs ...*TxOutput) {
 	tb.tx.Body.Outputs = append(tb.tx.Body.Outputs, outputs...)
 }
@@ -45,19 +45,23 @@ func (tb *TxBuilder) SetFee(fee Coin) {
 	tb.tx.Body.Fee = fee
 }
 
+// AddAuxiliaryData adds auxiliary data to the transaction.
 func (tb *TxBuilder) AddAuxiliaryData(data *AuxiliaryData) {
 	tb.tx.AuxiliaryData = data
 }
 
+// AddCertificate adds a certificate to the transaction.
 func (tb *TxBuilder) AddCertificate(cert Certificate) {
 	tb.tx.Body.Certificates = append(tb.tx.Body.Certificates, cert)
 }
 
+// AddNativeScript adds a native script to the transaction.
 func (tb *TxBuilder) AddNativeScript(script NativeScript) {
 	tb.tx.WitnessSet.Scripts = append(tb.tx.WitnessSet.Scripts, script)
 }
 
-func (tb *TxBuilder) Mint(asset *MultiAsset) {
+// Mint adds a new multiasset to mint.
+func (tb *TxBuilder) Mint(asset *Mint) {
 	tb.tx.Body.Mint = asset
 }
 
@@ -75,7 +79,7 @@ func (tb *TxBuilder) AddChangeIfNeeded(changeAddr Address) error {
 	}
 
 	if tb.tx.Body.Mint != nil {
-		inputAmount = inputAmount.Add(NewValueWithAssets(0, tb.tx.Body.Mint))
+		inputAmount = inputAmount.Add(NewValueWithAssets(0, tb.tx.Body.Mint.MultiAsset()))
 	}
 
 	minFee := tb.calculateMinFee()
@@ -191,7 +195,7 @@ func (tb *TxBuilder) Build() (*Tx, error) {
 	outputAmount = outputAmount.Add(NewValue(tb.tx.Body.Fee)).Add(NewValue(tb.totalDeposits()))
 
 	if tb.tx.Body.Mint != nil {
-		inputAmount = inputAmount.Add(NewValueWithAssets(0, tb.tx.Body.Mint))
+		inputAmount = inputAmount.Add(NewValueWithAssets(0, tb.tx.Body.Mint.MultiAsset()))
 	}
 
 	cmp, err := outputAmount.Cmp(inputAmount)

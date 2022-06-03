@@ -3,6 +3,7 @@ package cardano
 import (
 	"encoding/hex"
 	"errors"
+	"math/big"
 	"reflect"
 
 	"github.com/echovl/cardano-go/internal/cbor"
@@ -91,7 +92,11 @@ func (v *Value) Sub(rhs *Value) *Value {
 
 	result := NewValue(coin)
 	for policy, assets := range v.MultiAsset.m {
-		result.MultiAsset.m[policy] = assets
+		reAssets := NewAssets()
+		for assetName, value := range assets.m {
+			reAssets.m[assetName] = value
+		}
+		result.MultiAsset.m[policy] = reAssets
 	}
 
 	for policy, assets := range rhs.MultiAsset.m {
@@ -269,6 +274,105 @@ func (ma *MultiAsset) AssetsLength() uint {
 
 // MarshalCBOR implements cbor.Marshaler
 func (ma *MultiAsset) MarshalCBOR() ([]byte, error) {
+	return cborEnc.Marshal(ma.m)
+}
+
+type MintAssets struct {
+	m map[cbor.ByteString]*big.Int
+}
+
+func NewMintAssets() *MintAssets {
+	return &MintAssets{m: make(map[cbor.ByteString]*big.Int)}
+}
+
+func (a *MintAssets) Set(name AssetName, val *big.Int) *MintAssets {
+	a.m[name.bs] = val
+	return a
+}
+
+func (a *MintAssets) Get(name AssetName) *big.Int {
+	return a.m[name.bs]
+}
+
+func (a *MintAssets) Keys() []AssetName {
+	assetNames := []AssetName{}
+	for k := range a.m {
+		assetNames = append(assetNames, AssetName{bs: k})
+	}
+	return assetNames
+}
+
+// MarshalCBOR implements cbor.Marshaler
+func (a *MintAssets) MarshalCBOR() ([]byte, error) {
+	return cborEnc.Marshal(a.m)
+}
+
+type Mint struct {
+	m map[cbor.ByteString]*MintAssets
+}
+
+func NewMint() *Mint {
+	return &Mint{m: make(map[cbor.ByteString]*MintAssets)}
+}
+
+func (m *Mint) Set(policyID PolicyID, assets *MintAssets) *Mint {
+	m.m[policyID.bs] = assets
+	return m
+}
+
+func (m *Mint) Get(policyID PolicyID) *MintAssets {
+	return m.m[policyID.bs]
+}
+
+func (m *Mint) Keys() []PolicyID {
+	policyIDs := []PolicyID{}
+	for id := range m.m {
+		policyIDs = append(policyIDs, PolicyID{bs: id})
+	}
+	return policyIDs
+}
+
+func (m *Mint) MultiAsset() *MultiAsset {
+	ma := NewMultiAsset()
+	for policy, mintAssets := range m.m {
+		assets := NewAssets()
+		for assetName, value := range mintAssets.m {
+			posVal := value.Abs(value)
+			if posVal.IsUint64() {
+				assets.m[assetName] = BigNum(posVal.Uint64())
+			} else {
+				panic("MintAsset value cannot be represented as a uint64")
+			}
+		}
+		ma.m[policy] = assets
+	}
+	return ma
+}
+
+func (ma *Mint) NumPIDs() uint {
+	return uint(len(ma.m))
+}
+
+func (ma *Mint) NumAssets() uint {
+	var num uint
+	for _, assets := range ma.m {
+		num += uint(len(assets.m))
+	}
+	return num
+}
+
+func (ma *Mint) AssetsLength() uint {
+	var sum uint
+	for _, assets := range ma.m {
+		for assetName := range assets.m {
+			sum += uint(len(assetName.Bytes()))
+		}
+	}
+	return sum
+}
+
+// MarshalCBOR implements cbor.Marshaler
+func (ma *Mint) MarshalCBOR() ([]byte, error) {
 	return cborEnc.Marshal(ma.m)
 }
 

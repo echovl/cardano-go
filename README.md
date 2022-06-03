@@ -213,7 +213,7 @@ func main() {
 package main
 
 import (
-	"fmt"
+	"math/big"
 
 	"github.com/echovl/cardano-go"
 	"github.com/echovl/cardano-go/crypto"
@@ -222,10 +222,6 @@ import (
 func main() {
 	txBuilder := cardano.NewTxBuilder(&cardano.ProtocolParams{})
 
-	paymentKey, err := crypto.NewPrvKey("addr_sk")
-	if err != nil {
-		panic(err)
-	}
 	policyKey, err := crypto.NewPrvKey("policy_sk")
 	if err != nil {
 		panic(err)
@@ -239,27 +235,28 @@ func main() {
 		panic(err)
 	}
 
-	newAsset := cardano.NewMultiAsset().Set(
-		policyID,
-		cardano.NewAssets().
-			Set(cardano.NewAssetName("cardanogo"), 1e9),
-	)
+	newAsset := cardano.NewMint().
+		Set(
+			policyID,
+			cardano.NewMintAssets().
+				Set(cardano.NewAssetName("cardanogo"), big.NewInt(1e9)),
+		)
 
 	addr, err := cardano.NewAddress("addr")
 	if err != nil {
 		panic(err)
 	}
 
-	txHashIn, err := cardano.NewHash32("41dc71e3225adb84d287df1da52a2b618d4b459d1d88936f3a8955c3bcc51c6c")
+	txHashIn, err := cardano.NewHash32("txhash")
 	if err != nil {
 		panic(err)
 	}
 
 	txBuilder.AddInputs(
-		cardano.NewTxInput(txHashIn, 0, cardano.NewValue(987658966)),
+		cardano.NewTxInput(txHashIn, 0, cardano.NewValue(10e6)),
 	)
 	txBuilder.AddOutputs(
-		cardano.NewTxOutput(addr, cardano.NewValueWithAssets(10e6, newAsset)),
+		cardano.NewTxOutput(addr, cardano.NewValueWithAssets(10e6, newAsset.MultiAsset())),
 	)
 
 	txBuilder.AddNativeScript(policyScript)

@@ -90,7 +90,7 @@ type TxBody struct {
 	Update                interface{}   `cbor:"6,keyasint,omitempty"` // unsupported
 	AuxiliaryDataHash     *Hash32       `cbor:"7,keyasint,omitempty"`
 	ValidityIntervalStart Uint64        `cbor:"8,keyasint,omitempty"`
-	Mint                  *MultiAsset   `cbor:"9,keyasint,omitempty"`
+	Mint                  *Mint         `cbor:"9,keyasint,omitempty"`
 	ScriptDataHash        *Hash32       `cbor:"10,keyasint,omitempty"`
 	Collateral            []TxInput     `cbor:"11,keyasint,omitempty"`
 	RequiredSigners       []AddrKeyHash `cbor:"12,keyasint,omitempty"`
