@@ -37,7 +37,12 @@ var balanceCmd = &cobra.Command{
 			return err
 		}
 		fmt.Printf("%-25v %-9v\n", "ASSET", "AMOUNT")
-		fmt.Printf("%-25v %-9v\n", "Lovelace", balance)
+		fmt.Printf("%-25v %-9v\n", "Lovelace", balance.Coin)
+		for _, pool := range balance.MultiAsset.Keys() {
+			for _, assetName := range balance.MultiAsset.Get(pool).Keys() {
+				fmt.Printf("%-25v %-9v\n", assetName, balance.MultiAsset.Get(pool).Get(assetName))
+			}
+		}
 		return nil
 	},
 }

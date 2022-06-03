@@ -85,12 +85,7 @@ func (tb *TxBuilder) AddChangeIfNeeded(changeAddr Address) error {
 	minFee := tb.calculateMinFee()
 	outputAmount = outputAmount.Add(NewValue(minFee + totalDeposits))
 
-	inputOutputCmp, err := inputAmount.Cmp(outputAmount)
-	if err != nil {
-		return err
-	}
-
-	if inputOutputCmp == -1 {
+	if inputOutputCmp := inputAmount.Cmp(outputAmount); inputOutputCmp == -1 {
 		return fmt.Errorf(
 			"insuficient input in transaction, got %v want atleast %v",
 			inputAmount,
@@ -99,6 +94,12 @@ func (tb *TxBuilder) AddChangeIfNeeded(changeAddr Address) error {
 	} else if inputOutputCmp == 0 {
 		tb.tx.Body.Fee = minFee
 		return nil
+	} else if inputOutputCmp == 2 {
+		return fmt.Errorf(
+			"inputs and outputs with different assets, input %v and output %v",
+			inputAmount,
+			outputAmount,
+		)
 	}
 
 	// Construct change output
@@ -198,22 +199,23 @@ func (tb *TxBuilder) Build() (*Tx, error) {
 		inputAmount = inputAmount.Add(NewValueWithAssets(0, tb.tx.Body.Mint.MultiAsset()))
 	}
 
-	cmp, err := outputAmount.Cmp(inputAmount)
-	if err != nil {
-		return nil, err
-	}
-
-	if cmp == 1 {
+	if inputOutputCmp := outputAmount.Cmp(inputAmount); inputOutputCmp == 1 {
 		return nil, fmt.Errorf(
 			"insuficient input in transaction, got %v want %v",
 			inputAmount,
 			outputAmount,
 		)
-	} else if cmp == -1 {
+	} else if inputOutputCmp == -1 {
 		return nil, fmt.Errorf(
 			"fee too small, got %v want %v",
 			tb.tx.Body.Fee,
 			inputAmount.Sub(outputAmount),
+		)
+	} else if inputOutputCmp == 2 {
+		return nil, fmt.Errorf(
+			"inputs and outputs with different assets, input %v and output %v",
+			inputAmount,
+			outputAmount,
 		)
 	}
 

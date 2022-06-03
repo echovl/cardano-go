@@ -218,6 +218,11 @@ func (addr *Address) Bech32() string {
 	return addrStr
 }
 
+// String returns the Address encoded as bech32.
+func (addr Address) String() string {
+	return addr.Bech32()
+}
+
 func NewBaseAddress(network Network, payment StakeCredential, stake StakeCredential) (Address, error) {
 	addrType := Base
 	if payment.Type == ScriptCredential && stake.Type == KeyCredential {

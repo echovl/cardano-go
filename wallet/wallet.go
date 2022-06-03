@@ -32,26 +32,27 @@ type Wallet struct {
 }
 
 // Transfer sends an amount of lovelace to the receiver address and returns the transaction hash
-func (w *Wallet) Transfer(receiver cardano.Address, amount cardano.Coin) (*cardano.Hash32, error) {
+func (w *Wallet) Transfer(receiver cardano.Address, amount *cardano.Value) (*cardano.Hash32, error) {
 	// Calculate if the account has enough balance
 	balance, err := w.Balance()
 	if err != nil {
 		return nil, err
 	}
-	if amount > balance {
+
+	if cmp := balance.Cmp(amount); cmp == -1 || cmp == 2 {
 		return nil, fmt.Errorf("Not enough balance, %v > %v", amount, balance)
 	}
 
 	// Find utxos that cover the amount to transfer
 	pickedUtxos := []cardano.UTxO{}
 	utxos, err := w.findUtxos()
-	pickedUtxosAmount := cardano.Coin(0)
+	pickedUtxosAmount := cardano.NewValue(0)
 	for _, utxo := range utxos {
-		if pickedUtxosAmount > amount {
+		if pickedUtxosAmount.Cmp(amount) == 1 {
 			break
 		}
 		pickedUtxos = append(pickedUtxos, utxo)
-		pickedUtxosAmount += utxo.Amount.Coin
+		pickedUtxosAmount = pickedUtxosAmount.Add(utxo.Amount)
 	}
 
 	pparams, err := w.node.ProtocolParams()
@@ -87,7 +88,7 @@ func (w *Wallet) Transfer(receiver cardano.Address, amount cardano.Coin) (*carda
 		builder.AddInputs(&cardano.TxInput{TxHash: utxo.TxHash, Index: utxo.Index, Amount: utxo.Amount})
 		inputAmount = inputAmount.Add(utxo.Amount)
 	}
-	builder.AddOutputs(&cardano.TxOutput{Address: receiver, Amount: cardano.NewValue(amount)})
+	builder.AddOutputs(&cardano.TxOutput{Address: receiver, Amount: amount})
 
 	tip, err := w.node.Tip()
 	if err != nil {
@@ -110,14 +111,14 @@ func (w *Wallet) Transfer(receiver cardano.Address, amount cardano.Coin) (*carda
 }
 
 // Balance returns the total lovelace amount of the wallet.
-func (w *Wallet) Balance() (cardano.Coin, error) {
-	var balance cardano.Coin
+func (w *Wallet) Balance() (*cardano.Value, error) {
+	balance := cardano.NewValue(0)
 	utxos, err := w.findUtxos()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	for _, utxo := range utxos {
-		balance += utxo.Amount.Coin
+		balance = balance.Add(utxo.Amount)
 	}
 	return balance, nil
 }

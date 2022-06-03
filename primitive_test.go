@@ -1,6 +1,7 @@
 package cardano
 
 import (
+	"errors"
 	"testing"
 )
 
@@ -51,12 +52,12 @@ func TestValueCmp(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := tc.x.Cmp(tc.y)
-			if err != nil {
+			got := tc.x.Cmp(tc.y)
+			if got == 2 {
 				if tc.wantErr {
 					return
 				}
-				t.Fatal(err)
+				t.Fatal(errors.New("cannot compare values"))
 			}
 			if want := tc.res; got != want {
 				t.Errorf("invalid cmp\ngot: %v\nwant :%v", got, want)
@@ -123,6 +124,46 @@ func TestValueArithmetic(t *testing.T) {
 			),
 			false,
 		},
+		{
+			"multiAsset sub same token, same policy",
+			false,
+			NewValueWithAssets(10e6, NewMultiAsset().Set(policy1, NewAssets().Set(token2, 20e6))),
+			NewValueWithAssets(10e6, NewMultiAsset().Set(policy1, NewAssets().Set(token2, 10e6))),
+			NewValueWithAssets(0, NewMultiAsset().Set(policy1, NewAssets().Set(token2, 10e6))),
+			false,
+		},
+		{
+			"multiAsset sub diff tokens, same policy",
+			false,
+			NewValueWithAssets(10e6, NewMultiAsset().Set(policy1, NewAssets().Set(token1, 20e6))),
+			NewValueWithAssets(10e6, NewMultiAsset().Set(policy1, NewAssets().Set(token2, 10e6))),
+			NewValueWithAssets(
+				0,
+				NewMultiAsset().
+					Set(policy1, NewAssets().Set(token1, 20e6).Set(token2, 0)),
+			),
+			false,
+		},
+		{
+			"multiAsset sub diff tokens, diff policy",
+			false,
+			NewValueWithAssets(
+				10e6,
+				NewMultiAsset().
+					Set(policy1, NewAssets().Set(token1, 20e6)),
+			),
+			NewValueWithAssets(
+				10e6,
+				NewMultiAsset().
+					Set(policy2, NewAssets().Set(token2, 10e6))),
+			NewValueWithAssets(
+				0,
+				NewMultiAsset().
+					Set(policy1, NewAssets().Set(token1, 20e6)).
+					Set(policy2, NewAssets().Set(token2, 0)),
+			),
+			false,
+		},
 	}
 
 	for _, tc := range testcases {
@@ -135,9 +176,9 @@ func TestValueArithmetic(t *testing.T) {
 				got = tc.x.Sub(tc.y)
 			}
 
-			equal, err := got.Cmp(want)
-			if err != nil {
-				t.Fatal(err)
+			equal := got.Cmp(want)
+			if equal == 2 {
+				t.Fatal(errors.New("cannot compare values"))
 			}
 
 			if equal != 0 {

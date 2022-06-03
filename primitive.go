@@ -2,7 +2,7 @@ package cardano
 
 import (
 	"encoding/hex"
-	"errors"
+	"fmt"
 	"math/big"
 	"reflect"
 
@@ -39,6 +39,17 @@ func NewValue(coin Coin) *Value {
 
 func NewValueWithAssets(coin Coin, assets *MultiAsset) *Value {
 	return &Value{Coin: coin, MultiAsset: assets}
+}
+
+func (v *Value) String() string {
+	vMap := map[string]uint64{"lovelace": uint64(v.Coin)}
+	for _, pool := range v.MultiAsset.Keys() {
+		for _, assets := range v.MultiAsset.Get(pool).Keys() {
+			fmt.Printf("%+v", assets)
+			vMap[assets.String()] = uint64(v.MultiAsset.Get(pool).Get(assets))
+		}
+	}
+	return fmt.Sprintf("%+v", vMap)
 }
 
 func (v *Value) OnlyCoin() bool {
@@ -130,18 +141,19 @@ func (v *Value) Sub(rhs *Value) *Value {
 //      -1 if v < rhs
 //       0 if v == rhs
 //       1 if v > rhs
-func (v *Value) Cmp(rhs *Value) (int, error) {
+//       2 if not comparable
+func (v *Value) Cmp(rhs *Value) int {
 	lrZero := v.Sub(rhs).IsZero()
 	rlZero := rhs.Sub(v).IsZero()
 
 	if !lrZero && !rlZero {
-		return 0, errors.New("noncomparable values")
+		return 2
 	} else if lrZero && !rlZero {
-		return -1, nil
+		return -1
 	} else if !lrZero && rlZero {
-		return 1, nil
+		return 1
 	} else {
-		return 0, nil
+		return 0
 	}
 }
 
@@ -179,20 +191,19 @@ func (p *PolicyID) String() string {
 }
 
 type AssetName struct {
-	bs   cbor.ByteString
-	name string
+	bs cbor.ByteString
 }
 
 func NewAssetName(name string) AssetName {
-	return AssetName{bs: cbor.NewByteString([]byte(name)), name: name}
+	return AssetName{bs: cbor.NewByteString([]byte(name))}
 }
 
 func (an *AssetName) Bytes() []byte {
 	return an.bs.Bytes()
 }
 
-func (an *AssetName) String() string {
-	return an.name
+func (an AssetName) String() string {
+	return string(an.bs.Bytes())
 }
 
 type Assets struct {

@@ -39,10 +39,12 @@ var transferCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		txHash, err := w.Transfer(receiver, cardano.Coin(amount))
+		txHash, err := w.Transfer(receiver, cardano.NewValue(cardano.Coin(amount)))
+		if err != nil {
+			return err
+		}
 		fmt.Println(txHash)
-
-		return err
+		return nil
 	},
 }
 

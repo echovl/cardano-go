@@ -86,10 +86,10 @@ func TestWalletBalance(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	want := cardano.Coin(133)
+	want := cardano.NewValue(133)
 
-	if got != want {
-		t.Errorf("invalid balance :\ngot: %v\nwant: %v", got, want)
+	if got.Cmp(want) != 0 {
+		t.Errorf("invalid balance:\ngot: %v\nwant: %v", got, want)
 	}
 }
 
