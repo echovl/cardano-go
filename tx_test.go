@@ -5,70 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/echovl/cardano-go/crypto"
 	"github.com/echovl/cardano-go/internal/cbor"
 )
-
-func TestMinUTXO(t *testing.T) {
-	pubKeys := []crypto.PubKey{
-		crypto.NewXPrvKeyFromEntropy([]byte("pol1"), "").PubKey(),
-		crypto.NewXPrvKeyFromEntropy([]byte("pol2"), "").PubKey(),
-	}
-
-	testcases := []struct {
-		policies []int
-		assets   []string
-		minUTXO  Coin
-	}{
-		{
-			policies: []int{0},
-			assets:   []string{""},
-			minUTXO:  Coin(utxoEntrySizeWithoutVal+11) * alonzoProtocol.CoinsPerUTXOWord,
-		},
-		{
-			policies: []int{0},
-			assets:   []string{"a"},
-			minUTXO:  Coin(utxoEntrySizeWithoutVal+12) * alonzoProtocol.CoinsPerUTXOWord,
-		},
-		{
-			policies: []int{0},
-			assets:   []string{"a", "b", "c"},
-			minUTXO:  Coin(utxoEntrySizeWithoutVal+15) * alonzoProtocol.CoinsPerUTXOWord,
-		},
-		{
-			policies: []int{0, 1},
-			assets:   []string{"a"},
-			minUTXO:  Coin(utxoEntrySizeWithoutVal+17) * alonzoProtocol.CoinsPerUTXOWord,
-		},
-	}
-
-	for _, tc := range testcases {
-		multiAsset := NewMultiAsset()
-		for _, policy := range tc.policies {
-			script, err := NewScriptPubKey(pubKeys[policy])
-			if err != nil {
-				t.Fatal(err)
-			}
-			assets := NewAssets()
-			policyID, err := NewPolicyID(script)
-			if err != nil {
-				t.Fatal(err)
-			}
-			for _, assetName := range tc.assets {
-				assets.Set(NewAssetName(assetName), 0)
-			}
-			multiAsset.Set(policyID, assets)
-		}
-
-		txOutput := &TxOutput{Amount: NewValueWithAssets(0, multiAsset)}
-		got := minUTXO(txOutput, alonzoProtocol)
-		want := tc.minUTXO
-
-		if got != want {
-			t.Errorf("invalid minUTXO\ngot: %d\nwant: %d", got, want)
-		}
-	}
-}
 
 func TestCertificateEncoding(t *testing.T) {
 	testcases := []struct {

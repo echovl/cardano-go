@@ -2,7 +2,6 @@ package cardano
 
 import (
 	"encoding/hex"
-	"math"
 
 	"github.com/echovl/cardano-go/crypto"
 	"golang.org/x/crypto/blake2b"
@@ -105,20 +104,4 @@ func (body *TxBody) Hash() (Hash32, error) {
 	}
 	hash := blake2b.Sum256(bytes)
 	return hash[:], nil
-}
-
-func minUTXO(txOut *TxOutput, protocol *ProtocolParams) Coin {
-	var size uint
-	if txOut.Amount.OnlyCoin() {
-		size = 1
-	} else {
-		numAssets := txOut.Amount.MultiAsset.NumAssets()
-		assetsLength := txOut.Amount.MultiAsset.AssetsLength()
-		numPIDs := txOut.Amount.MultiAsset.NumPIDs()
-
-		size = 6 + uint(math.Floor(
-			float64(numAssets*12+assetsLength+numPIDs*28+7)/8,
-		))
-	}
-	return Coin(utxoEntrySizeWithoutVal+size) * protocol.CoinsPerUTXOWord
 }

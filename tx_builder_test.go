@@ -1,6 +1,7 @@
 package cardano
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/echovl/cardano-go/crypto"
@@ -12,7 +13,70 @@ var alonzoProtocol = &ProtocolParams{
 	MinFeeB:          155381,
 }
 
-func TestSimpleBuild(t *testing.T) {
+func TestMinUTXO(t *testing.T) {
+	pubKeys := []crypto.PubKey{
+		crypto.NewXPrvKeyFromEntropy([]byte("pol1"), "").PubKey(),
+		crypto.NewXPrvKeyFromEntropy([]byte("pol2"), "").PubKey(),
+	}
+
+	testcases := []struct {
+		policies []int
+		assets   []string
+		minUTXO  Coin
+	}{
+		{
+			policies: []int{0},
+			assets:   []string{""},
+			minUTXO:  Coin(utxoEntrySizeWithoutVal+11) * alonzoProtocol.CoinsPerUTXOWord,
+		},
+		{
+			policies: []int{0},
+			assets:   []string{"a"},
+			minUTXO:  Coin(utxoEntrySizeWithoutVal+12) * alonzoProtocol.CoinsPerUTXOWord,
+		},
+		{
+			policies: []int{0},
+			assets:   []string{"a", "b", "c"},
+			minUTXO:  Coin(utxoEntrySizeWithoutVal+15) * alonzoProtocol.CoinsPerUTXOWord,
+		},
+		{
+			policies: []int{0, 1},
+			assets:   []string{"a"},
+			minUTXO:  Coin(utxoEntrySizeWithoutVal+17) * alonzoProtocol.CoinsPerUTXOWord,
+		},
+	}
+
+	for _, tc := range testcases {
+		multiAsset := NewMultiAsset()
+		for _, policy := range tc.policies {
+			script, err := NewScriptPubKey(pubKeys[policy])
+			if err != nil {
+				t.Fatal(err)
+			}
+			assets := NewAssets()
+			policyID, err := NewPolicyID(script)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, assetName := range tc.assets {
+				assets.Set(NewAssetName(assetName), 0)
+			}
+			multiAsset.Set(policyID, assets)
+		}
+
+		txBuilder := NewTxBuilder(alonzoProtocol)
+
+		txOutput := &TxOutput{Amount: NewValueWithAssets(0, multiAsset)}
+		got := txBuilder.MinCoinsForTxOut(txOutput)
+		want := tc.minUTXO
+
+		if got != want {
+			t.Errorf("invalid minUTXO\ngot: %d\nwant: %d", got, want)
+		}
+	}
+}
+
+func TestSimpleTx(t *testing.T) {
 	testcases := []struct {
 		name     string
 		sk       string
@@ -79,10 +143,7 @@ func TestSimpleBuild(t *testing.T) {
 			txBuilder.AddInputs(txIn)
 			txBuilder.AddOutputs(txOut)
 			txBuilder.SetFee(Coin(tc.fee))
-
-			if err := txBuilder.Sign(sk); err != nil {
-				t.Fatal(err)
-			}
+			txBuilder.Sign(sk)
 
 			tx, err := txBuilder.Build()
 			if err != nil {
@@ -103,10 +164,221 @@ func TestSimpleBuild(t *testing.T) {
 
 		})
 	}
+}
+
+func TestMintingAssets(t *testing.T) {
+	txBuilder := NewTxBuilder(alonzoProtocol)
+
+	paymentKey := crypto.NewXPrvKeyFromEntropy([]byte("payment"), "")
+	policyKey := crypto.NewXPrvKeyFromEntropy([]byte("policy"), "")
+
+	txHash, err := NewHash32("030858db80bf94041b7b1c6fbc0754a9bd7113ec9025b1157a9a4e02135f3518")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr, err := NewAddress("addr_test1vp9uhllavnhwc6m6422szvrtq3eerhleer4eyu00rmx8u6c42z3v8")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	policyScript, err := NewScriptPubKey(policyKey.PubKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	policyID, err := NewPolicyID(policyScript)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	inputAmount, transferAmount, assetAmount := Coin(1e9), Coin(10e6), int64(1e9)
+
+	assetName := NewAssetName("cardanogo")
+	newAsset := NewMint().
+		Set(
+			policyID,
+			NewMintAssets().
+				Set(assetName, big.NewInt(assetAmount)),
+		)
+
+	txBuilder.AddInputs(
+		NewTxInput(txHash, 0, NewValue(inputAmount)),
+	)
+	txBuilder.AddOutputs(
+		NewTxOutput(addr, NewValueWithAssets(transferAmount, newAsset.MultiAsset())),
+	)
+
+	txBuilder.Mint(newAsset)
+	txBuilder.AddNativeScript(policyScript)
+	txBuilder.SetTTL(100000)
+	txBuilder.Sign(paymentKey.PrvKey())
+	txBuilder.Sign(policyKey.PrvKey())
+	if err := txBuilder.AddChangeIfNeeded(addr); err != nil {
+		t.Fatal(err)
+	}
+
+	tx, err := txBuilder.Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	minFee, err := txBuilder.MinFee()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got, want := tx.Body.Fee, minFee; got != want {
+		t.Errorf("invalid tx fee:\ngot: %v\nwant: %v", got, want)
+	}
+
+	wantAmount := NewValueWithAssets(transferAmount, newAsset.MultiAsset())
+	gotAmount := tx.Body.Outputs[1].Amount
+	if gotAmount.Cmp(wantAmount) != 0 {
+		t.Errorf("invalid output asset amount:\ngot: %v\nwant: %v", gotAmount, wantAmount)
+	}
 
 }
 
+func TestSendingMultiAssets(t *testing.T) {
+	paymentKey := crypto.NewXPrvKeyFromEntropy([]byte("payment"), "")
+	policyKey := crypto.NewXPrvKeyFromEntropy([]byte("policy"), "")
+	policyScript, err := NewScriptPubKey(policyKey.PubKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	policyID, err := NewPolicyID(policyScript)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assetName := NewAssetName("cardanogo")
+	txHash, err := NewHash32("030858db80bf94041b7b1c6fbc0754a9bd7113ec9025b1157a9a4e02135f3518")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr, err := NewAddress("addr_test1vp9uhllavnhwc6m6422szvrtq3eerhleer4eyu00rmx8u6c42z3v8")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testcases := []struct {
+		name           string
+		txInputAmount  *Value
+		txOutputAmount *Value
+		wantErr        bool
+	}{
+		{
+			"partial asset transfer",
+			NewValueWithAssets(
+				10e6,
+				NewMultiAsset().Set(policyID, NewAssets().Set(assetName, 10e6)),
+			),
+			NewValueWithAssets(
+				5e6,
+				NewMultiAsset().Set(policyID, NewAssets().Set(assetName, 5e6)),
+			),
+			false,
+		},
+		{
+			"full asset transfer",
+			NewValueWithAssets(
+				10e6,
+				NewMultiAsset().Set(policyID, NewAssets().Set(assetName, 10e6)),
+			),
+			NewValueWithAssets(
+				5e6,
+				NewMultiAsset().Set(policyID, NewAssets().Set(assetName, 10e6)),
+			),
+			false,
+		},
+		{
+			"only ada transfer",
+			NewValueWithAssets(
+				10e6,
+				NewMultiAsset().Set(policyID, NewAssets().Set(assetName, 10e6)),
+			),
+			NewValueWithAssets(
+				5e6,
+				NewMultiAsset().Set(policyID, NewAssets().Set(assetName, 0)),
+			),
+			false,
+		},
+		{
+			"output asset > input asset",
+			NewValueWithAssets(
+				10e6,
+				NewMultiAsset().Set(policyID, NewAssets().Set(assetName, 10e6)),
+			),
+			NewValueWithAssets(
+				5e6,
+				NewMultiAsset().Set(policyID, NewAssets().Set(assetName, 20e6)),
+			),
+			true,
+		},
+		{
+			"insuficient change coins",
+			NewValueWithAssets(
+				10e6,
+				NewMultiAsset().Set(policyID, NewAssets().Set(assetName, 10e6)),
+			),
+			NewValueWithAssets(
+				98e5,
+				NewMultiAsset().Set(policyID, NewAssets().Set(assetName, 5e6)),
+			),
+			true,
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			txBuilder := NewTxBuilder(alonzoProtocol)
+
+			txBuilder.AddInputs(
+				NewTxInput(txHash, 0, tc.txInputAmount),
+			)
+			txBuilder.AddOutputs(
+				NewTxOutput(addr, tc.txOutputAmount),
+			)
+			txBuilder.SetTTL(100000)
+			txBuilder.Sign(paymentKey.PrvKey())
+			txBuilder.Sign(policyKey.PrvKey())
+			txBuilder.AddAuxiliaryData(&AuxiliaryData{
+				Metadata: Metadata{
+					0: map[string]interface{}{
+						"hello": "cardano-go",
+					},
+				},
+			})
+
+			if err := txBuilder.AddChangeIfNeeded(addr); err != nil {
+				if tc.wantErr {
+					return
+				}
+				t.Fatal(err)
+			}
+
+			tx, err := txBuilder.Build()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			gotAmount := tx.Body.Outputs[1].Amount
+			if gotAmount.Cmp(tc.txOutputAmount) != 0 {
+				t.Errorf("invalid output asset amount:\ngot: %v\nwant: %v", gotAmount, tc.txOutputAmount)
+			}
+
+			minFee, err := txBuilder.MinFee()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if got, want := tx.Body.Fee, minFee; got != want {
+				t.Errorf("invalid tx fee:\ngot: %v\nwant: %v", got, want)
+			}
+
+		})
+	}
+}
+
 func TestAddChangeIfNeeded(t *testing.T) {
+	txBuilder := NewTxBuilder(alonzoProtocol)
 	key := crypto.NewXPrvKeyFromEntropy([]byte("receiver address"), "foo")
 	payment, err := NewKeyCredential(key.PubKey())
 	if err != nil {
@@ -164,13 +436,13 @@ func TestAddChangeIfNeeded(t *testing.T) {
 					{
 						TxHash: make([]byte, 32),
 						Index:  0,
-						Amount: NewValue(minUTXO(emptyTxOut, alonzoProtocol) + 165501),
+						Amount: NewValue(txBuilder.MinCoinsForTxOut(emptyTxOut) + 165501),
 					},
 				},
 				outputs: []*TxOutput{
 					{
 						Address: receiver,
-						Amount:  NewValue(minUTXO(emptyTxOut, alonzoProtocol)),
+						Amount:  NewValue(txBuilder.MinCoinsForTxOut(emptyTxOut)),
 					},
 				},
 			},
@@ -183,13 +455,13 @@ func TestAddChangeIfNeeded(t *testing.T) {
 					{
 						TxHash: make([]byte, 32),
 						Index:  0,
-						Amount: NewValue(2*minUTXO(emptyTxOut, alonzoProtocol) - 1),
+						Amount: NewValue(2*txBuilder.MinCoinsForTxOut(emptyTxOut) - 1),
 					},
 				},
 				outputs: []*TxOutput{
 					{
 						Address: receiver,
-						Amount:  NewValue(minUTXO(emptyTxOut, alonzoProtocol)),
+						Amount:  NewValue(txBuilder.MinCoinsForTxOut(emptyTxOut)),
 					},
 				},
 			},
@@ -202,13 +474,13 @@ func TestAddChangeIfNeeded(t *testing.T) {
 					{
 						TxHash: make([]byte, 32),
 						Index:  0,
-						Amount: NewValue(2*minUTXO(emptyTxOut, alonzoProtocol) + 162685),
+						Amount: NewValue(2*txBuilder.MinCoinsForTxOut(emptyTxOut) + 162685),
 					},
 				},
 				outputs: []*TxOutput{
 					{
 						Address: receiver,
-						Amount:  NewValue(minUTXO(emptyTxOut, alonzoProtocol)),
+						Amount:  NewValue(txBuilder.MinCoinsForTxOut(emptyTxOut)),
 					},
 				},
 			},
@@ -221,13 +493,13 @@ func TestAddChangeIfNeeded(t *testing.T) {
 					{
 						TxHash: make([]byte, 32),
 						Index:  0,
-						Amount: NewValue(3 * minUTXO(emptyTxOut, alonzoProtocol)),
+						Amount: NewValue(3 * txBuilder.MinCoinsForTxOut(emptyTxOut)),
 					},
 				},
 				outputs: []*TxOutput{
 					{
 						Address: receiver,
-						Amount:  NewValue(minUTXO(emptyTxOut, alonzoProtocol)),
+						Amount:  NewValue(txBuilder.MinCoinsForTxOut(emptyTxOut)),
 					},
 				},
 			},
@@ -241,13 +513,13 @@ func TestAddChangeIfNeeded(t *testing.T) {
 					{
 						TxHash: make([]byte, 32),
 						Index:  0,
-						Amount: NewValue(2*minUTXO(emptyTxOut, alonzoProtocol) + 164137),
+						Amount: NewValue(2*txBuilder.MinCoinsForTxOut(emptyTxOut) + 164137),
 					},
 				},
 				outputs: []*TxOutput{
 					{
 						Address: receiver,
-						Amount:  NewValue(minUTXO(emptyTxOut, alonzoProtocol)),
+						Amount:  NewValue(txBuilder.MinCoinsForTxOut(emptyTxOut)),
 					},
 				},
 				ttl: 100,
@@ -291,7 +563,7 @@ func TestAddChangeIfNeeded(t *testing.T) {
 			expectedReceiver := receiver
 			if tc.hasChange {
 				expectedReceiver = change
-				if got, want := builder.tx.Body.Outputs[0].Amount, minUTXO(emptyTxOut, builder.protocol); got.Coin < want {
+				if got, want := builder.tx.Body.Outputs[0].Amount, txBuilder.MinCoinsForTxOut(emptyTxOut); got.Coin < want {
 					t.Errorf("invalid change output: got %v want greater than %v", got, want)
 				}
 			}
