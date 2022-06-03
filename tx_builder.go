@@ -53,6 +53,14 @@ func (tb *TxBuilder) AddCertificate(cert Certificate) {
 	tb.tx.Body.Certificates = append(tb.tx.Body.Certificates, cert)
 }
 
+func (tb *TxBuilder) AddNativeScript(script NativeScript) {
+	tb.tx.WitnessSet.Scripts = append(tb.tx.WitnessSet.Scripts, script)
+}
+
+func (tb *TxBuilder) Mint(asset *MultiAsset) {
+	tb.tx.Body.Mint = asset
+}
+
 // AddChangeIfNeeded calculates the required fee for the transaction and adds
 // an aditional output for the change if there is any.
 // This assumes that the inputs-outputs are defined and signing keys are present.
@@ -67,9 +75,9 @@ func (tb *TxBuilder) AddChangeIfNeeded(changeAddr Address) error {
 	}
 
 	minFee := tb.calculateMinFee()
-	totalProduced := outputAmount + minFee + totalDeposits
+	totalProduced := outputAmount.Coin + minFee + totalDeposits
 
-	if inputAmount < totalProduced {
+	if inputAmount.Coin < totalProduced {
 		return fmt.Errorf(
 			"insuficient input in transaction, got %v want atleast %v",
 			inputAmount,
@@ -77,45 +85,46 @@ func (tb *TxBuilder) AddChangeIfNeeded(changeAddr Address) error {
 		)
 	}
 
-	if inputAmount == totalProduced {
+	if inputAmount.Coin == totalProduced {
 		tb.tx.Body.Fee = minFee
 		return nil
 	}
 
-	change := inputAmount - totalProduced
+	change := NewValue(inputAmount.Coin - totalProduced)
 	changeOutput := &TxOutput{
 		Address: changeAddr,
 		Amount:  change,
 	}
 	changeMinUTXO := minUTXO(changeOutput, tb.protocol)
-	if change < changeMinUTXO {
-		tb.tx.Body.Fee = minFee + change // burn change
+	if change.Coin < changeMinUTXO {
+		tb.tx.Body.Fee = minFee + change.Coin // burn change
 		return nil
 	}
 
 	tb.tx.Body.Outputs = append([]*TxOutput{changeOutput}, tb.tx.Body.Outputs...)
 
 	newMinFee := tb.calculateMinFee()
-	if change+minFee-newMinFee < changeMinUTXO {
-		tb.tx.Body.Fee = minFee + change            // burn change
+	if change.Coin+minFee-newMinFee < changeMinUTXO {
+		tb.tx.Body.Fee = minFee + change.Coin       // burn change
 		tb.tx.Body.Outputs = tb.tx.Body.Outputs[1:] // remove change output
 		return nil
 	}
 
-	tb.tx.Body.Outputs[0].Amount = change + minFee - newMinFee
+	tb.tx.Body.Outputs[0].Amount = NewValue(change.Coin + minFee - newMinFee)
 	tb.tx.Body.Fee = newMinFee
 
 	return nil
 }
 
-func (tb *TxBuilder) calculateAmounts() (input, output Coin) {
+func (tb *TxBuilder) calculateAmounts() (*Value, *Value) {
+	input, output := NewValue(0), NewValue(0)
 	for _, in := range tb.tx.Body.Inputs {
-		input += in.Amount
+		input = input.Add(in.Amount)
 	}
 	for _, out := range tb.tx.Body.Outputs {
-		output += out.Amount
+		output = output.Add(out.Amount)
 	}
-	return
+	return input, output
 }
 
 func (tb *TxBuilder) totalDeposits() Coin {
@@ -159,19 +168,28 @@ func (tb *TxBuilder) Sign(privateKeys ...crypto.PrvKey) error {
 // Build creates a new transaction using the inputs, outputs and keys provided.
 func (tb *TxBuilder) Build() (*Tx, error) {
 	inputAmount, outputAmount := tb.calculateAmounts()
-	totalProduced := outputAmount + tb.tx.Body.Fee + tb.totalDeposits()
+	outputAmount = outputAmount.Add(NewValue(tb.tx.Body.Fee)).Add(NewValue(tb.totalDeposits()))
 
-	if totalProduced > inputAmount {
+	if tb.tx.Body.Mint != nil {
+		inputAmount = inputAmount.Add(NewValueWithAssets(0, tb.tx.Body.Mint))
+	}
+
+	cmp, err := outputAmount.Cmp(inputAmount)
+	if err != nil {
+		return nil, err
+	}
+
+	if cmp == 1 {
 		return nil, fmt.Errorf(
 			"insuficient input in transaction, got %v want %v",
 			inputAmount,
-			totalProduced,
+			outputAmount,
 		)
-	} else if totalProduced < inputAmount {
+	} else if cmp == -1 {
 		return nil, fmt.Errorf(
 			"fee too small, got %v want %v",
 			tb.tx.Body.Fee,
-			inputAmount-totalProduced,
+			inputAmount.Sub(outputAmount),
 		)
 	}
 

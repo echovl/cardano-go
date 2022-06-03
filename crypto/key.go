@@ -5,6 +5,7 @@ import (
 
 	"github.com/echovl/cardano-go/internal/bech32"
 	"github.com/echovl/ed25519"
+	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/pbkdf2"
 )
 
@@ -104,6 +105,11 @@ func (pub PubKey) Bech32(prefix string) string {
 	return bech
 }
 
+// Hash returns the public key hash using blake2b224.
+func (pub PubKey) Hash() ([]byte, error) {
+	return blake224Hash(pub)
+}
+
 // PrvKey is a ed25519 extended private key.
 type PrvKey []byte
 
@@ -135,4 +141,16 @@ func (prv PrvKey) Bech32(prefix string) string {
 func (prv *PrvKey) Sign(message []byte) []byte {
 	pk := ed25519.ExtendedPrivateKey((*prv)[:64])
 	return ed25519.SignExtended(pk, message)
+}
+
+func blake224Hash(b []byte) ([]byte, error) {
+	hash, err := blake2b.New(224/8, nil)
+	if err != nil {
+		return nil, err
+	}
+	_, err = hash.Write(b)
+	if err != nil {
+		return nil, err
+	}
+	return hash.Sum(nil), err
 }

@@ -19,8 +19,8 @@ func TestSimpleBuild(t *testing.T) {
 		sk       string
 		txHashIn string
 		addrOut  string
-		input    uint64
-		output   int64
+		input    Coin
+		output   Coin
 		fee      uint64
 		txHash   string
 		wantErr  bool
@@ -68,14 +68,12 @@ func TestSimpleBuild(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			txIn, err := NewTxInput(tc.txHashIn, 0, Coin(tc.input))
+			txHashIn, err := NewHash32(tc.txHashIn)
 			if err != nil {
 				t.Fatal(err)
 			}
-			txOut, err := NewTxOutput(addrOut, Coin(tc.output))
-			if err != nil {
-				t.Fatal(err)
-			}
+			txIn := NewTxInput(txHashIn, 0, NewValue(tc.input))
+			txOut := NewTxOutput(addrOut, NewValue(tc.output))
 
 			txBuilder := NewTxBuilder(alonzoProtocol)
 
@@ -96,6 +94,9 @@ func TestSimpleBuild(t *testing.T) {
 			}
 
 			txHash, err := tx.Hash()
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			if got, want := txHash.String(), tc.txHash; got != want {
 				t.Errorf("wrong tx hash\ngot: %s\nwant: %s", got, want)
@@ -116,6 +117,8 @@ func TestAddChangeIfNeeded(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	emptyTxOut := &TxOutput{Amount: NewValue(0)}
 
 	type fields struct {
 		tx       Tx
@@ -142,13 +145,13 @@ func TestAddChangeIfNeeded(t *testing.T) {
 					{
 						TxHash: make([]byte, 32),
 						Index:  uint64(0),
-						Amount: 200000,
+						Amount: NewValue(200000),
 					},
 				},
 				outputs: []*TxOutput{
 					{
 						Address: receiver,
-						Amount:  200000,
+						Amount:  NewValue(200000),
 					},
 				},
 			},
@@ -162,13 +165,13 @@ func TestAddChangeIfNeeded(t *testing.T) {
 					{
 						TxHash: make([]byte, 32),
 						Index:  0,
-						Amount: minUTXO(nil, alonzoProtocol) + 165501,
+						Amount: NewValue(minUTXO(emptyTxOut, alonzoProtocol) + 165501),
 					},
 				},
 				outputs: []*TxOutput{
 					{
 						Address: receiver,
-						Amount:  minUTXO(nil, alonzoProtocol),
+						Amount:  NewValue(minUTXO(emptyTxOut, alonzoProtocol)),
 					},
 				},
 			},
@@ -181,13 +184,13 @@ func TestAddChangeIfNeeded(t *testing.T) {
 					{
 						TxHash: make([]byte, 32),
 						Index:  0,
-						Amount: 2*minUTXO(nil, alonzoProtocol) - 1,
+						Amount: NewValue(2*minUTXO(emptyTxOut, alonzoProtocol) - 1),
 					},
 				},
 				outputs: []*TxOutput{
 					{
 						Address: receiver,
-						Amount:  minUTXO(nil, alonzoProtocol),
+						Amount:  NewValue(minUTXO(emptyTxOut, alonzoProtocol)),
 					},
 				},
 			},
@@ -200,13 +203,13 @@ func TestAddChangeIfNeeded(t *testing.T) {
 					{
 						TxHash: make([]byte, 32),
 						Index:  0,
-						Amount: 2*minUTXO(nil, alonzoProtocol) + 162685,
+						Amount: NewValue(2*minUTXO(emptyTxOut, alonzoProtocol) + 162685),
 					},
 				},
 				outputs: []*TxOutput{
 					{
 						Address: receiver,
-						Amount:  minUTXO(nil, alonzoProtocol),
+						Amount:  NewValue(minUTXO(emptyTxOut, alonzoProtocol)),
 					},
 				},
 			},
@@ -219,13 +222,13 @@ func TestAddChangeIfNeeded(t *testing.T) {
 					{
 						TxHash: make([]byte, 32),
 						Index:  0,
-						Amount: 3 * minUTXO(nil, alonzoProtocol),
+						Amount: NewValue(3 * minUTXO(emptyTxOut, alonzoProtocol)),
 					},
 				},
 				outputs: []*TxOutput{
 					{
 						Address: receiver,
-						Amount:  minUTXO(nil, alonzoProtocol),
+						Amount:  NewValue(minUTXO(emptyTxOut, alonzoProtocol)),
 					},
 				},
 			},
@@ -239,13 +242,13 @@ func TestAddChangeIfNeeded(t *testing.T) {
 					{
 						TxHash: make([]byte, 32),
 						Index:  0,
-						Amount: 2*minUTXO(nil, alonzoProtocol) + 164137,
+						Amount: NewValue(2*minUTXO(emptyTxOut, alonzoProtocol) + 164137),
 					},
 				},
 				outputs: []*TxOutput{
 					{
 						Address: receiver,
-						Amount:  minUTXO(nil, alonzoProtocol),
+						Amount:  NewValue(minUTXO(emptyTxOut, alonzoProtocol)),
 					},
 				},
 				ttl: 100,
@@ -277,11 +280,11 @@ func TestAddChangeIfNeeded(t *testing.T) {
 			}
 			var totalIn Coin
 			for _, input := range builder.tx.Body.Inputs {
-				totalIn += input.Amount
+				totalIn += input.Amount.Coin
 			}
 			var totalOut Coin
 			for _, output := range builder.tx.Body.Outputs {
-				totalOut += output.Amount
+				totalOut += output.Amount.Coin
 			}
 			if got, want := builder.tx.Body.Fee+totalOut, totalIn; got != want {
 				t.Errorf("got %v want %v", got, want)
@@ -289,7 +292,7 @@ func TestAddChangeIfNeeded(t *testing.T) {
 			expectedReceiver := receiver
 			if tc.hasChange {
 				expectedReceiver = change
-				if got, want := builder.tx.Body.Outputs[0].Amount, minUTXO(nil, builder.protocol); got < want {
+				if got, want := builder.tx.Body.Outputs[0].Amount, minUTXO(emptyTxOut, builder.protocol); got.Coin < want {
 					t.Errorf("got %v want greater than %v", got, want)
 				}
 			}

@@ -3,7 +3,7 @@ package cardano
 import (
 	"fmt"
 
-	"github.com/fxamacker/cbor/v2"
+	"github.com/echovl/cardano-go/internal/cbor"
 )
 
 var cborEnc, _ = cbor.CanonicalEncOptions().EncMode()

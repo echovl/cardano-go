@@ -1,17 +1,18 @@
 package cardano
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/echovl/cardano-go/crypto"
-	"github.com/fxamacker/cbor/v2"
+	"github.com/echovl/cardano-go/internal/cbor"
 )
 
 type StakeCredentialType uint64
 
 const (
-	KeyCredential    StakeCredentialType = 0
-	ScriptCredential                     = 1
+	KeyCredential StakeCredentialType = iota
+	ScriptCredential
 )
 
 type keyStakeCredential struct {
@@ -41,7 +42,7 @@ func (s *StakeCredential) Hash() Hash28 {
 }
 
 func NewKeyCredential(publicKey crypto.PubKey) (StakeCredential, error) {
-	keyHash, err := blake224Hash(publicKey)
+	keyHash, err := Blake224Hash(publicKey)
 	if err != nil {
 		return StakeCredential{}, err
 	}
@@ -49,11 +50,23 @@ func NewKeyCredential(publicKey crypto.PubKey) (StakeCredential, error) {
 }
 
 func NewScriptCredential(script []byte) (StakeCredential, error) {
-	scriptHash, err := blake224Hash(script)
+	scriptHash, err := Blake224Hash(script)
 	if err != nil {
 		return StakeCredential{}, err
 	}
 	return StakeCredential{Type: ScriptCredential, ScriptHash: scriptHash}, nil
+}
+
+func (s *StakeCredential) Equal(rhs StakeCredential) bool {
+	if s.Type != rhs.Type {
+		return false
+	}
+
+	if s.Type == KeyCredential {
+		return bytes.Equal(s.KeyHash, rhs.KeyHash)
+	} else {
+		return bytes.Equal(s.ScriptHash, rhs.ScriptHash)
+	}
 }
 
 // MarshalCBOR implements cbor.Marshaler.

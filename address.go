@@ -5,7 +5,7 @@ import (
 	"math/big"
 
 	"github.com/echovl/cardano-go/internal/bech32"
-	"github.com/fxamacker/cbor/v2"
+	"github.com/echovl/cardano-go/internal/cbor"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -286,7 +286,7 @@ func encodeToNat(n uint64) []byte {
 	return out
 }
 
-func blake224Hash(b []byte) ([]byte, error) {
+func Blake224Hash(b []byte) ([]byte, error) {
 	hash, err := blake2b.New(224/8, nil)
 	if err != nil {
 		return nil, err

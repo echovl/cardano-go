@@ -83,9 +83,9 @@ func (w *Wallet) Transfer(receiver cardano.Address, amount cardano.Coin) (*carda
 	}
 
 	for _, utxo := range pickedUtxos {
-		builder.AddInputs(&cardano.TxInput{TxHash: utxo.TxHash, Index: utxo.Index, Amount: utxo.Amount})
+		builder.AddInputs(&cardano.TxInput{TxHash: utxo.TxHash, Index: utxo.Index, Amount: cardano.NewValue(utxo.Amount)})
 	}
-	builder.AddOutputs(&cardano.TxOutput{Address: receiver, Amount: amount})
+	builder.AddOutputs(&cardano.TxOutput{Address: receiver, Amount: cardano.NewValue(amount)})
 
 	tip, err := w.node.Tip()
 	if err != nil {
@@ -164,6 +164,10 @@ func (w *Wallet) Addresses() ([]cardano.Address, error) {
 		addresses[i] = enterpriseAddr
 	}
 	return addresses, nil
+}
+
+func (w *Wallet) Keys() (crypto.PrvKey, crypto.PrvKey) {
+	return w.addrKeys[0].PrvKey(), w.stakeKey.PrvKey()
 }
 
 func newWalletID() string {

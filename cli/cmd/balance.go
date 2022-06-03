@@ -33,9 +33,12 @@ var balanceCmd = &cobra.Command{
 		}
 
 		balance, err := w.Balance()
+		if err != nil {
+			return err
+		}
 		fmt.Printf("%-25v %-9v\n", "ASSET", "AMOUNT")
 		fmt.Printf("%-25v %-9v\n", "Lovelace", balance)
-		return err
+		return nil
 	},
 }
 

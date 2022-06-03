@@ -57,14 +57,13 @@ func main() {
 		panic(err)
 	}
 
-	txInput, err := cardano.NewTxInput("txhash", 0, cardano.Coin(2000000))
+	txHash, err := cardano.NewHash32("txhash")
 	if err != nil {
 		panic(err)
 	}
-	txOut, err := cardano.NewTxOutput(receiver, cardano.Coin(1300000))
-	if err != nil {
-		panic(err)
-	}
+
+	txInput := cardano.NewTxInput(txHash, 0, cardano.NewValue(2000000))
+	txOut := cardano.NewTxOutput(receiver, cardano.NewValue(1300000))
 
 	txBuilder.AddInputs(txInput)
 	txBuilder.AddOutputs(txOut)
@@ -195,13 +194,76 @@ func main() {
 		panic(err)
 	}
 
-	poolKeyHash := "2d6765748cc86efe862f5abeb0c0271f91d368d300123ecedc078ef2"
-	stakeRegCert, err := cardano.NewStakeDelegationCertificate(stakeKey.PubKey(), poolKeyHash)
+	poolKeyHash, err := cardano.NewHash28("2d6765748cc86efe862f5abeb0c0271f91d368d300123ecedc078ef2")
+    if err != nil {
+        panic(err)
+    }
+	stakeDelCert, err := cardano.NewStakeDelegationCertificate(stakeKey.PubKey(), poolKeyHash)
 	if err != nil {
 		panic(err)
 	}
 
-	txBuilder.AddCertificate(stakeRegCert)
+	txBuilder.AddCertificate(stakeDelCert)
+}
+```
+
+### Mint native tokens
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/echovl/cardano-go"
+	"github.com/echovl/cardano-go/crypto"
+)
+
+func main() {
+	txBuilder := cardano.NewTxBuilder(&cardano.ProtocolParams{})
+
+	paymentKey, err := crypto.NewPrvKey("addr_sk")
+	if err != nil {
+		panic(err)
+	}
+	policyKey, err := crypto.NewPrvKey("policy_sk")
+	if err != nil {
+		panic(err)
+	}
+	policyScript, err := cardano.NewScriptPubKey(policyKey.PubKey())
+	if err != nil {
+		panic(err)
+	}
+	policyID, err := cardano.NewPolicyID(policyScript)
+	if err != nil {
+		panic(err)
+	}
+
+	newAsset := cardano.NewMultiAsset().Set(
+		policyID,
+		cardano.NewAssets().
+			Set(cardano.NewAssetName("cardanogo"), 1e9),
+	)
+
+	addr, err := cardano.NewAddress("addr")
+	if err != nil {
+		panic(err)
+	}
+
+	txHashIn, err := cardano.NewHash32("41dc71e3225adb84d287df1da52a2b618d4b459d1d88936f3a8955c3bcc51c6c")
+	if err != nil {
+		panic(err)
+	}
+
+	txBuilder.AddInputs(
+		cardano.NewTxInput(txHashIn, 0, cardano.NewValue(987658966)),
+	)
+	txBuilder.AddOutputs(
+		cardano.NewTxOutput(addr, cardano.NewValueWithAssets(10e6, newAsset)),
+	)
+
+	txBuilder.AddNativeScript(policyScript)
+	txBuilder.Mint(newAsset)
 }
 ```
 

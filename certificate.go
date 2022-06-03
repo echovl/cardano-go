@@ -1,23 +1,22 @@
 package cardano
 
 import (
-	"encoding/hex"
 	"fmt"
 
 	"github.com/echovl/cardano-go/crypto"
-	"github.com/fxamacker/cbor/v2"
+	"github.com/echovl/cardano-go/internal/cbor"
 )
 
 type CertificateType uint
 
 const (
-	StakeRegistration        CertificateType = 0
-	StakeDeregistration                      = 1
-	StakeDelegation                          = 2
-	PoolRegistration                         = 3
-	PoolRetirement                           = 4
-	GenesisKeyDelegation                     = 5
-	MoveInstantaneousRewards                 = 6
+	StakeRegistration CertificateType = iota
+	StakeDeregistration
+	StakeDelegation
+	PoolRegistration
+	PoolRetirement
+	GenesisKeyDelegation
+	MoveInstantaneousRewards
 )
 
 type stakeRegistration struct {
@@ -165,12 +164,8 @@ func NewStakeDeregistrationCertificate(stakeKey crypto.PubKey) (Certificate, err
 	}, nil
 }
 
-func NewStakeDelegationCertificate(stakeKey crypto.PubKey, poolKeyHash string) (Certificate, error) {
+func NewStakeDelegationCertificate(stakeKey crypto.PubKey, poolKeyHash Hash28) (Certificate, error) {
 	cred, err := NewKeyCredential(stakeKey)
-	if err != nil {
-		return Certificate{}, err
-	}
-	keyHash, err := hex.DecodeString(poolKeyHash)
 	if err != nil {
 		return Certificate{}, err
 	}
@@ -178,7 +173,7 @@ func NewStakeDelegationCertificate(stakeKey crypto.PubKey, poolKeyHash string) (
 	return Certificate{
 		Type:            StakeDelegation,
 		StakeCredential: cred,
-		PoolKeyHash:     keyHash,
+		PoolKeyHash:     poolKeyHash,
 	}, nil
 }
 

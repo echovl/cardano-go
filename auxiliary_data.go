@@ -3,7 +3,7 @@ package cardano
 import (
 	"reflect"
 
-	"github.com/fxamacker/cbor/v2"
+	"github.com/echovl/cardano-go/internal/cbor"
 )
 
 type Metadata map[uint]interface{}
