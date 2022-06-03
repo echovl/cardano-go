@@ -1,7 +1,6 @@
 package cardano
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/echovl/cardano-go/crypto"
@@ -287,21 +286,18 @@ func TestAddChangeIfNeeded(t *testing.T) {
 				totalOut += output.Amount.Coin
 			}
 			if got, want := builder.tx.Body.Fee+totalOut, totalIn; got != want {
-				t.Errorf("got %v want %v", got, want)
+				t.Errorf("invalid fee+totalOut: got %v want %v", got, want)
 			}
 			expectedReceiver := receiver
 			if tc.hasChange {
 				expectedReceiver = change
 				if got, want := builder.tx.Body.Outputs[0].Amount, minUTXO(emptyTxOut, builder.protocol); got.Coin < want {
-					t.Errorf("got %v want greater than %v", got, want)
+					t.Errorf("invalid change output: got %v want greater than %v", got, want)
 				}
 			}
 			firstOutputReceiver := builder.tx.Body.Outputs[0].Address
 			if got, want := firstOutputReceiver.Bech32(), expectedReceiver.Bech32(); got != want {
-				for _, out := range builder.tx.Body.Outputs {
-					fmt.Printf("%+v", out)
-				}
-				t.Errorf("got %v want %v", got, want)
+				t.Errorf("invalid change output receiver: got %v want %v", got, want)
 			}
 		})
 	}

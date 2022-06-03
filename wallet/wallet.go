@@ -87,7 +87,7 @@ func (w *Wallet) Transfer(receiver cardano.Address, amount cardano.Coin) (*carda
 		builder.AddInputs(&cardano.TxInput{TxHash: utxo.TxHash, Index: utxo.Index, Amount: utxo.Amount})
 		inputAmount = inputAmount.Add(utxo.Amount)
 	}
-	builder.AddOutputs(&cardano.TxOutput{Address: receiver, Amount: cardano.NewValueWithAssets(amount, inputAmount.MultiAsset)})
+	builder.AddOutputs(&cardano.TxOutput{Address: receiver, Amount: cardano.NewValue(amount)})
 
 	tip, err := w.node.Tip()
 	if err != nil {
@@ -106,7 +106,6 @@ func (w *Wallet) Transfer(receiver cardano.Address, amount cardano.Coin) (*carda
 	if err != nil {
 		return nil, err
 	}
-
 	return w.node.SubmitTx(tx)
 }
 

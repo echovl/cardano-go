@@ -74,43 +74,63 @@ func (tb *TxBuilder) AddChangeIfNeeded(changeAddr Address) error {
 		return err
 	}
 
-	minFee := tb.calculateMinFee()
-	totalProduced := outputAmount.Coin + minFee + totalDeposits
+	if tb.tx.Body.Mint != nil {
+		inputAmount = inputAmount.Add(NewValueWithAssets(0, tb.tx.Body.Mint))
+	}
 
-	if inputAmount.Coin < totalProduced {
+	minFee := tb.calculateMinFee()
+	outputAmount = outputAmount.Add(NewValue(minFee + totalDeposits))
+
+	inputOutputCmp, err := inputAmount.Cmp(outputAmount)
+	if err != nil {
+		return err
+	}
+
+	if inputOutputCmp == -1 {
 		return fmt.Errorf(
 			"insuficient input in transaction, got %v want atleast %v",
 			inputAmount,
-			totalProduced,
+			outputAmount,
 		)
-	}
-
-	if inputAmount.Coin == totalProduced {
+	} else if inputOutputCmp == 0 {
 		tb.tx.Body.Fee = minFee
 		return nil
 	}
 
-	change := NewValue(inputAmount.Coin - totalProduced)
-	changeOutput := &TxOutput{
-		Address: changeAddr,
-		Amount:  change,
-	}
+	// Construct change output
+	changeAmount := inputAmount.Sub(outputAmount)
+	changeOutput := NewTxOutput(changeAddr, changeAmount)
+
 	changeMinUTXO := minUTXO(changeOutput, tb.protocol)
-	if change.Coin < changeMinUTXO {
-		tb.tx.Body.Fee = minFee + change.Coin // burn change
-		return nil
+	if changeAmount.Coin < changeMinUTXO {
+		if changeAmount.OnlyCoin() {
+			tb.tx.Body.Fee = minFee + changeAmount.Coin // burn change
+			return nil
+		}
+		return fmt.Errorf(
+			"insuficient input for change output with multiassets, got %v want %v",
+			inputAmount.Coin,
+			inputAmount.Coin+changeMinUTXO-changeAmount.Coin,
+		)
 	}
 
 	tb.tx.Body.Outputs = append([]*TxOutput{changeOutput}, tb.tx.Body.Outputs...)
 
 	newMinFee := tb.calculateMinFee()
-	if change.Coin+minFee-newMinFee < changeMinUTXO {
-		tb.tx.Body.Fee = minFee + change.Coin       // burn change
-		tb.tx.Body.Outputs = tb.tx.Body.Outputs[1:] // remove change output
-		return nil
+	changeAmount.Coin = changeAmount.Coin + minFee - newMinFee
+	if changeAmount.Coin < changeMinUTXO {
+		if changeAmount.OnlyCoin() {
+			tb.tx.Body.Fee = newMinFee + changeAmount.Coin // burn change
+			tb.tx.Body.Outputs = tb.tx.Body.Outputs[1:]    // remove change output
+			return nil
+		}
+		return fmt.Errorf(
+			"insuficient input for change output with multiassets, got %v want %v",
+			inputAmount.Coin,
+			changeMinUTXO,
+		)
 	}
 
-	tb.tx.Body.Outputs[0].Amount = NewValue(change.Coin + minFee - newMinFee)
 	tb.tx.Body.Fee = newMinFee
 
 	return nil

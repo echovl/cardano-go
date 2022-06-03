@@ -121,15 +121,19 @@ func (v *Value) Sub(rhs *Value) *Value {
 	return result
 }
 
+// Compares and returns
+//      -1 if v < rhs
+//       0 if v == rhs
+//       1 if v > rhs
 func (v *Value) Cmp(rhs *Value) (int, error) {
 	lrZero := v.Sub(rhs).IsZero()
 	rlZero := rhs.Sub(v).IsZero()
 
 	if !lrZero && !rlZero {
 		return 0, errors.New("noncomparable values")
-	} else if !lrZero && rlZero {
-		return -1, nil
 	} else if lrZero && !rlZero {
+		return -1, nil
+	} else if !lrZero && rlZero {
 		return 1, nil
 	} else {
 		return 0, nil
@@ -203,6 +207,14 @@ func (a *Assets) Get(name AssetName) BigNum {
 	return a.m[name.bs]
 }
 
+func (a *Assets) Keys() []AssetName {
+	assetNames := []AssetName{}
+	for k := range a.m {
+		assetNames = append(assetNames, AssetName{bs: k})
+	}
+	return assetNames
+}
+
 // MarshalCBOR implements cbor.Marshaler
 func (a *Assets) MarshalCBOR() ([]byte, error) {
 	return cborEnc.Marshal(a.m)
@@ -223,6 +235,14 @@ func (ma *MultiAsset) Set(policyID PolicyID, assets *Assets) *MultiAsset {
 
 func (ma *MultiAsset) Get(policyID PolicyID) *Assets {
 	return ma.m[policyID.bs]
+}
+
+func (ma *MultiAsset) Keys() []PolicyID {
+	policyIDs := []PolicyID{}
+	for id := range ma.m {
+		policyIDs = append(policyIDs, PolicyID{bs: id})
+	}
+	return policyIDs
 }
 
 func (ma *MultiAsset) NumPIDs() uint {
