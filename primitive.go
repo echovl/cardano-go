@@ -157,6 +157,10 @@ func NewPolicyID(script NativeScript) (PolicyID, error) {
 	return PolicyID{bs: cbor.NewByteString(scriptHash)}, nil
 }
 
+func NewPolicyIDFromHash(scriptHash Hash28) PolicyID {
+	return PolicyID{bs: cbor.NewByteString(scriptHash)}
+}
+
 func (p *PolicyID) Bytes() []byte {
 	return p.bs.Bytes()
 }

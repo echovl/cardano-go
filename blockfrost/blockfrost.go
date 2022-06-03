@@ -3,6 +3,7 @@ package blockfrost
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -57,21 +58,48 @@ func (b *BlockfrostNode) UTxOs(addr cardano.Address) ([]cardano.UTxO, error) {
 			return nil, err
 		}
 
-		var amount uint64
+		amount := cardano.NewValue(0)
 		for _, a := range butxo.Amount {
 			if a.Unit == "lovelace" {
 				lovelace, err := strconv.ParseUint(a.Quantity, 10, 64)
 				if err != nil {
 					return nil, err
 				}
-				amount += lovelace
+				amount.Coin += cardano.Coin(lovelace)
+			} else {
+				asset, err := b.client.Asset(context.Background(), a.Unit)
+				if err != nil {
+					return nil, err
+				}
+				scriptHash, err := hex.DecodeString(asset.PolicyId)
+				if err != nil {
+					return nil, err
+				}
+				assetName, err := hex.DecodeString(asset.AssetName)
+				if err != nil {
+					return nil, err
+				}
+				val, err := strconv.ParseUint(a.Quantity, 10, 64)
+				if err != nil {
+					return nil, err
+				}
+
+				amount.MultiAsset = cardano.NewMultiAsset().
+					Set(
+						cardano.NewPolicyIDFromHash(scriptHash),
+						cardano.NewAssets().
+							Set(
+								cardano.NewAssetName(string(assetName)),
+								cardano.BigNum(val),
+							),
+					)
 			}
 		}
 
 		utxos[i] = cardano.UTxO{
 			Spender: addr,
 			TxHash:  txHash,
-			Amount:  cardano.Coin(amount),
+			Amount:  amount,
 			Index:   uint64(butxo.OutputIndex),
 		}
 	}

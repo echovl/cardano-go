@@ -92,7 +92,7 @@ func (c *CardanoCli) UTxOs(addr cardano.Address) ([]cardano.UTxO, error) {
 			Spender: addr,
 			TxHash:  txHash,
 			Index:   uint64(index),
-			Amount:  cardano.Coin(amount),
+			Amount:  cardano.NewValue(cardano.Coin(amount)),
 		})
 	}
 

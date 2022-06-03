@@ -51,7 +51,7 @@ func (w *Wallet) Transfer(receiver cardano.Address, amount cardano.Coin) (*carda
 			break
 		}
 		pickedUtxos = append(pickedUtxos, utxo)
-		pickedUtxosAmount += utxo.Amount
+		pickedUtxosAmount += utxo.Amount.Coin
 	}
 
 	pparams, err := w.node.ProtocolParams()
@@ -82,10 +82,12 @@ func (w *Wallet) Transfer(receiver cardano.Address, amount cardano.Coin) (*carda
 		return nil, errors.New("not enough keys")
 	}
 
+	inputAmount := cardano.NewValue(0)
 	for _, utxo := range pickedUtxos {
-		builder.AddInputs(&cardano.TxInput{TxHash: utxo.TxHash, Index: utxo.Index, Amount: cardano.NewValue(utxo.Amount)})
+		builder.AddInputs(&cardano.TxInput{TxHash: utxo.TxHash, Index: utxo.Index, Amount: utxo.Amount})
+		inputAmount = inputAmount.Add(utxo.Amount)
 	}
-	builder.AddOutputs(&cardano.TxOutput{Address: receiver, Amount: cardano.NewValue(amount)})
+	builder.AddOutputs(&cardano.TxOutput{Address: receiver, Amount: cardano.NewValueWithAssets(amount, inputAmount.MultiAsset)})
 
 	tip, err := w.node.Tip()
 	if err != nil {
@@ -116,7 +118,7 @@ func (w *Wallet) Balance() (cardano.Coin, error) {
 		return 0, err
 	}
 	for _, utxo := range utxos {
-		balance += utxo.Amount
+		balance += utxo.Amount.Coin
 	}
 	return balance, nil
 }

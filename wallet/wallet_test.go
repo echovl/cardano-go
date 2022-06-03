@@ -75,7 +75,7 @@ func (n *MockNode) Network() cardano.Network {
 func TestWalletBalance(t *testing.T) {
 	client := NewClient(&Options{
 		DB:   &MockDB{},
-		Node: &MockNode{utxos: []cardano.UTxO{{Amount: 100}, {Amount: 33}}},
+		Node: &MockNode{utxos: []cardano.UTxO{{Amount: cardano.NewValue(100)}, {Amount: cardano.NewValue(33)}}},
 	})
 	w, _, err := client.CreateWallet("test", "")
 	if err != nil {

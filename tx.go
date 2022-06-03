@@ -13,7 +13,7 @@ const utxoEntrySizeWithoutVal = 27
 type UTxO struct {
 	TxHash  Hash32
 	Spender Address
-	Amount  Coin
+	Amount  *Value
 	Index   uint64
 }
 
