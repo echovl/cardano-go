@@ -1,7 +1,6 @@
 package cardano
 
 import (
-	"errors"
 	"fmt"
 	"math"
 
@@ -13,6 +12,8 @@ type TxBuilder struct {
 	tx       *Tx
 	protocol *ProtocolParams
 	pkeys    []crypto.PrvKey
+
+	changeReceiver *Address
 }
 
 // NewTxBuilder returns a new instance of TxBuilder.
@@ -66,69 +67,10 @@ func (tb *TxBuilder) Mint(asset *Mint) {
 	tb.tx.Body.Mint = asset
 }
 
-// AddChangeIfNeeded calculates the required fee for the transaction and adds
-// an aditional output for the change if there is any.
-// This assumes that the inputs-outputs are defined and signing keys are present.
-func (tb *TxBuilder) AddChangeIfNeeded(changeAddr Address) error {
-	inputAmount, outputAmount := tb.calculateAmounts()
-
-	// Set a temporary realistic fee in order to serialize a valid transaction
-	tb.tx.Body.Fee = 200000
-	if _, err := tb.build(); err != nil {
-		return err
-	}
-
-	minFee := tb.calculateMinFee()
-	outputAmount = outputAmount.Add(NewValue(minFee))
-
-	if inputOutputCmp := inputAmount.Cmp(outputAmount); inputOutputCmp == -1 || inputOutputCmp == 2 {
-		return fmt.Errorf(
-			"insuficient input in transaction, got %v want atleast %v",
-			inputAmount,
-			outputAmount,
-		)
-	} else if inputOutputCmp == 0 {
-		tb.tx.Body.Fee = minFee
-		return nil
-	}
-
-	// Construct change output
-	changeAmount := inputAmount.Sub(outputAmount)
-	changeOutput := NewTxOutput(changeAddr, changeAmount)
-
-	changeMinCoins := tb.MinCoinsForTxOut(changeOutput)
-	if changeAmount.Coin < changeMinCoins {
-		if changeAmount.OnlyCoin() {
-			tb.tx.Body.Fee = minFee + changeAmount.Coin // burn change
-			return nil
-		}
-		return fmt.Errorf(
-			"insuficient input for change output with multiassets, got %v want %v",
-			inputAmount.Coin,
-			inputAmount.Coin+changeMinCoins-changeAmount.Coin,
-		)
-	}
-
-	tb.tx.Body.Outputs = append([]*TxOutput{changeOutput}, tb.tx.Body.Outputs...)
-
-	newMinFee := tb.calculateMinFee()
-	changeAmount.Coin = changeAmount.Coin + minFee - newMinFee
-	if changeAmount.Coin < changeMinCoins {
-		if changeAmount.OnlyCoin() {
-			tb.tx.Body.Fee = newMinFee + changeAmount.Coin // burn change
-			tb.tx.Body.Outputs = tb.tx.Body.Outputs[1:]    // remove change output
-			return nil
-		}
-		return fmt.Errorf(
-			"insuficient input for change output with multiassets, got %v want %v",
-			inputAmount.Coin,
-			changeMinCoins,
-		)
-	}
-
-	tb.tx.Body.Fee = newMinFee
-
-	return nil
+// AddChangeIfNeeded instructs the builder to calculate the required fee for the
+// transaction and to add an aditional output for the change if there is any.
+func (tb *TxBuilder) AddChangeIfNeeded(changeAddr Address) {
+	tb.changeReceiver = &changeAddr
 }
 
 func (tb *TxBuilder) calculateAmounts() (*Value, *Value) {
@@ -164,7 +106,7 @@ func (tb *TxBuilder) MinFee() (Coin, error) {
 	// Set a temporary realistic fee in order to serialize a valid transaction
 	currentFee := tb.tx.Body.Fee
 	tb.tx.Body.Fee = 200000
-	if _, err := tb.build(); err != nil {
+	if err := tb.build(); err != nil {
 		return 0, err
 	}
 	minFee := tb.calculateMinFee()
@@ -201,52 +143,131 @@ func (tb *TxBuilder) Sign(privateKeys ...crypto.PrvKey) {
 	tb.pkeys = append(tb.pkeys, privateKeys...)
 }
 
+// Reset resets the builder to its initial state.
+func (tb *TxBuilder) Reset() {
+	tb.tx = &Tx{IsValid: true}
+	tb.pkeys = []crypto.PrvKey{}
+	tb.changeReceiver = nil
+}
+
 // Build creates a new transaction using the inputs, outputs and keys provided.
 func (tb *TxBuilder) Build() (*Tx, error) {
 	inputAmount, outputAmount := tb.calculateAmounts()
-	outputAmount = outputAmount.Add(NewValue(tb.tx.Body.Fee))
 
-	if inputOutputCmp := outputAmount.Cmp(inputAmount); inputOutputCmp == 1 || inputOutputCmp == 2 {
-		return nil, fmt.Errorf(
-			"insuficient input in transaction, got %v want %v",
+	// Check input-output value conservation
+	if tb.changeReceiver == nil {
+		totalProduced := outputAmount.Add(NewValue(tb.tx.Body.Fee))
+		if inputOutputCmp := totalProduced.Cmp(inputAmount); inputOutputCmp == 1 || inputOutputCmp == 2 {
+			return nil, fmt.Errorf(
+				"insuficient input in transaction, got %v want %v",
+				inputAmount,
+				totalProduced,
+			)
+		} else if inputOutputCmp == -1 {
+			return nil, fmt.Errorf(
+				"fee too small, got %v want %v",
+				tb.tx.Body.Fee,
+				inputAmount.Sub(totalProduced),
+			)
+		}
+	}
+
+	if tb.changeReceiver != nil {
+		err := tb.addChangeIfNeeded(inputAmount, outputAmount)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tb.build(); err != nil {
+		return nil, err
+	}
+
+	return tb.tx, nil
+}
+
+func (tb *TxBuilder) addChangeIfNeeded(inputAmount, outputAmount *Value) error {
+	// Temporary fee to serialize a valid transaction
+	tb.tx.Body.Fee = 2e5
+
+	// TODO: We should build a fake tx with hardcoded data like signatures, hashes, etc
+	if err := tb.build(); err != nil {
+		return err
+	}
+
+	minFee := tb.calculateMinFee()
+	outputAmount = outputAmount.Add(NewValue(minFee))
+
+	if inputOutputCmp := inputAmount.Cmp(outputAmount); inputOutputCmp == -1 || inputOutputCmp == 2 {
+		return fmt.Errorf(
+			"insuficient input in transaction, got %v want atleast %v",
 			inputAmount,
 			outputAmount,
 		)
-	} else if inputOutputCmp == -1 {
-		return nil, fmt.Errorf(
-			"fee too small, got %v want %v",
-			tb.tx.Body.Fee,
-			inputAmount.Sub(outputAmount),
+	} else if inputOutputCmp == 0 {
+		tb.tx.Body.Fee = minFee
+		return nil
+	}
+
+	// Construct change output
+	changeAmount := inputAmount.Sub(outputAmount)
+	changeOutput := NewTxOutput(*tb.changeReceiver, changeAmount)
+
+	changeMinCoins := tb.MinCoinsForTxOut(changeOutput)
+	if changeAmount.Coin < changeMinCoins {
+		if changeAmount.OnlyCoin() {
+			tb.tx.Body.Fee = minFee + changeAmount.Coin // burn change
+			return nil
+		}
+		return fmt.Errorf(
+			"insuficient input for change output with multiassets, got %v want %v",
+			inputAmount.Coin,
+			inputAmount.Coin+changeMinCoins-changeAmount.Coin,
 		)
 	}
 
-	return tb.build()
-}
+	tb.tx.Body.Outputs = append([]*TxOutput{changeOutput}, tb.tx.Body.Outputs...)
 
-func (tb *TxBuilder) build() (*Tx, error) {
-	if len(tb.pkeys) == 0 {
-		return nil, errors.New("missing signing keys")
+	newMinFee := tb.calculateMinFee()
+	changeAmount.Coin = changeAmount.Coin + minFee - newMinFee
+	if changeAmount.Coin < changeMinCoins {
+		if changeAmount.OnlyCoin() {
+			tb.tx.Body.Fee = newMinFee + changeAmount.Coin // burn change
+			tb.tx.Body.Outputs = tb.tx.Body.Outputs[1:]    // remove change output
+			return nil
+		}
+		return fmt.Errorf(
+			"insuficient input for change output with multiassets, got %v want %v",
+			inputAmount.Coin,
+			changeMinCoins,
+		)
 	}
 
+	tb.tx.Body.Fee = newMinFee
+
+	return nil
+}
+
+func (tb *TxBuilder) build() error {
 	if err := tb.buildBody(); err != nil {
-		return nil, err
+		return err
 	}
 
 	txHash, err := tb.tx.Hash()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	vkeyWitnsessSet := make([]VKeyWitness, len(tb.pkeys))
+	// Create witness set
+	tb.tx.WitnessSet.VKeyWitnessSet = make([]VKeyWitness, len(tb.pkeys))
 	for i, pkey := range tb.pkeys {
-		publicKey := pkey.PubKey()
-		signature := pkey.Sign(txHash[:])
-		witness := VKeyWitness{VKey: publicKey, Signature: signature}
-		vkeyWitnsessSet[i] = witness
+		tb.tx.WitnessSet.VKeyWitnessSet[i] = VKeyWitness{
+			VKey:      pkey.PubKey(),
+			Signature: pkey.Sign(txHash),
+		}
 	}
-	tb.tx.WitnessSet.VKeyWitnessSet = vkeyWitnsessSet
 
-	return tb.tx, nil
+	return nil
 }
 
 func (tb *TxBuilder) buildBody() error {

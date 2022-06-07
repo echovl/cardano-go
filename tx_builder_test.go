@@ -212,10 +212,7 @@ func TestMintingAssets(t *testing.T) {
 	txBuilder.SetTTL(100000)
 	txBuilder.Sign(paymentKey.PrvKey())
 	txBuilder.Sign(policyKey.PrvKey())
-	if err := txBuilder.AddChangeIfNeeded(addr); err != nil {
-		t.Fatal(err)
-	}
-
+	txBuilder.AddChangeIfNeeded(addr)
 	tx, err := txBuilder.Build()
 	if err != nil {
 		t.Fatal(err)
@@ -347,15 +344,12 @@ func TestSendingMultiAssets(t *testing.T) {
 				},
 			})
 
-			if err := txBuilder.AddChangeIfNeeded(addr); err != nil {
+			txBuilder.AddChangeIfNeeded(addr)
+			tx, err := txBuilder.Build()
+			if err != nil {
 				if tc.wantErr {
 					return
 				}
-				t.Fatal(err)
-			}
-
-			tx, err := txBuilder.Build()
-			if err != nil {
 				t.Fatal(err)
 			}
 
@@ -534,40 +528,42 @@ func TestAddChangeIfNeeded(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			change, err := NewEnterpriseAddress(Testnet, payment)
+			changeAddr, err := NewEnterpriseAddress(Testnet, payment)
 			if err != nil {
 				t.Fatal(err)
 			}
-			builder := NewTxBuilder(alonzoProtocol)
-			builder.AddInputs(tc.fields.inputs...)
-			builder.AddOutputs(tc.fields.outputs...)
-			builder.SetTTL(tc.fields.ttl)
-			builder.Sign(key.PrvKey())
-			if err := builder.AddChangeIfNeeded(change); err != nil {
+			txBuilder := NewTxBuilder(alonzoProtocol)
+			txBuilder.AddInputs(tc.fields.inputs...)
+			txBuilder.AddOutputs(tc.fields.outputs...)
+			txBuilder.SetTTL(tc.fields.ttl)
+			txBuilder.Sign(key.PrvKey())
+			txBuilder.AddChangeIfNeeded(changeAddr)
+			tx, err := txBuilder.Build()
+			if err != nil {
 				if tc.wantErr {
 					return
 				}
-				t.Fatalf("AddFee() error = %v, wantErr %v", err, tc.wantErr)
+				t.Fatal(err)
 			}
 			var totalIn Coin
-			for _, input := range builder.tx.Body.Inputs {
+			for _, input := range tx.Body.Inputs {
 				totalIn += input.Amount.Coin
 			}
 			var totalOut Coin
-			for _, output := range builder.tx.Body.Outputs {
+			for _, output := range tx.Body.Outputs {
 				totalOut += output.Amount.Coin
 			}
-			if got, want := builder.tx.Body.Fee+totalOut, totalIn; got != want {
+			if got, want := tx.Body.Fee+totalOut, totalIn; got != want {
 				t.Errorf("invalid fee+totalOut: got %v want %v", got, want)
 			}
 			expectedReceiver := receiver
 			if tc.hasChange {
-				expectedReceiver = change
-				if got, want := builder.tx.Body.Outputs[0].Amount, txBuilder.MinCoinsForTxOut(emptyTxOut); got.Coin < want {
+				expectedReceiver = changeAddr
+				if got, want := tx.Body.Outputs[0].Amount, txBuilder.MinCoinsForTxOut(emptyTxOut); got.Coin < want {
 					t.Errorf("invalid change output: got %v want greater than %v", got, want)
 				}
 			}
-			firstOutputReceiver := builder.tx.Body.Outputs[0].Address
+			firstOutputReceiver := tx.Body.Outputs[0].Address
 			if got, want := firstOutputReceiver.Bech32(), expectedReceiver.Bech32(); got != want {
 				t.Errorf("invalid change output receiver: got %v want %v", got, want)
 			}

@@ -60,7 +60,7 @@ func (w *Wallet) Transfer(receiver cardano.Address, amount *cardano.Value) (*car
 		return nil, err
 	}
 
-	builder := cardano.NewTxBuilder(pparams)
+	txBuilder := cardano.NewTxBuilder(pparams)
 
 	keys := make(map[int]crypto.XPrvKey)
 	for i, utxo := range pickedUtxos {
@@ -85,25 +85,22 @@ func (w *Wallet) Transfer(receiver cardano.Address, amount *cardano.Value) (*car
 
 	inputAmount := cardano.NewValue(0)
 	for _, utxo := range pickedUtxos {
-		builder.AddInputs(&cardano.TxInput{TxHash: utxo.TxHash, Index: utxo.Index, Amount: utxo.Amount})
+		txBuilder.AddInputs(&cardano.TxInput{TxHash: utxo.TxHash, Index: utxo.Index, Amount: utxo.Amount})
 		inputAmount = inputAmount.Add(utxo.Amount)
 	}
-	builder.AddOutputs(&cardano.TxOutput{Address: receiver, Amount: amount})
+	txBuilder.AddOutputs(&cardano.TxOutput{Address: receiver, Amount: amount})
 
 	tip, err := w.node.Tip()
 	if err != nil {
 		return nil, err
 	}
-	builder.SetTTL(tip.Slot + 1200)
+	txBuilder.SetTTL(tip.Slot + 1200)
 	for _, key := range keys {
-		builder.Sign(key.PrvKey())
+		txBuilder.Sign(key.PrvKey())
 	}
 	changeAddress := pickedUtxos[0].Spender
-	if err = builder.AddChangeIfNeeded(changeAddress); err != nil {
-		return nil, err
-	}
-
-	tx, err := builder.Build()
+	txBuilder.AddChangeIfNeeded(changeAddress)
+	tx, err := txBuilder.Build()
 	if err != nil {
 		return nil, err
 	}

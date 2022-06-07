@@ -51,24 +51,30 @@ import (
 func main() {
 	txBuilder := cardano.NewTxBuilder(&cardano.ProtocolParams{})
 
+	sender, err := cardano.NewAddress("addr")
+	if err != nil {
+		panic(err)
+	}
 	receiver, err := cardano.NewAddress("addr")
+	if err != nil {
+		panic(err)
+	}
 	sk, err := crypto.NewPrvKey("addr_sk")
 	if err != nil {
 		panic(err)
 	}
-
 	txHash, err := cardano.NewHash32("txhash")
 	if err != nil {
 		panic(err)
 	}
 
-	txInput := cardano.NewTxInput(txHash, 0, cardano.NewValue(2000000))
-	txOut := cardano.NewTxOutput(receiver, cardano.NewValue(1300000))
+	txInput := cardano.NewTxInput(txHash, 0, cardano.NewValue(20e6))
+	txOut := cardano.NewTxOutput(receiver, cardano.NewValue(10e6))
 
 	txBuilder.AddInputs(txInput)
 	txBuilder.AddOutputs(txOut)
 	txBuilder.SetTTL(100000)
-	txBuilder.SetFee(cardano.Coin(160000))
+	txBuilder.AddChangeIfNeeded(sender)
 	txBuilder.Sign(sk)
 
 	tx, err := txBuilder.Build()
@@ -97,11 +103,7 @@ func main() {
 		panic(err)
 	}
 
-	// Transaction should be signed at this point
-	err = txBuilder.AddChangeIfNeeded(changeAddr)
-	if err != nil {
-		panic(err)
-	}
+	txBuilder.AddChangeIfNeeded(changeAddr)
 }
 ```
 
