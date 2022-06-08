@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/echovl/cardano-go/crypto"
-	"github.com/echovl/cardano-go/internal/cbor"
 )
 
 type StakeCredentialType uint64
@@ -27,6 +26,7 @@ type scriptStakeCredential struct {
 	ScriptHash Hash28
 }
 
+// StakeCredential is a Cardano credential.
 type StakeCredential struct {
 	Type       StakeCredentialType
 	KeyHash    AddrKeyHash
@@ -41,6 +41,7 @@ func (s *StakeCredential) Hash() Hash28 {
 	}
 }
 
+// NewKeyCredential creates a Key Credential.
 func NewKeyCredential(publicKey crypto.PubKey) (StakeCredential, error) {
 	keyHash, err := Blake224Hash(publicKey)
 	if err != nil {
@@ -49,6 +50,7 @@ func NewKeyCredential(publicKey crypto.PubKey) (StakeCredential, error) {
 	return StakeCredential{Type: KeyCredential, KeyHash: keyHash}, nil
 }
 
+// NewKeyCredential creates a Script Credential.
 func NewScriptCredential(script []byte) (StakeCredential, error) {
 	scriptHash, err := Blake224Hash(script)
 	if err != nil {
@@ -57,6 +59,7 @@ func NewScriptCredential(script []byte) (StakeCredential, error) {
 	return StakeCredential{Type: ScriptCredential, ScriptHash: scriptHash}, nil
 }
 
+// Equal returns true if the credentials are equal.
 func (s *StakeCredential) Equal(rhs StakeCredential) bool {
 	if s.Type != rhs.Type {
 		return false
@@ -93,14 +96,14 @@ func (s *StakeCredential) UnmarshalCBOR(data []byte) error {
 	switch StakeCredentialType(credType) {
 	case KeyCredential:
 		cred := &keyStakeCredential{}
-		if err := cbor.Unmarshal(data, cred); err != nil {
+		if err := cborDec.Unmarshal(data, cred); err != nil {
 			return err
 		}
 		s.Type = KeyCredential
 		s.KeyHash = cred.KeyHash
 	case ScriptCredential:
 		cred := &scriptStakeCredential{}
-		if err := cbor.Unmarshal(data, cred); err != nil {
+		if err := cborDec.Unmarshal(data, cred); err != nil {
 			return err
 		}
 		s.Type = ScriptCredential

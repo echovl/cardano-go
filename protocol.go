@@ -1,5 +1,6 @@
 package cardano
 
+// ProtocolParams is a Cardano Protocol Parameters.
 type ProtocolParams struct {
 	MinFeeA              Coin
 	MinFeeB              Coin
@@ -27,6 +28,7 @@ type ProtocolParams struct {
 	MaxCollateralInputs  uint
 }
 
+// ProtocolVersion is the protocol version number.
 type ProtocolVersion struct {
 	_     struct{} `cbor:"_,toarray"`
 	Major uint

@@ -16,6 +16,7 @@ const (
 	Mainnet Network = 1
 )
 
+// String implements Stringer.
 func (n Network) String() string {
 	if n == Mainnet {
 		return "mainnet"
@@ -26,35 +27,31 @@ func (n Network) String() string {
 
 type BigNum uint64
 
+// Coin represents the Cardano Native Token, in Lovelace.
 type Coin BigNum
 
+// Value is a bundle of transferable Cardano Native Tokens.
 type Value struct {
 	Coin       Coin
 	MultiAsset *MultiAsset
 }
 
+// NewValue returns a new only-coin Value.
 func NewValue(coin Coin) *Value {
 	return &Value{Coin: coin, MultiAsset: NewMultiAsset()}
 }
 
+// NewValueWithAssets returns a new MultiAsset Value.
 func NewValueWithAssets(coin Coin, assets *MultiAsset) *Value {
 	return &Value{Coin: coin, MultiAsset: assets}
 }
 
-func (v *Value) String() string {
-	vMap := map[string]uint64{"lovelace": uint64(v.Coin)}
-	for _, pool := range v.MultiAsset.Keys() {
-		for _, assets := range v.MultiAsset.Get(pool).Keys() {
-			vMap[assets.String()] = uint64(v.MultiAsset.Get(pool).Get(assets))
-		}
-	}
-	return fmt.Sprintf("%+v", vMap)
-}
-
+// OnlyCoin returns true if the Value only holds coins.
 func (v *Value) OnlyCoin() bool {
-	return v == nil || len(v.MultiAsset.m) == 0
+	return v.MultiAsset == nil || len(v.MultiAsset.m) == 0
 }
 
+// IsZero returns true if the Value is zero.
 func (v *Value) IsZero() bool {
 	for _, assets := range v.MultiAsset.m {
 		for _, value := range assets.m {
@@ -66,6 +63,7 @@ func (v *Value) IsZero() bool {
 	return v.Coin == 0
 }
 
+// Add computes the addition of two Values and returns the result.
 func (v *Value) Add(rhs *Value) *Value {
 	coin := v.Coin + rhs.Coin
 	result := NewValue(coin)
@@ -94,6 +92,7 @@ func (v *Value) Add(rhs *Value) *Value {
 	return result
 }
 
+// Sub computes the substracion of two Values and returns the result.
 func (v *Value) Sub(rhs *Value) *Value {
 	var coin Coin
 	if v.Coin > rhs.Coin {
@@ -136,7 +135,7 @@ func (v *Value) Sub(rhs *Value) *Value {
 	return result
 }
 
-// Compares and returns
+// Compares two Values and returns
 //      -1 if v < rhs
 //       0 if v == rhs
 //       1 if v > rhs
@@ -156,7 +155,7 @@ func (v *Value) Cmp(rhs *Value) int {
 	}
 }
 
-// MarshalCBOR implements cbor.Marshaler
+// MarshalCBOR implements cbor.Marshaler.
 func (v *Value) MarshalCBOR() ([]byte, error) {
 	if v.OnlyCoin() {
 		return cborEnc.Marshal(v.Coin)
@@ -165,10 +164,39 @@ func (v *Value) MarshalCBOR() ([]byte, error) {
 	}
 }
 
+// UnmarshalCBOR implements cbor.Unmarshaler.
+func (v *Value) UnmarshalCBOR(data []byte) error {
+	type arrayValue struct {
+		_          struct{} `cbor:"_,toarray"`
+		Coin       Coin
+		MultiAsset *MultiAsset
+	}
+
+	var coin Coin
+	// Try to unmarshal value into a coin
+	err := cborDec.Unmarshal(data, &coin)
+	if err != nil {
+		var arrValue arrayValue
+		err := cborDec.Unmarshal(data, &arrValue)
+		if err != nil {
+			return err
+		}
+		v.Coin = arrValue.Coin
+		v.MultiAsset = arrValue.MultiAsset
+	} else {
+		v.Coin = coin
+		v.MultiAsset = NewMultiAsset()
+	}
+
+	return nil
+}
+
+// PolicyID is the native token policy id.
 type PolicyID struct {
 	bs cbor.ByteString
 }
 
+// NewPolicyID returns a new PolicyID using a native script.
 func NewPolicyID(script NativeScript) (PolicyID, error) {
 	scriptHash, err := script.Hash()
 	if err != nil {
@@ -177,51 +205,63 @@ func NewPolicyID(script NativeScript) (PolicyID, error) {
 	return PolicyID{bs: cbor.NewByteString(scriptHash)}, nil
 }
 
+// NewPolicyIDFromHash returns a new PolicyID using a script hash.
 func NewPolicyIDFromHash(scriptHash Hash28) PolicyID {
 	return PolicyID{bs: cbor.NewByteString(scriptHash)}
 }
 
+// Bytes returns underlying script hash.
 func (p *PolicyID) Bytes() []byte {
 	return p.bs.Bytes()
 }
 
+// String implements Stringer.
 func (p *PolicyID) String() string {
 	return p.bs.String()
 }
 
+// AssetName represents an Asset name.
 type AssetName struct {
 	bs cbor.ByteString
 }
 
+// NewAssetName returns a new AssetName.
 func NewAssetName(name string) AssetName {
 	return AssetName{bs: cbor.NewByteString([]byte(name))}
 }
 
+// Bytes returns the underlying name bytes.
 func (an *AssetName) Bytes() []byte {
 	return an.bs.Bytes()
 }
 
+// String implements Stringer.
 func (an AssetName) String() string {
 	return string(an.bs.Bytes())
 }
 
+// Assets repressents a set of Cardano Native Tokens.
 type Assets struct {
 	m map[cbor.ByteString]BigNum
 }
 
+// NewAssets returns a new empty Assets.
 func NewAssets() *Assets {
 	return &Assets{m: make(map[cbor.ByteString]BigNum)}
 }
 
+// Set sets the value of a given Asset in Assets.
 func (a *Assets) Set(name AssetName, val BigNum) *Assets {
 	a.m[name.bs] = val
 	return a
 }
 
+// Get returns the value of a given Asset in Assets.
 func (a *Assets) Get(name AssetName) BigNum {
 	return a.m[name.bs]
 }
 
+// Keys returns all the AssetNames stored in Assets.
 func (a *Assets) Keys() []AssetName {
 	assetNames := []AssetName{}
 	for k := range a.m {
@@ -235,23 +275,33 @@ func (a *Assets) MarshalCBOR() ([]byte, error) {
 	return cborEnc.Marshal(a.m)
 }
 
+// UnmarshalCBOR implements cbor.Unmarshaler.
+func (a *Assets) UnmarshalCBOR(data []byte) error {
+	return cborDec.Unmarshal(data, &a.m)
+}
+
+// MultiAsset is a bundle of Assets indexed by Policy.
 type MultiAsset struct {
 	m map[cbor.ByteString]*Assets
 }
 
+// NewMultiAsset returns a new empty MultiAsset.
 func NewMultiAsset() *MultiAsset {
 	return &MultiAsset{m: make(map[cbor.ByteString]*Assets)}
 }
 
+// Set sets the Assets of a given Policy in MultiAsset.
 func (ma *MultiAsset) Set(policyID PolicyID, assets *Assets) *MultiAsset {
 	ma.m[policyID.bs] = assets
 	return ma
 }
 
+// Get returns the Assets of a given Policy in MultiAsset.
 func (ma *MultiAsset) Get(policyID PolicyID) *Assets {
 	return ma.m[policyID.bs]
 }
 
+// Keys returns all the Policies stored in MultiAsset.
 func (ma *MultiAsset) Keys() []PolicyID {
 	policyIDs := []PolicyID{}
 	for id := range ma.m {
@@ -260,11 +310,22 @@ func (ma *MultiAsset) Keys() []PolicyID {
 	return policyIDs
 }
 
-func (ma *MultiAsset) NumPIDs() uint {
+// String implements Stringer.
+func (ma MultiAsset) String() string {
+	vMap := map[string]uint64{}
+	for _, pool := range ma.Keys() {
+		for _, assets := range ma.Get(pool).Keys() {
+			vMap[assets.String()] = uint64(ma.Get(pool).Get(assets))
+		}
+	}
+	return fmt.Sprintf("%+v", vMap)
+}
+
+func (ma *MultiAsset) numPIDs() uint {
 	return uint(len(ma.m))
 }
 
-func (ma *MultiAsset) NumAssets() uint {
+func (ma *MultiAsset) numAssets() uint {
 	var num uint
 	for _, assets := range ma.m {
 		num += uint(len(assets.m))
@@ -272,7 +333,7 @@ func (ma *MultiAsset) NumAssets() uint {
 	return num
 }
 
-func (ma *MultiAsset) AssetsLength() uint {
+func (ma *MultiAsset) assetsLength() uint {
 	var sum uint
 	for _, assets := range ma.m {
 		for assetName := range assets.m {
@@ -287,23 +348,33 @@ func (ma *MultiAsset) MarshalCBOR() ([]byte, error) {
 	return cborEnc.Marshal(ma.m)
 }
 
+// UnmarshalCBOR implements cbor.Unmarshaler.
+func (ma *MultiAsset) UnmarshalCBOR(data []byte) error {
+	return cborDec.Unmarshal(data, &ma.m)
+}
+
+// MintAssets represents a set of Cardano Native Tokens to be minted.
 type MintAssets struct {
 	m map[cbor.ByteString]*big.Int
 }
 
+// NewMintAssets returns a new empty MintAssets.
 func NewMintAssets() *MintAssets {
 	return &MintAssets{m: make(map[cbor.ByteString]*big.Int)}
 }
 
+// Set sets the value of a given Asset in MintAssets.
 func (a *MintAssets) Set(name AssetName, val *big.Int) *MintAssets {
 	a.m[name.bs] = val
 	return a
 }
 
+// Get returns the value of a given Asset in MintAssets.
 func (a *MintAssets) Get(name AssetName) *big.Int {
 	return a.m[name.bs]
 }
 
+// Keys returns all the AssetNames stored in MintAssets.
 func (a *MintAssets) Keys() []AssetName {
 	assetNames := []AssetName{}
 	for k := range a.m {
@@ -317,23 +388,33 @@ func (a *MintAssets) MarshalCBOR() ([]byte, error) {
 	return cborEnc.Marshal(a.m)
 }
 
+// UnmarshalCBOR implements cbor.Unmarshaler.
+func (a *MintAssets) UnmarshalCBOR(data []byte) error {
+	return cborDec.Unmarshal(data, &a.m)
+}
+
+// Mint is a bundle of MintAssets indexed by Policy.
 type Mint struct {
 	m map[cbor.ByteString]*MintAssets
 }
 
+// NewMint returns a new empty Mint.
 func NewMint() *Mint {
 	return &Mint{m: make(map[cbor.ByteString]*MintAssets)}
 }
 
+// Set sets the MintAssets of a given Policy in Mint.
 func (m *Mint) Set(policyID PolicyID, assets *MintAssets) *Mint {
 	m.m[policyID.bs] = assets
 	return m
 }
 
+// Get returns the MintAssets of a given Policy in Mint.
 func (m *Mint) Get(policyID PolicyID) *MintAssets {
 	return m.m[policyID.bs]
 }
 
+// Keys returns all the Policies stored in Mint.
 func (m *Mint) Keys() []PolicyID {
 	policyIDs := []PolicyID{}
 	for id := range m.m {
@@ -342,6 +423,7 @@ func (m *Mint) Keys() []PolicyID {
 	return policyIDs
 }
 
+// MultiAsset returns a new MultiAsset created from Mint.
 func (m *Mint) MultiAsset() *MultiAsset {
 	ma := NewMultiAsset()
 	for policy, mintAssets := range m.m {
@@ -359,11 +441,11 @@ func (m *Mint) MultiAsset() *MultiAsset {
 	return ma
 }
 
-func (ma *Mint) NumPIDs() uint {
+func (ma *Mint) numPIDs() uint {
 	return uint(len(ma.m))
 }
 
-func (ma *Mint) NumAssets() uint {
+func (ma *Mint) numAssets() uint {
 	var num uint
 	for _, assets := range ma.m {
 		num += uint(len(assets.m))
@@ -371,7 +453,7 @@ func (ma *Mint) NumAssets() uint {
 	return num
 }
 
-func (ma *Mint) AssetsLength() uint {
+func (ma *Mint) assetsLength() uint {
 	var sum uint
 	for _, assets := range ma.m {
 		for assetName := range assets.m {
@@ -386,13 +468,18 @@ func (ma *Mint) MarshalCBOR() ([]byte, error) {
 	return cborEnc.Marshal(ma.m)
 }
 
+// UnmarshalCBOR implements cbor.Unmarshaler.
+func (ma *Mint) UnmarshalCBOR(data []byte) error {
+	return cborDec.Unmarshal(data, &ma.m)
+}
+
 type AddrKeyHash = Hash28
 
 type PoolKeyHash = Hash28
 
 type Hash28 []byte
 
-// NewHash28 creates a new Hash28 from a hex encoded string.
+// NewHash28 returns a new Hash28 from a hex encoded string.
 func NewHash28(h string) (Hash28, error) {
 	hash := make([]byte, 28)
 	b, err := hex.DecodeString(h)
@@ -410,7 +497,7 @@ func (h Hash28) String() string {
 
 type Hash32 []byte
 
-// NewHash32 creates a new Hash32 from a hex encoded string.
+// NewHash32 returns a new Hash32 from a hex encoded string.
 func NewHash32(h string) (Hash32, error) {
 	hash := make([]byte, 32)
 	b, err := hex.DecodeString(h)

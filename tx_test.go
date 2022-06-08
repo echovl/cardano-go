@@ -2,11 +2,93 @@ package cardano
 
 import (
 	"encoding/hex"
+	"math/big"
 	"reflect"
 	"testing"
 
+	"github.com/echovl/cardano-go/crypto"
 	"github.com/echovl/cardano-go/internal/cbor"
 )
+
+func TestTxEncoding(t *testing.T) {
+	txBuilder := NewTxBuilder(alonzoProtocol)
+
+	paymentKey := crypto.NewXPrvKeyFromEntropy([]byte("payment"), "")
+	policyKey := crypto.NewXPrvKeyFromEntropy([]byte("policy"), "")
+
+	txHash, err := NewHash32("030858db80bf94041b7b1c6fbc0754a9bd7113ec9025b1157a9a4e02135f3518")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr, err := NewAddress("addr_test1vp9uhllavnhwc6m6422szvrtq3eerhleer4eyu00rmx8u6c42z3v8")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	policyScript, err := NewScriptPubKey(policyKey.PubKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	policyID, err := NewPolicyID(policyScript)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	inputAmount, transferAmount, assetAmount := Coin(1e9), Coin(10e6), int64(1e9)
+
+	assetName := NewAssetName("cardanogo")
+	newAsset := NewMint().
+		Set(
+			policyID,
+			NewMintAssets().
+				Set(assetName, big.NewInt(assetAmount)),
+		)
+
+	txBuilder.AddInputs(
+		NewTxInput(txHash, 0, NewValue(inputAmount)),
+	)
+	txBuilder.AddOutputs(
+		NewTxOutput(addr, NewValueWithAssets(transferAmount, newAsset.MultiAsset())),
+	)
+
+	txBuilder.Mint(newAsset)
+	txBuilder.AddNativeScript(policyScript)
+	txBuilder.SetTTL(100000)
+	txBuilder.Sign(paymentKey.PrvKey())
+	txBuilder.Sign(policyKey.PrvKey())
+	txBuilder.AddChangeIfNeeded(addr)
+	txBuilder.AddAuxiliaryData(&AuxiliaryData{
+		Metadata: Metadata{
+			0: map[interface{}]interface{}{
+				"secret": "1234",
+				"values": uint64(10),
+			},
+		},
+	})
+
+	gotTx := &Tx{}
+	wantTx, err := txBuilder.Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txBytes, err := wantTx.MarshalCBOR()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = gotTx.UnmarshalCBOR(txBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, txInput := range wantTx.Body.Inputs {
+		txInput.Amount = nil
+	}
+
+	if !reflect.DeepEqual(wantTx, gotTx) {
+		t.Errorf("invalid tx body encoding:\ngot: %+v\nwant: %+v", gotTx, wantTx)
+	}
+}
 
 func TestCertificateEncoding(t *testing.T) {
 	testcases := []struct {

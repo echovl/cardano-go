@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"crypto/sha512"
+	"encoding/hex"
 
 	"github.com/echovl/cardano-go/internal/bech32"
 	"github.com/echovl/ed25519"
@@ -34,6 +35,10 @@ func (prv XPrvKey) Bech32(prefix string) string {
 		panic(err)
 	}
 	return bech
+}
+
+func (prv XPrvKey) String() string {
+	return hex.EncodeToString(prv)
 }
 
 // PrvKey returns the ed25519 extended private key.
@@ -88,6 +93,10 @@ func (pub XPubKey) Verify(message, sig []byte) bool {
 	return pub.PubKey().Verify(message, sig)
 }
 
+func (pub XPubKey) String() string {
+	return hex.EncodeToString(pub)
+}
+
 // PubKey is a edd25519 public key.
 type PubKey []byte
 
@@ -103,6 +112,10 @@ func (pub PubKey) Bech32(prefix string) string {
 		panic(err)
 	}
 	return bech
+}
+
+func (pub PubKey) String() string {
+	return hex.EncodeToString(pub)
 }
 
 // Hash returns the public key hash using blake2b224.
@@ -136,6 +149,10 @@ func (prv PrvKey) Bech32(prefix string) string {
 		panic(err)
 	}
 	return bech
+}
+
+func (prv PrvKey) String() string {
+	return hex.EncodeToString(prv)
 }
 
 func (prv *PrvKey) Sign(message []byte) []byte {

@@ -4498,6 +4498,7 @@ func TestMapKeyByteString(t *testing.T) {
 		wantObj          interface{}
 		wantErrorMsg     string
 		mapKeyByteString MapKeyByteStringMode
+		concreteType     int
 	}{
 		{
 			name:             "CBOR map with byte string key with MapKeyByteStringFail",
@@ -4513,6 +4514,24 @@ func TestMapKeyByteString(t *testing.T) {
 			},
 			mapKeyByteString: MapKeyByteStringWrap,
 		},
+		{
+			name:     "CBOR map with byte string key with MapKeyByteStringWrap",
+			cborData: hexDecode("A143ABCDEF187B"),
+			wantObj: map[ByteString]interface{}{
+				NewByteString(hexDecode("abcdef")): uint64(123),
+			},
+			mapKeyByteString: MapKeyByteStringWrap,
+			concreteType:     1,
+		},
+		{
+			name:     "CBOR map with byte string key with MapKeyByteStringWrap",
+			cborData: hexDecode("A143ABCDEF187B"),
+			wantObj: map[interface{}]interface{}{
+				NewByteString(hexDecode("abcdef")): uint64(123),
+			},
+			mapKeyByteString: MapKeyByteStringWrap,
+			concreteType:     2,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -4521,7 +4540,17 @@ func TestMapKeyByteString(t *testing.T) {
 				t.Errorf("DecMode() returned an error %+v", err)
 			}
 			var v interface{}
-			err = dm.Unmarshal(tc.cborData, &v)
+			if tc.concreteType == 1 {
+				var vc map[ByteString]interface{}
+				err = dm.Unmarshal(tc.cborData, &vc)
+				v = vc
+			} else if tc.concreteType == 2 {
+				var vc map[interface{}]interface{}
+				err = dm.Unmarshal(tc.cborData, &vc)
+				v = vc
+			} else {
+				err = dm.Unmarshal(tc.cborData, &v)
+			}
 			if err == nil {
 				if tc.wantErrorMsg != "" {
 					t.Errorf("Unmarshal(0x%x) didn't return an error, want %q", tc.cborData, tc.wantErrorMsg)

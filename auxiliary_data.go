@@ -6,8 +6,10 @@ import (
 	"github.com/echovl/cardano-go/internal/cbor"
 )
 
+// Metadata represents the transaction metadata.
 type Metadata map[uint]interface{}
 
+// AuxiliaryData is the auxiliary data in the transaction.
 type AuxiliaryData struct {
 	Metadata      Metadata    `cbor:"0,keyasint,omitempty"`
 	NativeScripts interface{} `cbor:"1,keyasint,omitempty"`
@@ -42,7 +44,9 @@ func (d *AuxiliaryData) UnmarshalCBOR(data []byte) error {
 		return err
 	}
 
-	dm, err := cbor.DecOptions{}.DecModeWithTags(tags)
+	dm, err := cbor.DecOptions{
+		MapKeyByteString: cbor.MapKeyByteStringWrap,
+	}.DecModeWithTags(tags)
 	if err != nil {
 		return err
 	}

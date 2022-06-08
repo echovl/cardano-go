@@ -2,8 +2,118 @@ package cardano
 
 import (
 	"errors"
+	"math/big"
+	"reflect"
 	"testing"
+
+	"github.com/echovl/cardano-go/crypto"
 )
+
+func TestAssetsEncoding(t *testing.T) {
+	assetAmount := 1e9
+	assetName := NewAssetName("cardanogo")
+	wantAssets := NewAssets().Set(assetName, BigNum(assetAmount))
+	gotAssets := NewAssets()
+	bytes, err := wantAssets.MarshalCBOR()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = gotAssets.UnmarshalCBOR(bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(wantAssets, gotAssets) {
+		t.Errorf("invalid Assets encoding:\ngot: %v\nwant: %v\n", gotAssets, wantAssets)
+	}
+}
+
+func TestMultiAssetEncoding(t *testing.T) {
+	policyKey := crypto.NewXPrvKeyFromEntropy([]byte("policy"), "")
+	policyScript, err := NewScriptPubKey(policyKey.PubKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	policyID, err := NewPolicyID(policyScript)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assetAmount := int64(1e9)
+	assetName := NewAssetName("cardanogo")
+	wantMultiAsset := NewMultiAsset().
+		Set(
+			policyID,
+			NewAssets().
+				Set(assetName, BigNum(assetAmount)),
+		)
+	gotMultiAsset := NewMultiAsset()
+	bytes, err := wantMultiAsset.MarshalCBOR()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = gotMultiAsset.UnmarshalCBOR(bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(wantMultiAsset, gotMultiAsset) {
+		t.Errorf("invalid MultiAsset encoding:\ngot: %v\nwant: %v\n", gotMultiAsset, wantMultiAsset)
+	}
+}
+
+func TestMintAssetsEncoding(t *testing.T) {
+	assetAmount := int64(1e9)
+	assetName := NewAssetName("cardanogo")
+	wantMintAssets := NewMintAssets().Set(assetName, big.NewInt(assetAmount))
+	gotMintAssets := NewMintAssets()
+	bytes, err := wantMintAssets.MarshalCBOR()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = gotMintAssets.UnmarshalCBOR(bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(wantMintAssets, gotMintAssets) {
+		t.Errorf("invalid MintAssets encoding:\ngot: %v\nwant: %v\n", gotMintAssets, wantMintAssets)
+	}
+}
+
+func TestMintEncoding(t *testing.T) {
+	policyKey := crypto.NewXPrvKeyFromEntropy([]byte("policy"), "")
+	policyScript, err := NewScriptPubKey(policyKey.PubKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	policyID, err := NewPolicyID(policyScript)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assetAmount := int64(1e9)
+	assetName := NewAssetName("cardanogo")
+	wantMint := NewMint().
+		Set(
+			policyID,
+			NewMintAssets().
+				Set(assetName, big.NewInt(assetAmount)),
+		)
+	gotMint := NewMint()
+	bytes, err := wantMint.MarshalCBOR()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = gotMint.UnmarshalCBOR(bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(wantMint, gotMint) {
+		t.Errorf("invalid Mint encoding:\ngot: %v\nwant: %v\n", gotMint, wantMint)
+	}
+}
 
 func TestValueCmp(t *testing.T) {
 	policy1 := NewPolicyIDFromHash([]byte("1234"))

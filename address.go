@@ -17,7 +17,7 @@ const (
 	Enterprise AddressType = 0x06
 )
 
-// Address represents a cardano address.
+// Address represents a Cardano address.
 type Address struct {
 	Network Network
 	Type    AddressType
@@ -174,7 +174,7 @@ func (addr *Address) MarshalCBOR() ([]byte, error) {
 // UnmarshalCBOR implements cbor.Unmarshaler.
 func (addr *Address) UnmarshalCBOR(data []byte) error {
 	bytes := []byte{}
-	if err := cbor.Unmarshal(data, &bytes); err != nil {
+	if err := cborDec.Unmarshal(data, &bytes); err != nil {
 		return nil
 	}
 	decoded, err := NewAddressFromBytes(bytes)
@@ -191,6 +191,7 @@ func (addr *Address) UnmarshalCBOR(data []byte) error {
 	return nil
 }
 
+// Bytes returns the CBOR encoding of the Address as bytes.
 func (addr *Address) Bytes() []byte {
 	addrBytes := []byte{byte(addr.Type<<4) | (byte(addr.Network) & 0xFF)}
 	switch addr.Type {
@@ -223,6 +224,7 @@ func (addr Address) String() string {
 	return addr.Bech32()
 }
 
+// NewBaseAddress returns a new Base Address.
 func NewBaseAddress(network Network, payment StakeCredential, stake StakeCredential) (Address, error) {
 	addrType := Base
 	if payment.Type == ScriptCredential && stake.Type == KeyCredential {
@@ -235,6 +237,7 @@ func NewBaseAddress(network Network, payment StakeCredential, stake StakeCredent
 	return Address{Type: addrType, Network: network, Payment: payment, Stake: stake}, nil
 }
 
+// NewEnterpriseAddress returns a new Enterprise Address.
 func NewEnterpriseAddress(network Network, payment StakeCredential) (Address, error) {
 	addrType := Enterprise
 	if payment.Type == ScriptCredential {
@@ -243,12 +246,14 @@ func NewEnterpriseAddress(network Network, payment StakeCredential) (Address, er
 	return Address{Type: addrType, Network: network, Payment: payment}, nil
 }
 
+// Pointer is the location of the Stake Registration Certificate in the blockchain.
 type Pointer struct {
 	Slot      uint64
 	TxIndex   uint64
 	CertIndex uint64
 }
 
+// NewPointerAddress returns a new Pointer Address.
 func NewPointerAddress(network Network, payment StakeCredential, ptr Pointer) (Address, error) {
 	addrType := Ptr
 	if payment.Type == ScriptCredential {

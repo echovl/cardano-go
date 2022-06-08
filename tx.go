@@ -2,6 +2,7 @@ package cardano
 
 import (
 	"encoding/hex"
+	"fmt"
 
 	"github.com/echovl/cardano-go/crypto"
 	"golang.org/x/crypto/blake2b"
@@ -9,6 +10,7 @@ import (
 
 const utxoEntrySizeWithoutVal = 27
 
+// UTxO is a Cardano Unspent Transaction Output.
 type UTxO struct {
 	TxHash  Hash32
 	Spender Address
@@ -16,6 +18,7 @@ type UTxO struct {
 	Index   uint64
 }
 
+// Tx is a Cardano transaction.
 type Tx struct {
 	_             struct{} `cbor:",toarray"`
 	Body          TxBody
@@ -43,17 +46,43 @@ func (tx *Tx) Hash() (Hash32, error) {
 	return tx.Body.Hash()
 }
 
+// UnmarshalCBOR implements cbor.Unmarshaler.
+func (tx *Tx) UnmarshalCBOR(data []byte) error {
+	type rawTx Tx
+	var rt rawTx
+
+	err := cborDec.Unmarshal(data, &rt)
+	if err != nil {
+		return err
+	}
+	tx.Body = rt.Body
+	tx.WitnessSet = rt.WitnessSet
+	tx.IsValid = rt.IsValid
+	tx.AuxiliaryData = rt.AuxiliaryData
+
+	return nil
+}
+
+// MarshalCBOR implements cbor.Marshaler.
+func (tx *Tx) MarshalCBOR() ([]byte, error) {
+	type rawTx Tx
+	return cborEnc.Marshal(rawTx(*tx))
+}
+
+// WitnessSet represents the witnesses of the transaction.
 type WitnessSet struct {
 	VKeyWitnessSet []VKeyWitness  `cbor:"0,keyasint,omitempty"`
 	Scripts        []NativeScript `cbor:"1,keyasint,omitempty"`
 }
 
+// VKeyWitness is a witnesss that uses verification keys.
 type VKeyWitness struct {
 	_         struct{}      `cbor:",toarray"`
 	VKey      crypto.PubKey // ed25519 public key
 	Signature []byte        // ed25519 signature
 }
 
+// TxInput is the transaction input.
 type TxInput struct {
 	_      struct{} `cbor:",toarray"`
 	TxHash Hash32
@@ -66,6 +95,12 @@ func NewTxInput(txHash Hash32, index uint, amount *Value) *TxInput {
 	return &TxInput{TxHash: txHash, Index: uint64(index), Amount: amount}
 }
 
+// String implements stringer.
+func (t TxInput) String() string {
+	return fmt.Sprintf("{TxHash: %v, Index: %v, Amount: %v}", t.TxHash, t.Index, t.Amount)
+}
+
+// TxInput is the transaction output.
 type TxOutput struct {
 	_       struct{} `cbor:",toarray"`
 	Address Address
@@ -75,6 +110,10 @@ type TxOutput struct {
 // NewTxOutput creates a new instance of TxOutput
 func NewTxOutput(addr Address, amount *Value) *TxOutput {
 	return &TxOutput{Address: addr, Amount: amount}
+}
+
+func (t TxOutput) String() string {
+	return fmt.Sprintf("{Address: %v, Amount: %v}", t.Address, t.Amount)
 }
 
 type TxBody struct {

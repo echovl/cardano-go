@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/echovl/cardano-go/crypto"
-	"github.com/echovl/cardano-go/internal/cbor"
 )
 
 type CertificateType uint
@@ -66,7 +65,7 @@ type genesisKeyDelegation struct {
 	VrfKeyHash          Hash32
 }
 
-//	TODO: MoveInstantaneousRewardsCert requires a map with StakeCredential as a key
+// Certificate is a Cardano certificate.
 type Certificate struct {
 	Type CertificateType
 
@@ -140,6 +139,7 @@ func (c *Certificate) MarshalCBOR() ([]byte, error) {
 	return cborEnc.Marshal(cert)
 }
 
+// NewStakeRegistrationCertificate creates a Stake Registration Certificate.
 func NewStakeRegistrationCertificate(stakeKey crypto.PubKey) (Certificate, error) {
 	cred, err := NewKeyCredential(stakeKey)
 	if err != nil {
@@ -152,6 +152,7 @@ func NewStakeRegistrationCertificate(stakeKey crypto.PubKey) (Certificate, error
 	}, nil
 }
 
+// NewStakeDeregistrationCertificate creates a Stake Deregistration Certificate.
 func NewStakeDeregistrationCertificate(stakeKey crypto.PubKey) (Certificate, error) {
 	cred, err := NewKeyCredential(stakeKey)
 	if err != nil {
@@ -164,6 +165,7 @@ func NewStakeDeregistrationCertificate(stakeKey crypto.PubKey) (Certificate, err
 	}, nil
 }
 
+// NewStakeDelegationCertificate creates a Stake Delegation Certificate.
 func NewStakeDelegationCertificate(stakeKey crypto.PubKey, poolKeyHash Hash28) (Certificate, error) {
 	cred, err := NewKeyCredential(stakeKey)
 	if err != nil {
@@ -187,21 +189,21 @@ func (c *Certificate) UnmarshalCBOR(data []byte) error {
 	switch CertificateType(certType) {
 	case StakeRegistration:
 		cert := &stakeRegistration{}
-		if err := cbor.Unmarshal(data, cert); err != nil {
+		if err := cborDec.Unmarshal(data, cert); err != nil {
 			return err
 		}
 		c.Type = StakeRegistration
 		c.StakeCredential = cert.StakeCredential
 	case StakeDeregistration:
 		cert := &stakeDeregistration{}
-		if err := cbor.Unmarshal(data, cert); err != nil {
+		if err := cborDec.Unmarshal(data, cert); err != nil {
 			return err
 		}
 		c.Type = StakeDeregistration
 		c.StakeCredential = cert.StakeCredential
 	case StakeDelegation:
 		cert := &stakeDelegation{}
-		if err := cbor.Unmarshal(data, cert); err != nil {
+		if err := cborDec.Unmarshal(data, cert); err != nil {
 			return err
 		}
 		c.Type = StakeDelegation
@@ -209,7 +211,7 @@ func (c *Certificate) UnmarshalCBOR(data []byte) error {
 		c.PoolKeyHash = cert.PoolKeyHash
 	case PoolRegistration:
 		cert := &poolRegistration{}
-		if err := cbor.Unmarshal(data, cert); err != nil {
+		if err := cborDec.Unmarshal(data, cert); err != nil {
 			return err
 		}
 		c.Type = PoolRegistration
@@ -223,7 +225,7 @@ func (c *Certificate) UnmarshalCBOR(data []byte) error {
 		c.PoolMetadata = cert.PoolMetadata
 	case PoolRetirement:
 		cert := &poolRetirement{}
-		if err := cbor.Unmarshal(data, cert); err != nil {
+		if err := cborDec.Unmarshal(data, cert); err != nil {
 			return err
 		}
 		c.Type = PoolRetirement
@@ -231,7 +233,7 @@ func (c *Certificate) UnmarshalCBOR(data []byte) error {
 		c.Epoch = cert.Epoch
 	case GenesisKeyDelegation:
 		cert := &genesisKeyDelegation{}
-		if err := cbor.Unmarshal(data, cert); err != nil {
+		if err := cborDec.Unmarshal(data, cert); err != nil {
 			return err
 		}
 		c.Type = GenesisKeyDelegation
@@ -243,6 +245,7 @@ func (c *Certificate) UnmarshalCBOR(data []byte) error {
 	return nil
 }
 
+// PoolMetadata represents the metadata used for a pool registration.
 type PoolMetadata struct {
 	_    struct{} `cbor:",toarray"`
 	URL  string
@@ -323,7 +326,7 @@ func (r *Relay) UnmarshalCBOR(data []byte) error {
 	switch RelayType(relayType) {
 	case SingleHostAddr:
 		rl := &singleHostAddr{}
-		if err := cbor.Unmarshal(data, rl); err != nil {
+		if err := cborDec.Unmarshal(data, rl); err != nil {
 			return err
 		}
 		r.Type = SingleHostAddr
@@ -332,7 +335,7 @@ func (r *Relay) UnmarshalCBOR(data []byte) error {
 		r.Ipv6 = rl.Ipv6
 	case SingleHostName:
 		rl := &singleHostName{}
-		if err := cbor.Unmarshal(data, rl); err != nil {
+		if err := cborDec.Unmarshal(data, rl); err != nil {
 			return err
 		}
 		r.Type = SingleHostName
@@ -340,7 +343,7 @@ func (r *Relay) UnmarshalCBOR(data []byte) error {
 		r.DNSName = rl.DNSName
 	case MultiHostName:
 		rl := &multiHostName{}
-		if err := cbor.Unmarshal(data, rl); err != nil {
+		if err := cborDec.Unmarshal(data, rl); err != nil {
 			return err
 		}
 		r.Type = MultiHostName

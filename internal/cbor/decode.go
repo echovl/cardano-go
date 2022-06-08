@@ -720,6 +720,17 @@ func (d *decoder) parseToValue(v reflect.Value, tInfo *typeInfo) error { //nolin
 		return fillNegativeInt(t, nValue, v)
 	case cborTypeByteString:
 		b := d.parseByteString()
+		if v.Type() == typeByteString {
+			rb := reflect.ValueOf(&[]byte{}).Elem()
+			err := fillByteString(t, b, rb)
+			if err != nil {
+				return err
+			}
+			v.Set(reflect.ValueOf(NewByteString(rb.Bytes())))
+			return nil
+		} else {
+			return fillByteString(t, b, v)
+		}
 		return fillByteString(t, b, v)
 	case cborTypeTextString:
 		b, err := d.parseTextString()
@@ -1299,14 +1310,19 @@ func (d *decoder) parseMapToMap(v reflect.Value, tInfo *typeInfo) error { //noli
 			d.skip()
 			continue
 		}
+
 		// Wrap byte string if enabled
-		if keyType == typeByteSlice && d.dm.mapKeyByteString == MapKeyByteStringWrap {
-			keyValue = reflect.ValueOf(NewByteString(keyValue.Bytes()))
+		if keyIsInterfaceType &&
+			keyValue.Elem().IsValid() &&
+			keyValue.Elem().Type() == typeByteSlice &&
+			d.dm.mapKeyByteString == MapKeyByteStringWrap {
+
+			keyValue.Set(reflect.ValueOf(NewByteString(keyValue.Elem().Bytes())))
 			keyType = keyValue.Type()
 		}
 
 		// Detect if CBOR map key can be used as Go map key.
-		if keyIsInterfaceType && keyValue.Elem().IsValid() {
+		if keyIsInterfaceType && keyType != typeByteString && keyValue.Elem().IsValid() {
 			if !isHashableValue(keyValue.Elem()) {
 				if err == nil {
 					err = errors.New("cbor: invalid map key type: " + keyValue.Elem().Type().String())

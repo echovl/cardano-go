@@ -8,6 +8,7 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
+// TxBuilder is a transaction builder.
 type TxBuilder struct {
 	tx       *Tx
 	protocol *ProtocolParams
@@ -120,9 +121,9 @@ func (tb *TxBuilder) MinCoinsForTxOut(txOut *TxOutput) Coin {
 	if txOut.Amount.OnlyCoin() {
 		size = 1
 	} else {
-		numAssets := txOut.Amount.MultiAsset.NumAssets()
-		assetsLength := txOut.Amount.MultiAsset.AssetsLength()
-		numPIDs := txOut.Amount.MultiAsset.NumPIDs()
+		numAssets := txOut.Amount.MultiAsset.numAssets()
+		assetsLength := txOut.Amount.MultiAsset.assetsLength()
+		numPIDs := txOut.Amount.MultiAsset.numPIDs()
 
 		size = 6 + uint(math.Floor(
 			float64(numAssets*12+assetsLength+numPIDs*28+7)/8,
@@ -150,7 +151,7 @@ func (tb *TxBuilder) Reset() {
 	tb.changeReceiver = nil
 }
 
-// Build creates a new transaction using the inputs, outputs and keys provided.
+// Build returns a new transaction using the inputs, outputs and keys provided.
 func (tb *TxBuilder) Build() (*Tx, error) {
 	inputAmount, outputAmount := tb.calculateAmounts()
 
