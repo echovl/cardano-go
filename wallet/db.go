@@ -95,8 +95,8 @@ func (db *memoryDB) Close() error {
 }
 
 func (db *memoryDB) Put(w *Wallet) error {
-	if w.Name == "" {
-		return errors.New("empty wallet name")
+	if w.ID == "" {
+		return errors.New("empty wallet id")
 	}
 	db.wm[w.ID] = w
 	return nil
