@@ -3,7 +3,6 @@ package wallet
 import (
 	"testing"
 
-	"github.com/echovl/cardano-go"
 	"github.com/tyler-smith/go-bip39"
 )
 
@@ -54,32 +53,9 @@ var testVectors = []TestVector{
 	},
 }
 
-type MockDB struct {
-	calls int
-}
-
-func (db *MockDB) SaveWallet(w *Wallet) error {
-	db.calls++
-	return nil
-}
-
-func (db *MockDB) Close() {
-	db.calls++
-}
-
-func (db *MockDB) GetWallets(network cardano.Network) ([]*Wallet, error) {
-	db.calls++
-	return []*Wallet{}, nil
-}
-
-func (db *MockDB) DeleteWallet(id string) error {
-	db.calls++
-	return nil
-}
-
 func TestCreateWallet(t *testing.T) {
 	for _, testVector := range testVectors {
-		client := NewClient(&Options{DB: &MockDB{}})
+		client := NewClient(&Options{})
 		defer client.Close()
 
 		newEntropy = func(bitSize int) []byte {
@@ -123,7 +99,7 @@ func TestCreateWallet(t *testing.T) {
 
 func TestRestoreWallet(t *testing.T) {
 	for _, testVector := range testVectors {
-		client := NewClient(&Options{DB: &MockDB{}})
+		client := NewClient(&Options{})
 		defer client.Close()
 
 		w, err := client.RestoreWallet("test", "", testVector.mnemonic)

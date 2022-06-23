@@ -1,19 +1,24 @@
 package wallet
 
 import (
+	"errors"
 	"os"
 	"path"
 
 	"github.com/dgraph-io/badger/v3"
-	"github.com/echovl/cardano-go"
 )
 
 type DB interface {
-	SaveWallet(*Wallet) error
-	GetWallets(cardano.Network) ([]*Wallet, error)
-	DeleteWallet(string) error
-	Close()
+	Put(*Wallet) error
+	Get() ([]*Wallet, error)
+	Delete(string) error
+	Close() error
 }
+
+var (
+	_ DB = (*badgerDB)(nil)
+	_ DB = (*memoryDB)(nil)
+)
 
 type badgerDB struct {
 	db *badger.DB
@@ -28,11 +33,11 @@ func newBadgerDB() *badgerDB {
 	return &badgerDB{db}
 }
 
-func (bdb *badgerDB) Close() {
-	bdb.db.Close()
+func (bdb *badgerDB) Close() error {
+	return bdb.db.Close()
 }
 
-func (bdb *badgerDB) SaveWallet(w *Wallet) error {
+func (bdb *badgerDB) Put(w *Wallet) error {
 	bytes, err := w.marshal()
 	if err != nil {
 		return err
@@ -46,7 +51,7 @@ func (bdb *badgerDB) SaveWallet(w *Wallet) error {
 	return nil
 }
 
-func (bdb *badgerDB) GetWallets(network cardano.Network) ([]*Wallet, error) {
+func (bdb *badgerDB) Get() ([]*Wallet, error) {
 	wallets := []*Wallet{}
 	err := bdb.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
@@ -60,9 +65,7 @@ func (bdb *badgerDB) GetWallets(network cardano.Network) ([]*Wallet, error) {
 			}
 			wallet := &Wallet{}
 			wallet.unmarshal(value)
-			if wallet.network == network {
-				wallets = append(wallets, wallet)
-			}
+			wallets = append(wallets, wallet)
 		}
 		return nil
 	})
@@ -72,9 +75,44 @@ func (bdb *badgerDB) GetWallets(network cardano.Network) ([]*Wallet, error) {
 	return wallets, nil
 }
 
-func (bdb *badgerDB) DeleteWallet(id string) error {
+func (bdb *badgerDB) Delete(id string) error {
 	err := bdb.db.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(id))
 	})
 	return err
+}
+
+type memoryDB struct {
+	wm map[string]*Wallet
+}
+
+func newMemoryDB() DB {
+	return &memoryDB{wm: make(map[string]*Wallet)}
+}
+
+func (db *memoryDB) Close() error {
+	return nil
+}
+
+func (db *memoryDB) Put(w *Wallet) error {
+	if w.Name == "" {
+		return errors.New("empty wallet name")
+	}
+	db.wm[w.ID] = w
+	return nil
+}
+
+func (db *memoryDB) Get() ([]*Wallet, error) {
+	wallets := make([]*Wallet, len(db.wm))
+	idx := 0
+	for _, w := range db.wm {
+		wallets[idx] = w
+		idx++
+	}
+	return wallets, nil
+}
+
+func (db *memoryDB) Delete(id string) error {
+	delete(db.wm, id)
+	return nil
 }

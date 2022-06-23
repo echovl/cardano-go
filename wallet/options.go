@@ -15,6 +15,6 @@ func (o *Options) init() {
 		o.Node = cardanocli.NewNode(cardano.Testnet)
 	}
 	if o.DB == nil {
-		o.DB = newBadgerDB()
+		o.DB = newMemoryDB()
 	}
 }

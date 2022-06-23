@@ -10,7 +10,7 @@ import (
 
 func TestGenerateAddress(t *testing.T) {
 	for _, testVector := range testVectors {
-		client := NewClient(&Options{DB: &MockDB{}})
+		client := NewClient(&Options{})
 		defer client.Close()
 
 		newEntropy = func(bitSize int) []byte {
@@ -74,7 +74,6 @@ func (n *MockNode) Network() cardano.Network {
 
 func TestWalletBalance(t *testing.T) {
 	client := NewClient(&Options{
-		DB:   &MockDB{},
 		Node: &MockNode{utxos: []cardano.UTxO{{Amount: cardano.NewValue(100)}, {Amount: cardano.NewValue(33)}}},
 	})
 	w, _, err := client.CreateWallet("test", "")

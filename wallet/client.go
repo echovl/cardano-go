@@ -36,7 +36,7 @@ func (c *Client) CreateWallet(name, password string) (*Wallet, string, error) {
 	wallet := newWallet(name, password, entropy)
 	wallet.node = c.opts.Node
 	wallet.network = c.network
-	err := c.opts.DB.SaveWallet(wallet)
+	err := c.opts.DB.Put(wallet)
 	if err != nil {
 		return nil, "", err
 	}
@@ -52,7 +52,7 @@ func (c *Client) RestoreWallet(name, password, mnemonic string) (*Wallet, error)
 	wallet := newWallet(name, password, entropy)
 	wallet.node = c.opts.Node
 	wallet.network = c.network
-	if err = c.opts.DB.SaveWallet(wallet); err != nil {
+	if err = c.opts.DB.Put(wallet); err != nil {
 		return nil, err
 	}
 
@@ -61,12 +61,12 @@ func (c *Client) RestoreWallet(name, password, mnemonic string) (*Wallet, error)
 
 // SaveWallet saves a Wallet in the Client's storage.
 func (c *Client) SaveWallet(w *Wallet) error {
-	return c.opts.DB.SaveWallet(w)
+	return c.opts.DB.Put(w)
 }
 
 // Wallets returns the list of Wallets currently saved in the Client's storage.
 func (c *Client) Wallets() ([]*Wallet, error) {
-	wallets, err := c.opts.DB.GetWallets(c.network)
+	wallets, err := c.opts.DB.Get()
 	if err != nil {
 		return nil, err
 	}
@@ -92,5 +92,5 @@ func (c *Client) Wallet(id string) (*Wallet, error) {
 
 // DeleteWallet removes a Wallet with the given id from the Client's storage.
 func (c *Client) DeleteWallet(id string) error {
-	return c.opts.DB.DeleteWallet(id)
+	return c.opts.DB.Delete(id)
 }
