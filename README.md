@@ -4,6 +4,8 @@
 
 cardano-go is a library for creating go applicactions that interact with the Cardano Blockchain. [WIP]
 
+Check out our Catalyst proposal: (https://cardano.ideascale.com/c/idea/416383)
+
 ## Installation
 
 ```
