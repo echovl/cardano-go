@@ -126,7 +126,7 @@ func (tb *TxBuilder) MinCoinsForTxOut(txOut *TxOutput) Coin {
 		numPIDs := txOut.Amount.MultiAsset.numPIDs()
 
 		size = 6 + uint(math.Floor(
-			float64(numAssets*12+assetsLength+numPIDs*28+7)/8,
+			float64(numAssets*12+assetsLength+numPIDs*28)/8,
 		))
 	}
 	return Coin(utxoEntrySizeWithoutVal+size) * tb.protocol.CoinsPerUTXOWord
