@@ -116,6 +116,8 @@ func (tb *TxBuilder) MinFee() (Coin, error) {
 }
 
 // MinCoinsForTxOut computes the minimal amount of coins required for a given transaction output.
+// More info could be found in
+// <https://github.com/input-output-hk/cardano-ledger/blob/master/doc/explanations/min-utxo-alonzo.rst>
 func (tb *TxBuilder) MinCoinsForTxOut(txOut *TxOutput) Coin {
 	var size uint
 	if txOut.Amount.OnlyCoin() {
@@ -125,12 +127,17 @@ func (tb *TxBuilder) MinCoinsForTxOut(txOut *TxOutput) Coin {
 		assetsLength := txOut.Amount.MultiAsset.assetsLength()
 		numPIDs := txOut.Amount.MultiAsset.numPIDs()
 
-		size = 6 + uint(math.Floor(
-			float64(numAssets*12+assetsLength+numPIDs*28)/8,
+		size = 6 + uint(math.Trunc(
+			float64(numAssets*12+assetsLength+numPIDs*28+7)/8,
 		))
 	}
 	return Coin(utxoEntrySizeWithoutVal+size) * tb.protocol.CoinsPerUTXOWord
 }
+
+// Calculate minimum lovelace a transaction output needs to hold post alonzo.
+// This implementation is copied from the origianl Haskell implementation:
+// https://github.com/input-output-hk/cardano-ledger/blob/eb053066c1d3bb51fb05978eeeab88afc0b049b2/eras/babbage/impl/src/Cardano/Ledger/Babbage/Rules/Utxo.hs#L242-L265
+// TODO:
 
 // calculateMinFee computes the minimal fee required for the transaction.
 func (tb *TxBuilder) calculateMinFee() Coin {
