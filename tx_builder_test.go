@@ -13,6 +13,7 @@ var alonzoProtocol = &ProtocolParams{
 	MinFeeB:          155381,
 }
 
+// See https://github.com/input-output-hk/cardano-ledger/blob/master/doc/explanations/min-utxo-alonzo.rst
 func TestMinUTXO(t *testing.T) {
 	pubKeys := []crypto.PubKey{
 		crypto.NewXPrvKeyFromEntropy([]byte("pol1"), "").PubKey(),
@@ -20,59 +21,81 @@ func TestMinUTXO(t *testing.T) {
 	}
 
 	testcases := []struct {
+		name     string
 		policies []int
 		assets   []string
 		minUTXO  Coin
 	}{
 		{
+			name:     "One policyID, one 0-character asset name",
 			policies: []int{0},
 			assets:   []string{""},
-			minUTXO:  Coin(utxoEntrySizeWithoutVal+11) * alonzoProtocol.CoinsPerUTXOWord,
+			minUTXO:  Coin(1310316),
 		},
 		{
+			name:     "One policyID, one 1-character asset name",
 			policies: []int{0},
 			assets:   []string{"a"},
-			minUTXO:  Coin(utxoEntrySizeWithoutVal+12) * alonzoProtocol.CoinsPerUTXOWord,
+			minUTXO:  Coin(1344798),
 		},
 		{
+			name:     "One policyID, three 1-character asset name",
 			policies: []int{0},
 			assets:   []string{"a", "b", "c"},
-			minUTXO:  Coin(utxoEntrySizeWithoutVal+15) * alonzoProtocol.CoinsPerUTXOWord,
+			minUTXO:  Coin(1448244),
 		},
 		{
+			name:     "Two policyIDs, one 0-character asset name",
+			policies: []int{0, 1},
+			assets:   []string{""},
+			minUTXO:  Coin(1482726),
+		},
+		{
+			name:     "Two policyIDs, one 1-character asset name",
 			policies: []int{0, 1},
 			assets:   []string{"a"},
-			minUTXO:  Coin(utxoEntrySizeWithoutVal+17) * alonzoProtocol.CoinsPerUTXOWord,
+			minUTXO:  Coin(1517208),
 		},
+		// ## Impossible to have 96 1-character asset name
+		// {
+		// 	name:     "Three policyIDs, ninety-six 1-character names between them (total)",
+		// 	policies: []int{0, 1, 2},
+		// 	assets: []string{
+		// 		"a", "b", "c", ...,
+		// 	},
+		// 	minUTXO: Coin(6896400),
+		// },
 	}
 
 	for _, tc := range testcases {
-		multiAsset := NewMultiAsset()
-		for _, policy := range tc.policies {
-			script, err := NewScriptPubKey(pubKeys[policy])
-			if err != nil {
-				t.Fatal(err)
+		t.Run(tc.name, func(t *testing.T) {
+			multiAsset := NewMultiAsset()
+			for _, policy := range tc.policies {
+				script, err := NewScriptPubKey(pubKeys[policy])
+				if err != nil {
+					t.Fatal(err)
+				}
+				assets := NewAssets()
+				policyID, err := NewPolicyID(script)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, assetName := range tc.assets {
+					assets.Set(NewAssetName(assetName), 0)
+				}
+				multiAsset.Set(policyID, assets)
 			}
-			assets := NewAssets()
-			policyID, err := NewPolicyID(script)
-			if err != nil {
-				t.Fatal(err)
+
+			txBuilder := NewTxBuilder(alonzoProtocol)
+
+			txOutput := &TxOutput{Amount: NewValueWithAssets(0, multiAsset)}
+			got := txBuilder.MinCoinsForTxOut(txOutput)
+			want := tc.minUTXO
+
+			if got != want {
+				t.Errorf("invalid minUTXO\ngot: %d\nwant: %d", got, want)
 			}
-			for _, assetName := range tc.assets {
-				assets.Set(NewAssetName(assetName), 0)
-			}
-			multiAsset.Set(policyID, assets)
-		}
-
-		txBuilder := NewTxBuilder(alonzoProtocol)
-
-		txOutput := &TxOutput{Amount: NewValueWithAssets(0, multiAsset)}
-		got := txBuilder.MinCoinsForTxOut(txOutput)
-		want := tc.minUTXO
-
-		if got != want {
-			t.Errorf("invalid minUTXO\ngot: %d\nwant: %d", got, want)
-		}
+		})
 	}
 }
 
