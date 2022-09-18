@@ -193,7 +193,15 @@ func (addr *Address) UnmarshalCBOR(data []byte) error {
 
 // Bytes returns the CBOR encoding of the Address as bytes.
 func (addr *Address) Bytes() []byte {
-	addrBytes := []byte{byte(addr.Type<<4) | (byte(addr.Network) & 0xFF)}
+	var networkByte uint8
+	switch addr.Network {
+	case Testnet, Preprod:
+		networkByte = 0
+	case Mainnet:
+		networkByte = 1
+	}
+
+	addrBytes := []byte{byte(addr.Type<<4) | (networkByte & 0xFF)}
 	switch addr.Type {
 	case Base, Base + 1, Base + 2, Base + 3:
 		addrBytes = append(addrBytes, addr.Payment.Hash()...)
@@ -309,9 +317,10 @@ func Blake224Hash(b []byte) ([]byte, error) {
 }
 
 func getHrp(network Network) string {
-	if network == Testnet {
+	switch network {
+	case Testnet, Preprod:
 		return "addr_test"
-	} else {
+	default:
 		return "addr"
 	}
 }

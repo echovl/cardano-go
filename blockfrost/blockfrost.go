@@ -24,8 +24,12 @@ type BlockfrostNode struct {
 // NewNode returns a new instance of BlockfrostNode.
 func NewNode(network cardano.Network, projectID string) cardano.Node {
 	server := blockfrost.CardanoMainNet
-	if network == cardano.Testnet {
+	switch network {
+	case cardano.Testnet:
 		server = blockfrost.CardanoTestNet
+	case cardano.Preprod:
+		// We hardcode the preprod url here until blockfrost supports Preprod type.
+		server = "https://cardano-preprod.blockfrost.io/api/v0"
 	}
 
 	return &BlockfrostNode{

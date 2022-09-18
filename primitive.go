@@ -14,13 +14,19 @@ type Network byte
 const (
 	Testnet Network = 0
 	Mainnet Network = 1
+	Preprod Network = 2
 )
 
 // String implements Stringer.
 func (n Network) String() string {
-	if n == Mainnet {
+	switch n {
+	case Testnet:
+		return "testnet"
+	case Mainnet:
 		return "mainnet"
-	} else {
+	case Preprod:
+		return "preprod"
+	default:
 		return "testnet"
 	}
 }
