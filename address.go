@@ -15,6 +15,7 @@ const (
 	Base       AddressType = 0x00
 	Ptr        AddressType = 0x04
 	Enterprise AddressType = 0x06
+	Stake      AddressType = 0x0e
 )
 
 // Address represents a Cardano address.
@@ -94,7 +95,7 @@ func NewAddressFromBytes(bytes []byte) (Address, error) {
 		}
 	case Ptr:
 		if len(bytes) <= 29 {
-			return addr, errors.New("enterprise address length should be greater than 29")
+			return addr, errors.New("pointer address length should be greater than 29")
 		}
 
 		index := uint(29)
@@ -120,7 +121,7 @@ func NewAddressFromBytes(bytes []byte) (Address, error) {
 		addr.Pointer = Pointer{Slot: slot, TxIndex: txIndex, CertIndex: certIndex}
 	case Ptr + 1:
 		if len(bytes) <= 29 {
-			return addr, errors.New("enterprise address length should be greater than 29")
+			return addr, errors.New("pointer address length should be greater than 29")
 		}
 
 		index := uint(29)
@@ -157,6 +158,22 @@ func NewAddressFromBytes(bytes []byte) (Address, error) {
 			return addr, errors.New("enterprise address length should be 29")
 		}
 		addr.Payment = StakeCredential{
+			Type:       ScriptCredential,
+			ScriptHash: bytes[1:29],
+		}
+	case Stake:
+		if len(bytes) != 29 {
+			return addr, errors.New("stake address length should be 29")
+		}
+		addr.Stake = StakeCredential{
+			Type:    KeyCredential,
+			KeyHash: bytes[1:29],
+		}
+	case Stake + 1:
+		if len(bytes) != 29 {
+			return addr, errors.New("stake address length should be 29")
+		}
+		addr.Stake = StakeCredential{
 			Type:       ScriptCredential,
 			ScriptHash: bytes[1:29],
 		}
@@ -208,6 +225,8 @@ func (addr *Address) Bytes() []byte {
 		addrBytes = append(addrBytes, addr.Stake.Hash()...)
 	case Enterprise, Enterprise + 1:
 		addrBytes = append(addrBytes, addr.Payment.Hash()...)
+	case Stake, Stake + 1:
+		addrBytes = append(addrBytes, addr.Stake.Hash()...)
 	case Ptr, Ptr + 1:
 		addrBytes = append(addrBytes, addr.Payment.Hash()...)
 		addrBytes = append(addrBytes, encodeToNat(addr.Pointer.Slot)...)
@@ -220,7 +239,7 @@ func (addr *Address) Bytes() []byte {
 
 // Bech32 returns the Address encoded as bech32.
 func (addr *Address) Bech32() string {
-	addrStr, err := bech32.EncodeFromBase256(getHrp(addr.Network), addr.Bytes())
+	addrStr, err := bech32.EncodeFromBase256(getHrp(addr.Network, addr.Type), addr.Bytes())
 	if err != nil {
 		panic(err)
 	}
@@ -252,6 +271,15 @@ func NewEnterpriseAddress(network Network, payment StakeCredential) (Address, er
 		addrType = Enterprise + 1
 	}
 	return Address{Type: addrType, Network: network, Payment: payment}, nil
+}
+
+// NewStakeAddress returns a new Staake Address.
+func NewStakeAddress(network Network, stake StakeCredential) (Address, error) {
+	addrType := Stake
+	if stake.Type == ScriptCredential {
+		addrType = Stake + 1
+	}
+	return Address{Type: addrType, Network: network, Stake: stake}, nil
 }
 
 // Pointer is the location of the Stake Registration Certificate in the blockchain.
@@ -316,11 +344,20 @@ func Blake224Hash(b []byte) ([]byte, error) {
 	return hash.Sum(nil), err
 }
 
-func getHrp(network Network) string {
+func getHrp(network Network, atyp ...AddressType) string {
+	prefix := "addr"
+	suffix := ""
 	switch network {
 	case Testnet, Preprod:
-		return "addr_test"
+		suffix = "_test"
 	default:
-		return "addr"
 	}
+	if len(atyp) == 1 {
+		switch atyp[0] {
+		case Stake:
+			prefix = "stake"
+		default:
+		}
+	}
+	return prefix + suffix
 }
