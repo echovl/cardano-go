@@ -15,6 +15,8 @@ type TxBuilder struct {
 	pkeys    []crypto.PrvKey
 
 	changeReceiver *Address
+
+	additionalWitnesses uint
 }
 
 // NewTxBuilder returns a new instance of TxBuilder.
@@ -46,6 +48,12 @@ func (tb *TxBuilder) SetTTL(ttl uint64) {
 // SetFee sets the transactions's fee.
 func (tb *TxBuilder) SetFee(fee Coin) {
 	tb.tx.Body.Fee = fee
+}
+
+// SetAdditionalWitnesses sets future witnesses for a partially signed transction.
+// This is useful to compute the real length and so fee in advance
+func (tb *TxBuilder) SetAdditionalWitnesses(witnesses uint) {
+	tb.additionalWitnesses = witnesses
 }
 
 // AddAuxiliaryData adds auxiliary data to the transaction.
@@ -143,6 +151,9 @@ func (tb *TxBuilder) MinCoinsForTxOut(txOut *TxOutput) Coin {
 func (tb *TxBuilder) calculateMinFee() Coin {
 	txBytes := tb.tx.Bytes()
 	txLength := uint64(len(txBytes))
+	// for each additional witnesses there will be an additional 100 bytes,
+	// (32 public key, 64 signature, 4 index/key in cbor)
+	txLength += uint64(tb.additionalWitnesses * 100)
 	return tb.protocol.MinFeeA*Coin(txLength) + tb.protocol.MinFeeB
 }
 
