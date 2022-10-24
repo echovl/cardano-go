@@ -154,6 +154,11 @@ func (tb *TxBuilder) calculateMinFee() Coin {
 	// for each additional witnesses there will be an additional 100 bytes,
 	// (32 public key, 64 signature, 4 index/key in cbor)
 	txLength += uint64(tb.additionalWitnesses * 100)
+	// apparently that is not enough, so just consider 1 additional byte
+	// for each additional witness after the first
+	if tb.additionalWitnesses > 1 {
+		txLength += uint64(tb.additionalWitnesses - 1)
+	}
 	return tb.protocol.MinFeeA*Coin(txLength) + tb.protocol.MinFeeB
 }
 
