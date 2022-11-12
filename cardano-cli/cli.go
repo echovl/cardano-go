@@ -1,7 +1,7 @@
 package cardanocli
 
 import (
-	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -12,11 +12,44 @@ import (
 	"strconv"
 	"strings"
 
+	flag "github.com/spf13/pflag"
+
 	"github.com/echovl/cardano-go"
 )
 
+var socketPath, fallbackSocketPath string
+
+func AddFlags(fs *flag.FlagSet) {
+	fs.StringVar(&socketPath, "cardano-node-socket-path", "", "")
+	fs.StringVar(&fallbackSocketPath, "fallback-cardano-node-socket-path", "", "")
+}
+
+func availableAsSocket(fn string) bool {
+	fi, err := os.Stat(fn)
+	if err != nil {
+		return false
+	}
+	if (fi.Mode().Type() & os.ModeSocket) != os.ModeSocket {
+		return false
+	}
+	return true
+}
+
+func getSocketPathToUse() string {
+	sp := socketPath
+	if sp != "" && availableAsSocket(sp) {
+		return sp
+	}
+	sp = fallbackSocketPath
+	if sp != "" && availableAsSocket(sp) {
+		return sp
+	}
+	return os.Getenv("CARDANO_NODE_SOCKET_PATH")
+}
+
 // CardanoCli implements Node using cardano-cli and a local node.
 type CardanoCli struct {
+	ctx     context.Context
 	network cardano.Network
 }
 
@@ -35,12 +68,15 @@ type cliTx struct {
 }
 
 // NewNode returns a new instance of CardanoCli.
-func NewNode(network cardano.Network) cardano.Node {
+func NewNode(network cardano.Network, rest ...any) cardano.Node {
+	if len(rest) > 0 {
+		return &CardanoCli{network: network, ctx: rest[0].(context.Context)}
+	}
 	return &CardanoCli{network: network}
 }
 
-func (c *CardanoCli) runCommand(args ...string) ([]byte, error) {
-	out := &bytes.Buffer{}
+func (c *CardanoCli) runCommand(args ...string) (string, error) {
+	out := &strings.Builder{}
 
 	if c.network == cardano.Mainnet {
 		args = append(args, "--mainnet")
@@ -48,14 +84,23 @@ func (c *CardanoCli) runCommand(args ...string) ([]byte, error) {
 		args = append(args, "--testnet-magic", strconv.Itoa(cardano.ProtocolMagic))
 	}
 
-	cmd := exec.Command("cardano-cli", args...)
+	var cmd *exec.Cmd
+	if c.ctx == nil {
+		cmd = exec.Command("cardano-cli", args...)
+	} else {
+		cmd = exec.CommandContext(c.ctx, "cardano-cli", args...)
+	}
 	cmd.Stdout = out
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return out.Bytes(), nil
+	return out.String(), nil
+}
+
+func (c *CardanoCli) DoCommand(args ...string) (string, error) {
+	return c.runCommand(args...)
 }
 
 func (c *CardanoCli) UTxOs(addr cardano.Address) ([]cardano.UTxO, error) {
@@ -65,7 +110,7 @@ func (c *CardanoCli) UTxOs(addr cardano.Address) ([]cardano.UTxO, error) {
 	}
 
 	utxos := []cardano.UTxO{}
-	lines := strings.Split(string(out), "\n")
+	lines := strings.Split(out, "\n")
 
 	if len(lines) < 3 {
 		return utxos, nil
@@ -142,7 +187,7 @@ func (c *CardanoCli) Tip() (*cardano.NodeTip, error) {
 	}
 
 	cliTip := &tip{}
-	if err = json.Unmarshal(out, cliTip); err != nil {
+	if err = json.Unmarshal([]byte(out), cliTip); err != nil {
 		return nil, err
 	}
 
@@ -171,7 +216,7 @@ func (c *CardanoCli) SubmitTx(tx *cardano.Tx) (*cardano.Hash32, error) {
 
 	out, err := c.runCommand("transaction", "submit", "--tx-file", txFile.Name())
 	if err != nil {
-		return nil, errors.New(string(out))
+		return nil, errors.New(out)
 	}
 
 	txHash, err := tx.Hash()
@@ -191,11 +236,11 @@ type protocolParameters struct {
 func (c *CardanoCli) ProtocolParams() (*cardano.ProtocolParams, error) {
 	out, err := c.runCommand("query", "protocol-parameters")
 	if err != nil {
-		return nil, errors.New(string(out))
+		return nil, errors.New(out)
 	}
 
 	var cparams protocolParameters
-	if err := json.Unmarshal(out, &cparams); err != nil {
+	if err := json.Unmarshal([]byte(out), &cparams); err != nil {
 		return nil, err
 	}
 
