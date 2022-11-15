@@ -321,7 +321,8 @@ func (ma MultiAsset) String() string {
 	vMap := map[string]uint64{}
 	for _, pool := range ma.Keys() {
 		for _, assets := range ma.Get(pool).Keys() {
-			vMap[assets.String()] = uint64(ma.Get(pool).Get(assets))
+			key := fmt.Sprintf("%s %s", pool.String(), assets.String())
+			vMap[key] = uint64(ma.Get(pool).Get(assets))
 		}
 	}
 	return fmt.Sprintf("%+v", vMap)
