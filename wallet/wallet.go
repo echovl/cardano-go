@@ -165,7 +165,15 @@ func (w *Wallet) Addresses() ([]cardano.Address, error) {
 	return addresses, nil
 }
 
-func (w *Wallet) Keys() (crypto.PrvKey, crypto.PrvKey) {
+func (w *Wallet) StakeAddress() (cardano.Address, error) {
+	stake, err := cardano.NewKeyCredential(w.stakeKey.PubKey())
+	if err != nil {
+		return cardano.Address{}, err
+	}
+	return cardano.NewStakeAddress(w.network, stake)
+}
+
+func (w *Wallet) PrvKeys() (crypto.PrvKey, crypto.PrvKey) {
 	return w.addrKeys[0].PrvKey(), w.stakeKey.PrvKey()
 }
 

@@ -15,6 +15,7 @@ type TestVector struct {
 	addrXvk1     string
 	paymentAddr0 string
 	paymentAddr1 string
+	stakeAddr    string
 }
 
 var testVectors = []TestVector{
@@ -28,6 +29,7 @@ var testVectors = []TestVector{
 		addrXvk1:     "addr_xvk1y3r70ejyadsaplez83p7uhy8p6l08a5sjl860kszevxu0jaxcwmx6avghwwqluj3eqg8zn7m0847smgh6hf3hs6ycj9wk6lsrplncvsxqj6wd",
 		paymentAddr0: "addr_test1vpu5vlrf4xkxv2qpwngf6cjhtw542ayty80v8dyr49rf5eg57c2qv",
 		paymentAddr1: "addr_test1vq0a2lgc2e0r597dr983jrf5ns4hxz027u8n7wlcsjcw4ks96yjys",
+		stakeAddr:    "stake_test1urxr8x34l8s0uquu75gvwcw5m55sgrzga9jhlkk8a8qpm9q9p2w0s",
 	},
 	// 18 words
 	{
@@ -39,6 +41,7 @@ var testVectors = []TestVector{
 		addrXvk1:     "addr_xvk135hqmkaqydnxnq6wmjkkhasvwjprpnqnzsrwwes6mql45enlcsqs0vz4xasvja4qsvrw93v3gc7mmep76cf67a4yffdrsvuxqm9qhwqlvnay5",
 		paymentAddr0: "addr_test1vptvyjfjvs7wdn583rv3th3fvf9fauv5f6gylkhh5k245zcdjvdac",
 		paymentAddr1: "addr_test1vr3nq3kyg9c9t4nn6a5zymz3at3zsmcr9lkqxghxh5v822gcu7ava",
+		stakeAddr:    "stake_test1uzx24u6vjgmgfzqg38uqrmrs720pum2sgxqntv0yzpvf72qhlmveq",
 	},
 	// 21 words
 	{
@@ -50,6 +53,7 @@ var testVectors = []TestVector{
 		addrXvk1:     "addr_xvk1ndtepmpg06x9nskfasvr50mue356e4rqlvuzf8jjcj6n48feexsg7nsjyplmsky60snfh2kreugf8gdgw6d5q77mr5494jl5swwr0ysprauul",
 		paymentAddr0: "addr_test1vz83dnlqqtdrlct4kz3f7d07d59w6p4yrtlr62340yklhaqrrykc7",
 		paymentAddr1: "addr_test1vzr08acccp7s3l9cppvptz7jyflejkkuma2k06vx4vjrcqsl4gkk5",
+		stakeAddr:    "stake_test1urvx673x97g9dadcs2hjse5luwpsempg5fny6u56lx7vv3gpzreln",
 	},
 }
 
@@ -94,6 +98,15 @@ func TestCreateWallet(t *testing.T) {
 		if addresses[0].Bech32() != testVector.paymentAddr0 {
 			t.Errorf("invalid paymentAddr0:\ngot: %v\nwant: %v", addresses[0], testVector.paymentAddr0)
 		}
+
+		stakeAddr, err := w.StakeAddress()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if stakeAddr.Bech32() != testVector.stakeAddr {
+			t.Errorf("invalid stakeAddr:\ngot: %v\nwant: %v", stakeAddr, testVector.stakeAddr)
+		}
 	}
 }
 
@@ -125,6 +138,15 @@ func TestRestoreWallet(t *testing.T) {
 
 		if addresses[0].Bech32() != testVector.paymentAddr0 {
 			t.Errorf("invalid paymentAddr0:\ngot: %v\nwant: %v", addresses[0], testVector.paymentAddr0)
+		}
+
+		stakeAddr, err := w.StakeAddress()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if stakeAddr.Bech32() != testVector.stakeAddr {
+			t.Errorf("invalid stakeAddr:\ngot: %v\nwant: %v", stakeAddr, testVector.stakeAddr)
 		}
 	}
 }
