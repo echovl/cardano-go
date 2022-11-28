@@ -96,7 +96,7 @@ func NewAddressFromBytes(bytes []byte) (Address, error) {
 		}
 	case Ptr:
 		if len(bytes) <= 29 {
-			return addr, errors.New("enterprise address length should be greater than 29")
+			return addr, errors.New("pointer address length should be greater than 29")
 		}
 
 		index := uint(29)
@@ -122,7 +122,7 @@ func NewAddressFromBytes(bytes []byte) (Address, error) {
 		addr.Pointer = Pointer{Slot: slot, TxIndex: txIndex, CertIndex: certIndex}
 	case Ptr + 1:
 		if len(bytes) <= 29 {
-			return addr, errors.New("enterprise address length should be greater than 29")
+			return addr, errors.New("pointer address length should be greater than 29")
 		}
 
 		index := uint(29)
@@ -164,7 +164,7 @@ func NewAddressFromBytes(bytes []byte) (Address, error) {
 		}
 	case Stake:
 		if len(bytes) != 29 {
-			return addr, errors.New("enterprise address length should be 29")
+			return addr, errors.New("stake address length should be 29")
 		}
 		addr.Stake = StakeCredential{
 			Type:    KeyCredential,
@@ -172,7 +172,7 @@ func NewAddressFromBytes(bytes []byte) (Address, error) {
 		}
 	case Stake + 1:
 		if len(bytes) != 29 {
-			return addr, errors.New("enterprise address length should be 29")
+			return addr, errors.New("stake address length should be 29")
 		}
 		addr.Stake = StakeCredential{
 			Type:       ScriptCredential,
