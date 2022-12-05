@@ -50,6 +50,14 @@ func NewKeyCredential(publicKey crypto.PubKey) (StakeCredential, error) {
 	return StakeCredential{Type: KeyCredential, KeyHash: keyHash}, nil
 }
 
+// NewKeyCredential creates a Key Credential from an AddrKeyHash (28 bytes key hash).
+func NewKeyCredentialFromHash(keyHash AddrKeyHash) (StakeCredential, error) {
+	if len(keyHash) < 28 {
+		return StakeCredential{}, fmt.Errorf("Wrong argument: expected 28 bytes key hash")
+	}
+	return StakeCredential{Type: KeyCredential, KeyHash: keyHash[:28]}, nil
+}
+
 // NewKeyCredential creates a Script Credential.
 func NewScriptCredential(script []byte) (StakeCredential, error) {
 	scriptHash, err := Blake224Hash(script)
