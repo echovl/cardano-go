@@ -41,7 +41,13 @@ func Encode(args ...any) (string, error) {
 			return "", fmt.Errorf("Wrong parameter: %T is not a Bech32Encoder", c)
 		}
 		hrp = args[0].(Bech32Encoder).Prefix()
-		data = args[0].(Bech32Encoder).Bytes()
+		// Bytes are 8 bits encoded, convert it to 5 bits encoding
+		if converted, err := bech32.ConvertBits(args[0].(Bech32Encoder).Bytes(), 8, 5, true); err != nil {
+			return "", err
+		} else {
+			data = converted
+		}
+
 	case 2:
 		// the argument haave to be a Bech32Codec or a string, and the second have to be a []byte
 		a1 := args[0]
@@ -49,7 +55,7 @@ func Encode(args ...any) (string, error) {
 
 		switch a1.(type) {
 		case Bech32Encoder:
-			hrp = a1.(Bech32Codec).Prefix()
+			hrp = a1.(Bech32Encoder).Prefix()
 		case string:
 			hrp = a1.(string)
 		default:
