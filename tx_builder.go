@@ -149,16 +149,25 @@ func (tb *TxBuilder) MinCoinsForTxOut(txOut *TxOutput) Coin {
 
 // calculateMinFee computes the minimal fee required for the transaction.
 func (tb *TxBuilder) calculateMinFee() Coin {
-	txBytes := tb.tx.Bytes()
-	txLength := uint64(len(txBytes))
-	// for each additional witnesses there will be an additional 100 bytes,
-	// (32 public key, 64 signature, 4 index/key in cbor)
-	txLength += uint64(tb.additionalWitnesses * 100)
-	// apparently that is not enough, so just consider 1 additional byte
-	// for each additional witness after the first
-	if tb.additionalWitnesses > 1 {
-		txLength += uint64(tb.additionalWitnesses - 1)
+	if tb.additionalWitnesses > 0 {
+		// we can asssume the list of VKeyWitnessSet is not a nil value, as `build()` method is always allocating a slice
+		additionalVKeyWitnessSet := make([]VKeyWitness, tb.additionalWitnesses)
+		for i := uint(0); i < tb.additionalWitnesses; i++ {
+			additionalVKeyWitnessSet[i] = VKeyWitness{
+				VKey:      crypto.PubKey(make([]byte, 32)),
+				Signature: make([]byte, 64),
+			}
+		}
+		tb.tx.WitnessSet.VKeyWitnessSet = append(tb.tx.WitnessSet.VKeyWitnessSet, additionalVKeyWitnessSet...)
 	}
+
+	txBytes := tb.tx.Bytes()
+
+	if tb.additionalWitnesses > 0 {
+		tb.tx.WitnessSet.VKeyWitnessSet = tb.tx.WitnessSet.VKeyWitnessSet[:len(tb.tx.WitnessSet.VKeyWitnessSet)-int(tb.additionalWitnesses)]
+	}
+
+	txLength := uint64(len(txBytes))
 	return tb.protocol.MinFeeA*Coin(txLength) + tb.protocol.MinFeeB
 }
 
