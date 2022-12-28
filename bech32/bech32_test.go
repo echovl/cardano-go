@@ -168,6 +168,14 @@ func TestBech32Codec(t *testing.T) {
 		}
 	}
 
+	if s, err := Encode(got2); err != nil {
+		t.Fatal(err)
+	} else {
+		if s != want2.be32 {
+			t.Errorf("encoded wrong Bech32Coded: %s expected %s", s, want2.be32)
+		}
+	}
+
 	if s, err := EncodeFromBase256(got2); err != nil {
 		t.Fatal(err)
 	} else {
