@@ -156,7 +156,7 @@ func TestBech32Codec(t *testing.T) {
 		t.Fatal(err)
 	} else {
 		if s != want1.be32 {
-			t.Errorf("encoded wrong Bech32Coded: %s expected %s", s, want1.be32)
+			t.Errorf("encoded wrong Bech32Codec: %s expected %s", s, want1.be32)
 		}
 	}
 
@@ -164,7 +164,7 @@ func TestBech32Codec(t *testing.T) {
 		t.Fatal(err)
 	} else {
 		if s != want1.be32 {
-			t.Errorf("encoded wrong Bech32Coded: %s expected %s", s, want1.be32)
+			t.Errorf("encoded wrong Bech32Codec: %s expected %s", s, want1.be32)
 		}
 	}
 
@@ -172,7 +172,7 @@ func TestBech32Codec(t *testing.T) {
 		t.Fatal(err)
 	} else {
 		if s != want2.be32 {
-			t.Errorf("encoded wrong Bech32Coded: %s expected %s", s, want2.be32)
+			t.Errorf("encoded wrong Bech32Codec: %s expected %s", s, want2.be32)
 		}
 	}
 
@@ -180,7 +180,7 @@ func TestBech32Codec(t *testing.T) {
 		t.Fatal(err)
 	} else {
 		if s != want2.be32 {
-			t.Errorf("encoded wrong Bech32Coded: %s expected %s", s, want2.be32)
+			t.Errorf("encoded wrong Bech32Codec: %s expected %s", s, want2.be32)
 		}
 	}
 
