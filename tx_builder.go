@@ -233,7 +233,7 @@ func (tb *TxBuilder) addChangeIfNeeded(inputAmount, outputAmount *Value) error {
 
 	if inputOutputCmp := inputAmount.Cmp(outputAmount); inputOutputCmp == -1 || inputOutputCmp == 2 {
 		return fmt.Errorf(
-			"insuficient input in transaction, got %v want atleast %v",
+			"insufficient input in transaction, got %v want atleast %v",
 			inputAmount,
 			outputAmount,
 		)
