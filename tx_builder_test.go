@@ -593,3 +593,157 @@ func TestAddChangeIfNeeded(t *testing.T) {
 		})
 	}
 }
+
+func TestCalculateMinFee(t *testing.T) {
+	key := crypto.NewXPrvKeyFromEntropy([]byte("receiver address"), "foo")
+	payment, err := NewKeyCredential(key.PubKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	receiver, err := NewEnterpriseAddress(Testnet, payment)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	type fields struct {
+		tx       Tx
+		protocol *ProtocolParams
+		inputs   []*TxInput
+		outputs  []*TxOutput
+		certs    []Certificate
+		// ttl uint64
+		// fee uint64
+	}
+
+	testcases := []struct {
+		name                string
+		fields              fields
+		expectedFee         Coin
+		additionalWitnesses uint
+	}{
+		{
+			name: "input == output + fee",
+			fields: fields{
+				protocol: alonzoProtocol,
+				inputs: []*TxInput{
+					{
+						TxHash: make([]byte, 32),
+						Index:  uint64(0),
+						Amount: NewValue(20000000),
+					},
+				},
+				outputs: []*TxOutput{
+					{
+						Address: receiver,
+						Amount:  NewValue(18831991),
+					},
+				},
+			},
+			expectedFee: Coin(165413), //Coin(168009),
+		},
+		{
+			name: "with only change address",
+			fields: fields{
+				protocol: alonzoProtocol,
+				inputs: []*TxInput{
+					{
+						TxHash: make([]byte, 32),
+						Index:  uint64(0),
+						Amount: NewValue(20000000),
+					},
+				},
+			},
+			expectedFee: Coin(163785), // cardano-cli would propose Coin(165149) as fee for a tx with only change address and no output,
+		},
+		{
+			name: "input == output + fee (two additional witness)",
+			fields: fields{
+				protocol: alonzoProtocol,
+				inputs: []*TxInput{
+					{
+						TxHash: make([]byte, 32),
+						Index:  uint64(0),
+						Amount: NewValue(20000000),
+					},
+				},
+				outputs: []*TxOutput{
+					{
+						Address: receiver,
+						// Amount:  NewValue(19823103),
+						Amount: NewValue(1982310),
+					},
+				},
+			},
+			expectedFee:         Coin(174301), //Coin(176897),
+			additionalWitnesses: 2,
+		},
+		{
+			name: "input == output + fee, one delegation certificate, implies one additional witness",
+			fields: fields{
+				protocol: alonzoProtocol,
+				inputs: []*TxInput{
+					{
+						TxHash: make([]byte, 32),
+						Index:  uint64(0),
+						Amount: NewValue(20000000),
+					},
+				},
+				outputs: []*TxOutput{
+					{
+						Address: receiver,
+						Amount:  NewValue(19827547),
+					},
+				},
+				certs: []Certificate{
+					func() Certificate {
+						c, _ := NewStakeDelegationCertificate(crypto.PubKey(make([]byte, 32)), Hash28(make([]byte, 28)))
+						return c
+					}(),
+				},
+			},
+			expectedFee:         Coin(172453),
+			additionalWitnesses: 1,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			key := crypto.NewXPrvKeyFromEntropy([]byte("change address"), "foo")
+			payment, err := NewKeyCredential(key.PubKey())
+			if err != nil {
+				t.Fatal(err)
+			}
+			changeAddr, err := NewEnterpriseAddress(Testnet, payment)
+			if err != nil {
+				t.Fatal(err)
+			}
+			txBuilder := NewTxBuilder(alonzoProtocol)
+			txBuilder.AddInputs(tc.fields.inputs...)
+			txBuilder.AddOutputs(tc.fields.outputs...)
+			for _, cert := range tc.fields.certs {
+				txBuilder.AddCertificate(cert)
+			}
+			txBuilder.AddChangeIfNeeded(changeAddr)
+			txBuilder.SetAdditionalWitnesses(tc.additionalWitnesses)
+			txBuilder.Sign(key.PrvKey())
+			tx, err := txBuilder.Build()
+			if err != nil {
+				t.Fatal(err)
+			}
+			var totalIn Coin
+			for _, input := range tx.Body.Inputs {
+				totalIn += input.Amount.Coin
+			}
+			var totalOut Coin
+			for _, output := range tx.Body.Outputs {
+				totalOut += output.Amount.Coin
+			}
+			if got, want := tx.Body.Fee+totalOut, totalIn; got != want {
+				t.Errorf("invalid fee+totalOut: got %v want %v", got, want)
+			}
+			if got, want := tx.Body.Fee, tc.expectedFee; got != want {
+				t.Errorf("calculated fee is not the expected one: got %v want %v", got, want)
+			}
+		})
+	}
+}

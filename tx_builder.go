@@ -15,6 +15,8 @@ type TxBuilder struct {
 	pkeys    []crypto.PrvKey
 
 	changeReceiver *Address
+
+	additionalWitnesses uint
 }
 
 // NewTxBuilder returns a new instance of TxBuilder.
@@ -46,6 +48,12 @@ func (tb *TxBuilder) SetTTL(ttl uint64) {
 // SetFee sets the transactions's fee.
 func (tb *TxBuilder) SetFee(fee Coin) {
 	tb.tx.Body.Fee = fee
+}
+
+// SetAdditionalWitnesses sets future witnesses for a partially signed transction.
+// This is useful to compute the real length and so fee in advance
+func (tb *TxBuilder) SetAdditionalWitnesses(witnesses uint) {
+	tb.additionalWitnesses = witnesses
 }
 
 // AddAuxiliaryData adds auxiliary data to the transaction.
@@ -141,7 +149,24 @@ func (tb *TxBuilder) MinCoinsForTxOut(txOut *TxOutput) Coin {
 
 // calculateMinFee computes the minimal fee required for the transaction.
 func (tb *TxBuilder) calculateMinFee() Coin {
+	if tb.additionalWitnesses > 0 {
+		// we can asssume the list of VKeyWitnessSet is not a nil value, as `build()` method is always allocating a slice
+		additionalVKeyWitnessSet := make([]VKeyWitness, tb.additionalWitnesses)
+		for i := uint(0); i < tb.additionalWitnesses; i++ {
+			additionalVKeyWitnessSet[i] = VKeyWitness{
+				VKey:      crypto.PubKey(make([]byte, 32)),
+				Signature: make([]byte, 64),
+			}
+		}
+		tb.tx.WitnessSet.VKeyWitnessSet = append(tb.tx.WitnessSet.VKeyWitnessSet, additionalVKeyWitnessSet...)
+	}
+
 	txBytes := tb.tx.Bytes()
+
+	if tb.additionalWitnesses > 0 {
+		tb.tx.WitnessSet.VKeyWitnessSet = tb.tx.WitnessSet.VKeyWitnessSet[:len(tb.tx.WitnessSet.VKeyWitnessSet)-int(tb.additionalWitnesses)]
+	}
+
 	txLength := uint64(len(txBytes))
 	return tb.protocol.MinFeeA*Coin(txLength) + tb.protocol.MinFeeB
 }
@@ -208,7 +233,7 @@ func (tb *TxBuilder) addChangeIfNeeded(inputAmount, outputAmount *Value) error {
 
 	if inputOutputCmp := inputAmount.Cmp(outputAmount); inputOutputCmp == -1 || inputOutputCmp == 2 {
 		return fmt.Errorf(
-			"insuficient input in transaction, got %v want atleast %v",
+			"insufficient input in transaction, got %v want atleast %v",
 			inputAmount,
 			outputAmount,
 		)
