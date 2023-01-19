@@ -42,8 +42,8 @@ func TestGenerateAddress(t *testing.T) {
 			t.Errorf("invalid addrXvk1 :\ngot: %v\nwant: %v", addrXvk1, testVector.addrXvk1)
 		}
 
-		if paymentAddr1.Bech32() != testVector.paymentAddr1 {
-			t.Errorf("invalid paymentAddr1:\ngot: %v\nwant: %v", paymentAddr1, testVector.paymentAddr1)
+		if paymentAddr1.Bech32() != testVector.paymentEnterpriseAddr1 {
+			t.Errorf("invalid paymentEnterpriseAddr1:\ngot: %v\nwant: %v", paymentAddr1, testVector.paymentEnterpriseAddr1)
 		}
 	}
 }

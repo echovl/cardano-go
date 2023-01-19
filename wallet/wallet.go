@@ -148,8 +148,29 @@ func (w *Wallet) AddAddress() (cardano.Address, error) {
 	return cardano.NewEnterpriseAddress(w.network, payment)
 }
 
-// Addresses returns all wallet's addresss.
-func (w *Wallet) Addresses() ([]cardano.Address, error) {
+// BaseAddresses returns all base addresses.
+func (w *Wallet) BaseAddresses() ([]cardano.Address, error) {
+	addresses := make([]cardano.Address, len(w.addrKeys))
+	for i, key := range w.addrKeys {
+		payment, err := cardano.NewKeyCredential(key.PubKey())
+		if err != nil {
+			return nil, err
+		}
+		stake, err := cardano.NewKeyCredential(w.stakeKey.PubKey())
+		if err != nil {
+			return nil, err
+		}
+		baseAddr, err := cardano.NewBaseAddress(w.network, payment, stake)
+		if err != nil {
+			return nil, err
+		}
+		addresses[i] = baseAddr
+	}
+	return addresses, nil
+}
+
+// EnterpriseAddresses returns all enterprise addresses.
+func (w *Wallet) EnterpriseAddresses() ([]cardano.Address, error) {
 	addresses := make([]cardano.Address, len(w.addrKeys))
 	for i, key := range w.addrKeys {
 		payment, err := cardano.NewKeyCredential(key.PubKey())
@@ -165,8 +186,28 @@ func (w *Wallet) Addresses() ([]cardano.Address, error) {
 	return addresses, nil
 }
 
-func (w *Wallet) Keys() (crypto.PrvKey, crypto.PrvKey) {
+// Deprecated: replaced with EnterpriseAddresses() due to vague naming
+// Addresses returns all wallet's addresss.
+func (w *Wallet) Addresses() ([]cardano.Address, error) {
+	return w.EnterpriseAddresses()
+}
+
+// StakeAddress returns wallet's stake address
+func (w *Wallet) StakeAddress() (cardano.Address, error) {
+	stake, err := cardano.NewKeyCredential(w.stakeKey.PubKey())
+	if err != nil {
+		return cardano.Address{}, err
+	}
+	return cardano.NewStakeAddress(w.network, stake)
+}
+
+func (w *Wallet) PrvKeys() (crypto.PrvKey, crypto.PrvKey) {
 	return w.addrKeys[0].PrvKey(), w.stakeKey.PrvKey()
+}
+
+// Deprecated: replaced with PrvKeys() due to vague naming
+func (w *Wallet) Keys() (crypto.PrvKey, crypto.PrvKey) {
+	return w.PrvKeys()
 }
 
 func newWalletID() string {
