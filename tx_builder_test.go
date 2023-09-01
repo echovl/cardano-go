@@ -1,6 +1,8 @@
 package cardano
 
 import (
+	"encoding/hex"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -8,7 +10,7 @@ import (
 )
 
 var alonzoProtocol = &ProtocolParams{
-	CoinsPerUTXOWord: 34482,
+	CoinsPerUTXOWord: 4310,
 	MinFeeA:          44,
 	MinFeeB:          155381,
 }
@@ -592,4 +594,27 @@ func TestAddChangeIfNeeded(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMinCoins(t *testing.T)  {
+	txBuilder := NewTxBuilder(alonzoProtocol)
+	addr, _ := NewAddress("addr1qyxcj8e90af8je8a8y849250a05e2skyslwytutqgwunugcd3y0j2l6j09j06wg0224gl6lfj4pvfp7ughckqsae8c3sc4wrez")
+
+
+	name, _ := hex.DecodeString("4d494e")
+	policyHash, _ := NewHash28("29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c6")
+	assetName := NewAssetName(string(name))
+	policyId := NewPolicyIDFromHash(policyHash)
+
+	asset := NewMultiAsset().Set(policyId,  NewAssets().Set(assetName, BigNum(5000000)))
+	name, _ = hex.DecodeString("69555344")
+	policyHash, _ = NewHash28("f66d78b4a3cb3d37afa0ec36461e51ecbde00f26c8f0a68f94b69880")
+	assetName = NewAssetName(string(name))
+	policyId = NewPolicyIDFromHash(policyHash)
+	asset.Set(policyId,  NewAssets().Set(assetName, BigNum(100000)))
+
+	//asset = nil
+	output := NewTxOutput(addr,
+		NewValueWithAssets(Coin(1200000), asset))
+	fmt.Println(txBuilder.MinCoinsForTxOut(output))
 }
