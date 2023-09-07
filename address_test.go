@@ -1,6 +1,10 @@
 package cardano
 
 import (
+	"encoding/hex"
+	"fmt"
+	"github.com/echovl/cardano-go/byron"
+	"github.com/tyler-smith/go-bip39"
 	"testing"
 
 	"github.com/echovl/cardano-go/crypto"
@@ -156,5 +160,29 @@ func TestNat(t *testing.T) {
 			t.Errorf("invalid nat decoding\ngot: %v\nwant: %v", got, want)
 		}
 
+	}
+}
+
+func TestByronAddress(t *testing.T) {
+	mnemFlag := ""
+	entropy, err := bip39.EntropyFromMnemonic(mnemFlag)
+	fmt.Println("EntropyFromMnemonic err:", err)
+
+	rootKey, err := byron.ByronLegacyFromSeed(entropy)
+	fmt.Println("ByronLegacyFromSeed err:", err)
+
+	hdPath := byron.HdPathKey(rootKey.XPubKey())
+
+	for i := uint(0); i < 10; i++ {
+		path := []uint32{crypto.Harden(0), crypto.Harden(i)}
+		ccEncode, err := byron.ChaCha20Poly1305EncodePath(hdPath, path)
+		fmt.Println("ChaCha20Poly1305EncodePath err:", hex.EncodeToString(ccEncode), err)
+
+		accountKey := rootKey.ByronDerive(path[0]).ByronDerive(path[1])
+		fmt.Println("priv:", hex.EncodeToString(accountKey))
+		fmt.Println("pub:", hex.EncodeToString(accountKey.PubKey()))
+		fmt.Println("address ", i, " : ")
+		fmt.Println(byron.NewSimpleLegacyAddress(accountKey.XPubKey(), ccEncode))
+		fmt.Println()
 	}
 }

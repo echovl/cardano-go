@@ -3,6 +3,7 @@ package crypto
 import (
 	"crypto/sha512"
 	"encoding/hex"
+	"golang.org/x/crypto/sha3"
 
 	"github.com/echovl/cardano-go/internal/bech32"
 	"github.com/echovl/ed25519"
@@ -170,4 +171,9 @@ func blake224Hash(b []byte) ([]byte, error) {
 		return nil, err
 	}
 	return hash.Sum(nil), err
+}
+
+func Sha3AndBlake2b224(raw []byte) ([]byte, error) {
+	res := sha3.Sum256(raw)
+	return blake224Hash(res[:])
 }
