@@ -2,6 +2,7 @@ package byron
 
 import (
 	"errors"
+	"fmt"
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/echovl/cardano-go/crypto"
 	"github.com/echovl/cardano-go/internal/cbor"
@@ -14,20 +15,26 @@ var (
 )
 
 type ByronAddressAttributes struct {
-	Payload []byte `cbor:"1,keyasint,omitempty"`
-	Network *uint8 `cbor:"2,keyasint,omitempty"`
+	Payload []byte  `cbor:"1,keyasint,omitempty"`
+	Network *uint32 `cbor:"2,keyasint,omitempty"`
+}
+
+type attributeCborType struct {
+	HDPayload []byte `cbor:"1,keyasint,omitempty"`
+	Network   []byte `cbor:"2,keyasint,omitempty"`
 }
 
 type ByronAddress struct {
 	Hash       []byte
 	Attributes ByronAddressAttributes
-	Tag        uint
+	Tag        uint64
 }
 
 const (
 	XPubSize              = 64
-	ByronPubKeyTag uint   = 0
+	ByronPubKeyTag uint64 = 0
 	ByronTag       uint64 = 24
+	Hash28Size            = 28
 )
 
 // Bytes returns byte slice represantation of the Address.
@@ -37,7 +44,7 @@ func (b *ByronAddress) Bytes() (bytes []byte) {
 }
 
 func (b *ByronAddress) Bech32() string {
-	panic("not suport")
+	return b.String()
 }
 
 // String returns base58 encoded byron address.
@@ -53,63 +60,58 @@ func (b *ByronAddress) NetworkInfo() byte {
 	return 0
 }
 
-// MarshalCBOR returns a cbor encoded byte slice of the base address.
-func (b *ByronAddress) MarshalCBOR() (bytes []byte, err error) {
-	raw, err := cbor.Marshal([]interface{}{b.Hash, b.Attributes, b.Tag})
+func (a *ByronAddress) MarshalCBOR() ([]byte, error) {
+	if len(a.Hash) != Hash28Size {
+		return nil, errors.New("Invalid hash28 data")
+	}
+	raw, err := cbor.Marshal([]interface{}{a.Hash, a.Attributes, a.Tag})
 	if err != nil {
 		return nil, err
 	}
+	//fmt.Println("hex.encode:", hex.EncodeToString(raw))
 	return cbor.Marshal([]interface{}{
-		cbor.Tag{Number: 24, Content: raw},
+		cbor.Tag{Number: ByronTag, Content: raw},
 		uint64(crc32.ChecksumIEEE(raw)),
 	})
 }
 
-// UnmarshalCBOR deserializes raw byron address, encoded in cbor, into a Byron Address.
-func (b *ByronAddress) UnmarshalCBOR(data []byte) error {
-	type RawAddr struct {
+func (a *ByronAddress) UnmarshalCBOR(data []byte) error {
+	type RawAddress struct {
 		_        struct{} `cbor:",toarray"`
 		Tag      cbor.Tag
-		Checksum uint32
+		Checksum uint64
 	}
 
-	var rawAddr RawAddr
-
-	if err := cbor.Unmarshal(data, &rawAddr); err != nil {
-		return err
+	var rawAddress RawAddress
+	if err := cbor.Unmarshal(data, &rawAddress); err != nil {
+		return fmt.Errorf("mashal raw: %s", err)
 	}
 
-	rawTag, ok := rawAddr.Tag.Content.([]byte)
-	if !ok || rawAddr.Tag.Number != 24 {
-		return ErrInvalidByronAddress
+	rawTag, ok := rawAddress.Tag.Content.([]byte)
+	if !ok || rawAddress.Tag.Number != ByronTag {
+		return errors.New("not a valid byron address")
 	}
 
-	cheksum := crc32.ChecksumIEEE(rawTag)
-	if rawAddr.Checksum != cheksum {
-		return ErrInvalidByronChecksum
+	checksum := crc32.ChecksumIEEE(rawTag)
+	if rawAddress.Checksum != uint64(checksum) {
+		return errors.New("checksum unmatched")
 	}
-
-	var byron struct {
+	var got struct {
 		_      struct{} `cbor:",toarray"`
 		Hashed []byte
 		Attrs  ByronAddressAttributes
-		Tag    uint
+		Tag    uint64
 	}
-
-	if err := cbor.Unmarshal(rawTag, &byron); err != nil {
+	if err := cbor.Unmarshal(rawTag, &got); err != nil {
 		return err
 	}
-
-	if len(byron.Hashed) != 28 || byron.Tag != 0 {
-		return errors.New("")
+	if len(got.Hashed) != Hash28Size || got.Tag != ByronPubKeyTag {
+		return errors.New("Invalid byron hashed or type")
 	}
-
-	*b = ByronAddress{
-		Hash:       byron.Hashed,
-		Attributes: byron.Attrs,
-		Tag:        byron.Tag,
+	if a == nil {
+		return errors.New("unmarshal to nil value")
 	}
-
+	*a = ByronAddress{Hash: got.Hashed, Attributes: got.Attrs, Tag: got.Tag}
 	return nil
 }
 
@@ -141,4 +143,36 @@ func newHashedSpending(xpub []byte, attr ByronAddressAttributes) ([]byte, error)
 		return nil, err
 	}
 	return crypto.Sha3AndBlake2b224(buf)
+}
+
+func (a ByronAddressAttributes) MarshalCBOR() ([]byte, error) {
+	var t = &attributeCborType{HDPayload: a.Payload}
+	if a.Network != nil {
+		network, err := cbor.Marshal(a.Network)
+		if err != nil {
+			return nil, err
+		}
+		t.Network = network
+	}
+	return cbor.Marshal(t)
+}
+
+func (a *ByronAddressAttributes) UnmarshalCBOR(data []byte) error {
+	var t attributeCborType
+	if err := cbor.Unmarshal(data, &t); err != nil {
+		return err
+	}
+
+	var network *uint32
+	if len(t.Network) != 0 {
+		if err := cbor.Unmarshal(t.Network, &network); err != nil {
+			return err
+		}
+	}
+
+	*a = ByronAddressAttributes{
+		Payload: t.HDPayload,
+		Network: network,
+	}
+	return nil
 }

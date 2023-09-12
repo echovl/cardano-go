@@ -1,6 +1,7 @@
 package cardano
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"github.com/echovl/cardano-go/byron"
@@ -185,4 +186,19 @@ func TestByronAddress(t *testing.T) {
 		fmt.Println(byron.NewSimpleLegacyAddress(accountKey.XPubKey(), ccEncode))
 		fmt.Println()
 	}
+}
+
+func TestNewLegcyAddress(t *testing.T) {
+	addr, err := NewLegacyAddress("Ae2tdPwUPEZ9WyNeyrKZJhXtFQ9UKmraSAXAUhzmChyesRV7J4cLHkKQfZi")
+	fmt.Println(addr, err)
+	data, err := addr.MarshalCBOR()
+	prefix := []byte{130, 216, 24, 88}
+	fmt.Println(data[:4], prefix, bytes.Equal(data[:4], prefix) )
+	data, err = hex.DecodeString("82d818584283581ca7947dd3e3fb3771d1e900ba903ba0568eb3dae6503fd67ae7c421dea101581e581c7eb9a915bc81b0fad606147699441f9b93d6ac36a57d63004f9b4dba001ad4ea4da5")
+	addr , err = NewLegacyAddressFromBytes(data)
+	fmt.Println(addr, err)
+	fmt.Println(addr.MarshalCBOR())
+	fmt.Println(hex.EncodeToString(addr.ByronAddr.Attributes.Payload))
+	fmt.Println(addr.ByronAddr.Tag)
+	fmt.Println(hex.EncodeToString(addr.ByronAddr.Hash))
 }

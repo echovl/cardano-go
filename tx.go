@@ -2,7 +2,9 @@ package cardano
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"github.com/echovl/cardano-go/internal/cbor"
 
 	"github.com/echovl/cardano-go/crypto"
 	"golang.org/x/crypto/blake2b"
@@ -102,9 +104,46 @@ func (t TxInput) String() string {
 
 // TxInput is the transaction output.
 type TxOutput struct {
-	_       struct{} `cbor:",toarray"`
+	//_       struct{} `cbor:",toarray"`
 	Address Address
 	Amount  *Value
+}
+
+
+func (o *TxOutput) MarshalCBOR() ([]byte, error) {
+	return cbor.Marshal([]interface{}{o.Address.Bytes(), o.Amount})
+}
+
+func (o *TxOutput) UnmarshalCBOR(data []byte) error {
+	if o == nil {
+		return errors.New("unmarshal to nil output")
+	}
+
+	type Raw struct {
+		_          struct{} `cbor:",toarray"`
+		RawAddress []byte
+		RawAmount  cbor.RawMessage
+	}
+	var raw Raw
+	if err := cbor.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	addr, err := NewAddressFromBytes(raw.RawAddress)
+	if err != nil {
+		return err
+	}
+
+	if len(raw.RawAmount) == 0 {
+		return errors.New("no raw amount cbor bytes")
+	}
+	var amount Value
+	if err := cbor.Unmarshal(raw.RawAmount, &amount); err != nil {
+		return err
+	}
+	o.Amount = &amount
+	o.Address = addr
+	return nil
 }
 
 // NewTxOutput creates a new instance of TxOutput

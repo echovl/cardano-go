@@ -1,8 +1,12 @@
 package cardano
 
 import (
+	_bytes "bytes"
 	"errors"
+	"github.com/btcsuite/btcutil/base58"
+	"github.com/echovl/cardano-go/byron"
 	"math/big"
+	"strings"
 
 	"github.com/echovl/cardano-go/internal/bech32"
 	"github.com/echovl/cardano-go/internal/cbor"
@@ -23,21 +27,45 @@ type Address struct {
 	Type    AddressType
 	Pointer Pointer
 
-	Payment StakeCredential
-	Stake   StakeCredential
+	Payment   StakeCredential
+	Stake     StakeCredential
+	ByronAddr *byron.ByronAddress `cbor:"-"`
 }
 
 // NewAddress creates an Address from a bech32 encoded string.
-func NewAddress(bech string) (Address, error) {
-	_, bytes, err := bech32.DecodeToBase256(bech)
+func NewAddress(raw string) (Address, error) {
+	if strings.HasPrefix(raw, "Ddz") || strings.HasPrefix(raw, "Ae2") {
+		return NewLegacyAddress(raw)
+	}
+
+	_, bytes, err := bech32.DecodeToBase256(raw)
 	if err != nil {
 		return Address{}, err
 	}
 	return NewAddressFromBytes(bytes)
 }
 
+func NewLegacyAddress(raw string) (Address, error) {
+	var data []byte = base58.Decode(raw)
+	//fmt.Println("hex.NewLegacyAddress", hex.EncodeToString(data))
+	return NewLegacyAddressFromBytes(data)
+}
+
+func NewLegacyAddressFromBytes(bytes []byte) (Address, error) {
+	var byronAddr byron.ByronAddress
+	if err := cbor.Unmarshal(bytes, &byronAddr); err != nil {
+		//log.Println(err)
+		return Address{}, err
+	}
+	return Address{ByronAddr: &byronAddr}, nil
+}
+
 // NewAddressFromBytes creates an Address from bytes.
 func NewAddressFromBytes(bytes []byte) (Address, error) {
+	if _bytes.Equal(bytes[:4], []byte{130, 216, 24, 88}) {
+		return NewLegacyAddressFromBytes(bytes)
+	}
+
 	addr := Address{
 		Type:    AddressType(bytes[0] >> 4),
 		Network: Network(bytes[0] & 0x01),
@@ -166,13 +194,26 @@ func NewAddressFromBytes(bytes []byte) (Address, error) {
 }
 
 // MarshalCBOR implements cbor.Marshaler.
-func (addr *Address) MarshalCBOR() ([]byte, error) {
+func (addr Address) MarshalCBOR() ([]byte, error) {
+	if addr.ByronAddr != nil {
+		return addr.ByronAddr.MarshalCBOR()
+	}
+
 	em, _ := cbor.CanonicalEncOptions().EncMode()
 	return em.Marshal(addr.Bytes())
 }
 
 // UnmarshalCBOR implements cbor.Unmarshaler.
-func (addr *Address) UnmarshalCBOR(data []byte) error {
+func (addr Address) UnmarshalCBOR(data []byte) error {
+	if _bytes.Equal(data[:4], []byte{130, 216, 24, 88}) {
+		decoded, err := NewLegacyAddressFromBytes(data)
+		if err != nil {
+			return err
+		}
+		addr.ByronAddr = decoded.ByronAddr
+		return nil
+	}
+
 	bytes := []byte{}
 	if err := cborDec.Unmarshal(data, &bytes); err != nil {
 		return nil
@@ -192,7 +233,11 @@ func (addr *Address) UnmarshalCBOR(data []byte) error {
 }
 
 // Bytes returns the CBOR encoding of the Address as bytes.
-func (addr *Address) Bytes() []byte {
+func (addr Address) Bytes() []byte {
+	if addr.ByronAddr != nil {
+		return addr.ByronAddr.Bytes()
+	}
+
 	var networkByte uint8
 	switch addr.Network {
 	case Testnet, Preprod:
@@ -219,7 +264,11 @@ func (addr *Address) Bytes() []byte {
 }
 
 // Bech32 returns the Address encoded as bech32.
-func (addr *Address) Bech32() string {
+func (addr Address) Bech32() string {
+	if addr.ByronAddr != nil {
+		return addr.ByronAddr.String()
+	}
+
 	addrStr, err := bech32.EncodeFromBase256(getHrp(addr.Network), addr.Bytes())
 	if err != nil {
 		panic(err)
@@ -229,6 +278,10 @@ func (addr *Address) Bech32() string {
 
 // String returns the Address encoded as bech32.
 func (addr Address) String() string {
+	if addr.ByronAddr != nil {
+		return addr.ByronAddr.String()
+	}
+
 	return addr.Bech32()
 }
 
