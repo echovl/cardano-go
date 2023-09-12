@@ -104,7 +104,7 @@ func (tb *TxBuilder) totalDeposits() Coin {
 func (tb *TxBuilder) MinFee() (Coin, error) {
 	// Set a temporary realistic fee in order to serialize a valid transaction
 	currentFee := tb.tx.Body.Fee
-	tb.tx.Body.Fee = 20000
+	tb.tx.Body.Fee = 200000
 	if err := tb.build(); err != nil {
 		return 0, err
 	}
