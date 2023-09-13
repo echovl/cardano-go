@@ -258,6 +258,7 @@ func (tb *TxBuilder) build() error {
 		return err
 	}
 
+	//fmt.Println("unsign tx: ", hex.EncodeToString(tb.tx.Bytes()))
 	// Create witness set
 	tb.tx.WitnessSet.VKeyWitnessSet = make([]VKeyWitness, len(tb.pkeys))
 	for i, pkey := range tb.pkeys {

@@ -2,7 +2,9 @@ package cardano
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"github.com/echovl/cardano-go/internal/cbor"
 	"math/big"
 	"testing"
 
@@ -598,7 +600,7 @@ func TestAddChangeIfNeeded(t *testing.T) {
 
 func TestMinCoins(t *testing.T)  {
 	txBuilder := NewTxBuilder(alonzoProtocol)
-	addr, _ := NewAddress("addr1qyxcj8e90af8je8a8y849250a05e2skyslwytutqgwunugcd3y0j2l6j09j06wg0224gl6lfj4pvfp7ughckqsae8c3sc4wrez")
+	addr, _ := NewAddress("DdzFFzCqrht7FAf8MpryP1p8sgkmFRUnDpifnnu4ZxpBjbCTSDwJVAaDsDqrC7SLYFx8fUrDcNNsD4AMiUgg2wGywTVpcfB1F3AHrGkv")
 
 
 	name, _ := hex.DecodeString("4d494e")
@@ -614,7 +616,134 @@ func TestMinCoins(t *testing.T)  {
 	asset.Set(policyId,  NewAssets().Set(assetName, BigNum(100000)))
 
 	//asset = nil
+	_ = asset
 	output := NewTxOutput(addr,
-		NewValueWithAssets(Coin(1200000), asset))
+		NewValue(Coin(1000000)),
+		//NewValueWithAssets(Coin(1200000), asset),
+		)
 	fmt.Println(txBuilder.MinCoinsForTxOut(output))
+}
+
+func TestTxOut(t *testing.T)  {
+	testData := []struct{
+		address string
+		amount uint64
+		want string
+	}{
+		{
+			address: "addr_test1qqth544yyqh8ahg0899ms59emls89cs9l9ra0n9nlrwtgahppgsq2ykgpqpgewlkwkyhsqn29k8dxp7xthncvfwht9kqdaq2fy",
+			amount:  100,
+			want:    "82583900177a56a4202e7edd0f394bb850b9dfe072e205f947d7ccb3f8dcb476e10a200512c808028cbbf6758978026a2d8ed307c65de78625d7596c1864",
+		},
+		{
+			address: "Ae2tdPwUPEZEJsmHfRC3gutyFZuJSXLumCu1oovMSps3EVewbqoHDnoZm3d",
+			amount:  100,
+			want:    "82582b82d818582183581caf67c9c546e2a69870cc7c2bc5f6633253dfa36143ffddfda4523ee6a0001a78f496c81864",
+		},
+		{
+			address: "DdzFFzCqrht7FAf8MpryP1p8sgkmFRUnDpifnnu4ZxpBjbCTSDwJVAaDsDqrC7SLYFx8fUrDcNNsD4AMiUgg2wGywTVpcfB1F3AHrGkv",
+			amount:  100,
+			want:    "82584c82d818584283581cd1ed7fa89a505f9c83de0ef1178b383258e71b2375b4e1279d5e0e0fa101581e581cc655d01a842282dd46918c9198d9e98efad24af87b9b0205aed69fd4001a237a87d71864",
+		},
+	}
+
+	for _, data := range testData {
+		addr, _ := NewAddress(data.address)
+		out := NewTxOutput(
+			addr,
+			NewValue(Coin(data.amount)),
+			//cardano.NewValueWithAssets(cardano.Coin(sendAmount), newAsset.MultiAsset()),
+		)
+
+		rawbytes, err := cbor.Marshal(out)
+		out1 := new(TxOutput)
+		fmt.Println(out1.UnmarshalCBOR(rawbytes))
+		fmt.Println(out1.Amount, out1.Address)
+
+		fmt.Println(err, hex.EncodeToString(rawbytes))
+
+		fmt.Println(hex.EncodeToString(rawbytes) == data.want)
+	}
+}
+
+func TestTxOutWithAsset(t *testing.T)  {
+	var testdata = []struct {
+		address     string
+		amount      uint64
+		assetId     string
+		assetAmount uint64
+		want        string
+	}{
+		{
+			address:     "addr_test1vqpjd93t42ju4majh9tcz69z2fvmaeyxzxvpr3x95g9mw4sxmvk7w",
+			amount:      100,
+			assetId:     "77e7a4688886467574045c6a0126d140644b97e12b644d473e71d3e9315354",
+			assetAmount: 10,
+			want:        "82581d600326962baaa5caefb2b9578168a25259bee486119811c4c5a20bb756821864a1581c77e7a4688886467574045c6a0126d140644b97e12b644d473e71d3e9a1433153540a",
+		},
+		{
+			address:     "addr_test1vqpjd93t42ju4majh9tcz69z2fvmaeyxzxvpr3x95g9mw4sxmvk7w",
+			amount:      100,
+			assetId:     "77e7a4688886467574045c6a0126d140644b97e12b644d473e71d3e9",
+			assetAmount: 10,
+			want:        "82581d600326962baaa5caefb2b9578168a25259bee486119811c4c5a20bb756821864a1581c77e7a4688886467574045c6a0126d140644b97e12b644d473e71d3e9a1400a",
+		},
+		{
+			address:     "addr1q860w3lz6zd9tn0uqcvw782qmcs6lnztz2asy0555sr2kvh57ar795y62hxlcpscauw5ph3p4lxyky4mqglfffqx4veq6gs3hg",
+			amount:      100,
+			assetId:     "77e7a4688886467574045c6a0126d140644b97e12b644d473e71d3e9315354",
+			assetAmount: 10,
+			want:        "82583901f4f747e2d09a55cdfc0618ef1d40de21afcc4b12bb023e94a406ab32f4f747e2d09a55cdfc0618ef1d40de21afcc4b12bb023e94a406ab32821864a1581c77e7a4688886467574045c6a0126d140644b97e12b644d473e71d3e9a1433153540a",
+		},
+		{
+			address:     "Ae2tdPwUPEZEJsmHfRC3gutyFZuJSXLumCu1oovMSps3EVewbqoHDnoZm3d",
+			amount:      100,
+			assetId:     "77e7a4688886467574045c6a0126d140644b97e12b644d473e71d3e9315354",
+			assetAmount: 10,
+			want:        "82582b82d818582183581caf67c9c546e2a69870cc7c2bc5f6633253dfa36143ffddfda4523ee6a0001a78f496c8821864a1581c77e7a4688886467574045c6a0126d140644b97e12b644d473e71d3e9a1433153540a",
+		},
+		{
+			address:     "DdzFFzCqrht7FAf8MpryP1p8sgkmFRUnDpifnnu4ZxpBjbCTSDwJVAaDsDqrC7SLYFx8fUrDcNNsD4AMiUgg2wGywTVpcfB1F3AHrGkv",
+			amount:      100,
+			assetId:     "77e7a4688886467574045c6a0126d140644b97e12b644d473e71d3e9315354",
+			assetAmount: 10,
+			want:        "82584c82d818584283581cd1ed7fa89a505f9c83de0ef1178b383258e71b2375b4e1279d5e0e0fa101581e581cc655d01a842282dd46918c9198d9e98efad24af87b9b0205aed69fd4001a237a87d7821864a1581c77e7a4688886467574045c6a0126d140644b97e12b644d473e71d3e9a1433153540a",
+		},
+	}
+
+	for _, data := range testdata {
+		addr, err := NewAddress(data.address)
+		asset, err := ParseAssetId(data.assetId, data.assetAmount)
+		out := NewTxOutput(
+			addr,
+			NewValueWithAssets(Coin(data.amount), asset),
+		)
+
+		rawbytes, err := cbor.Marshal(out)
+		out1 := new(TxOutput)
+		fmt.Println(out1.UnmarshalCBOR(rawbytes))
+		fmt.Println(out1.Amount, out1.Address, out1.Address.String() == addr.String())
+
+		fmt.Println(err, hex.EncodeToString(rawbytes))
+
+		fmt.Println(hex.EncodeToString(rawbytes) == data.want)
+	}
+}
+
+func ParseAssetId(assetId string, assetNum uint64) (*MultiAsset, error) {
+	bytes, err := hex.DecodeString(assetId)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(bytes) < 28 || len(bytes) > 60 {
+		return nil, errors.New("invalid asset id length")
+	}
+
+	policyHash := make([]byte, 28)
+	copy(policyHash, bytes[:28])
+	assetName := NewAssetName(string(bytes[28:]))
+	policyId := NewPolicyIDFromHash(policyHash)
+	//fmt.Println(policyHash, policyId, assetName)
+	return NewMultiAsset().Set(policyId, NewAssets().Set(assetName, BigNum(assetNum))), nil
 }

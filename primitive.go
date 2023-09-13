@@ -138,6 +138,18 @@ func (v *Value) Sub(rhs *Value) *Value {
 		}
 	}
 
+	// rm zero asset
+	for policy, assets := range result.MultiAsset.m {
+		for assetName, value := range assets.m {
+			if value == 0 {
+				delete(assets.m, assetName)
+			}
+		}
+		if len(assets.m) == 0 {
+			delete(result.MultiAsset.m, policy)
+		}
+	}
+
 	return result
 }
 
