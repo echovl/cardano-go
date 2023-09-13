@@ -1,6 +1,11 @@
 package cardano
 
 import (
+	"bytes"
+	"encoding/hex"
+	"fmt"
+	"github.com/echovl/cardano-go/byron"
+	"github.com/tyler-smith/go-bip39"
 	"testing"
 
 	"github.com/echovl/cardano-go/crypto"
@@ -157,4 +162,43 @@ func TestNat(t *testing.T) {
 		}
 
 	}
+}
+
+func TestByronAddress(t *testing.T) {
+	mnemFlag := ""
+	entropy, err := bip39.EntropyFromMnemonic(mnemFlag)
+	fmt.Println("EntropyFromMnemonic err:", err)
+
+	rootKey, err := byron.ByronLegacyFromSeed(entropy)
+	fmt.Println("ByronLegacyFromSeed err:", err)
+
+	hdPath := byron.HdPathKey(rootKey.XPubKey())
+
+	for i := uint(0); i < 10; i++ {
+		path := []uint32{crypto.Harden(0), crypto.Harden(i)}
+		ccEncode, err := byron.ChaCha20Poly1305EncodePath(hdPath, path)
+		fmt.Println("ChaCha20Poly1305EncodePath err:", hex.EncodeToString(ccEncode), err)
+
+		accountKey := rootKey.ByronDerive(path[0]).ByronDerive(path[1])
+		fmt.Println("priv:", hex.EncodeToString(accountKey))
+		fmt.Println("pub:", hex.EncodeToString(accountKey.PubKey()))
+		fmt.Println("address ", i, " : ")
+		fmt.Println(byron.NewSimpleLegacyAddress(accountKey.XPubKey(), ccEncode))
+		fmt.Println()
+	}
+}
+
+func TestNewLegcyAddress(t *testing.T) {
+	addr, err := NewLegacyAddress("Ae2tdPwUPEZ9WyNeyrKZJhXtFQ9UKmraSAXAUhzmChyesRV7J4cLHkKQfZi")
+	fmt.Println(addr, err)
+	data, err := addr.MarshalCBOR()
+	prefix := []byte{130, 216, 24, 88}
+	fmt.Println(data[:4], prefix, bytes.Equal(data[:4], prefix) )
+	data, err = hex.DecodeString("82d818584283581ca7947dd3e3fb3771d1e900ba903ba0568eb3dae6503fd67ae7c421dea101581e581c7eb9a915bc81b0fad606147699441f9b93d6ac36a57d63004f9b4dba001ad4ea4da5")
+	addr , err = NewLegacyAddressFromBytes(data)
+	fmt.Println(addr, err)
+	fmt.Println(addr.MarshalCBOR())
+	fmt.Println(hex.EncodeToString(addr.ByronAddr.Attributes.Payload))
+	fmt.Println(addr.ByronAddr.Tag)
+	fmt.Println(hex.EncodeToString(addr.ByronAddr.Hash))
 }

@@ -2,8 +2,6 @@ package cardano
 
 import (
 	"fmt"
-	"math"
-
 	"github.com/echovl/cardano-go/crypto"
 	"golang.org/x/crypto/blake2b"
 )
@@ -119,19 +117,13 @@ func (tb *TxBuilder) MinFee() (Coin, error) {
 // More info could be found in
 // <https://github.com/input-output-hk/cardano-ledger/blob/master/doc/explanations/min-utxo-alonzo.rst>
 func (tb *TxBuilder) MinCoinsForTxOut(txOut *TxOutput) Coin {
-	var size uint
-	if txOut.Amount.OnlyCoin() {
-		size = 1
-	} else {
-		numAssets := txOut.Amount.MultiAsset.numAssets()
-		assetsLength := txOut.Amount.MultiAsset.assetsLength()
-		numPIDs := txOut.Amount.MultiAsset.numPIDs()
-
-		size = 6 + uint(math.Trunc(
-			float64(numAssets*12+assetsLength+numPIDs*28+7)/8,
-		))
+	if txOut == nil {
+		return Coin(0)
 	}
-	return Coin(utxoEntrySizeWithoutVal+size) * tb.protocol.CoinsPerUTXOWord
+
+	data, _ := cborEnc.Marshal(txOut)
+	//fmt.Println(err, len(b))
+	return Coin(160 + len(data) ) * tb.protocol.CoinsPerUTXOWord
 }
 
 // Calculate minimum lovelace a transaction output needs to hold post alonzo.
@@ -266,6 +258,7 @@ func (tb *TxBuilder) build() error {
 		return err
 	}
 
+	//fmt.Println("unsign tx: ", hex.EncodeToString(tb.tx.Bytes()))
 	// Create witness set
 	tb.tx.WitnessSet.VKeyWitnessSet = make([]VKeyWitness, len(tb.pkeys))
 	for i, pkey := range tb.pkeys {

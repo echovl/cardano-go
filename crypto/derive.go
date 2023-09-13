@@ -145,3 +145,7 @@ func addMod256(x, y []byte) []byte {
 
 	return out
 }
+
+func Harden(num uint) uint32 {
+	return uint32(0x80000000 + num)
+}
