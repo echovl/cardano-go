@@ -64,7 +64,9 @@ func (bdb *badgerDB) Get() ([]*Wallet, error) {
 				return err
 			}
 			wallet := &Wallet{}
-			wallet.unmarshal(value)
+			if err := wallet.unmarshal(value); err != nil {
+				return err
+			}
 			wallets = append(wallets, wallet)
 		}
 		return nil

@@ -85,8 +85,7 @@ func (ns *NativeScript) Hash() (Hash28, error) {
 	if err != nil {
 		return nil, err
 	}
-	bytes = append([]byte{byte(NativeScriptNamespace)}, bytes...)
-	return Blake224Hash(append(bytes))
+	return Blake224Hash(append([]byte{byte(NativeScriptNamespace)}, bytes...))
 }
 
 // Bytes returns the CBOR encoding of the script as bytes.

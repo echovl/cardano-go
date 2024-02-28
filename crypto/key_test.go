@@ -21,7 +21,7 @@ func TestExtendedSigningKeyWithoutPassphrase(t *testing.T) {
 	got := NewXPrvKeyFromEntropy(entropy, "")
 	want, _ := hex.DecodeString(masterKeyWithoutPassphrase)
 
-	if bytes.Compare(got, want) != 0 {
+	if !bytes.Equal(got, want) {
 		t.Errorf("invalid master key\ngot: %x\nwant: %x\n", got, want)
 	}
 }
@@ -32,7 +32,7 @@ func TestExtendedSigningKeyWithPassphrase(t *testing.T) {
 	got := NewXPrvKeyFromEntropy(entropy, passphrase)
 	want, _ := hex.DecodeString(masterKeyWithPassphrase)
 
-	if bytes.Compare(got, want) != 0 {
+	if !bytes.Equal(got, want) {
 		t.Errorf("invalid master key\ngot: %x\nwant: %x\n", got, want)
 	}
 }
