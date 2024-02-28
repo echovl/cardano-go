@@ -19,10 +19,10 @@ type ProtocolParams struct {
 	ProtocolVersion      ProtocolVersion
 	MinPoolCost          Coin
 	CoinsPerUTXOWord     Coin
-	CostModels           interface{}
-	ExecutionCosts       interface{}
-	MaxTxExUnits         interface{}
-	MaxBlockTxExUnits    interface{}
+	CostModels           any
+	ExecutionCosts       any
+	MaxTxExUnits         any
+	MaxBlockTxExUnits    any
 	MaxValueSize         uint
 	CollateralPercentage uint
 	MaxCollateralInputs  uint

@@ -30,8 +30,12 @@ var newAddressCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		w.AddAddress()
-		client.SaveWallet(w)
+		if _, err := w.AddAddress(); err != nil {
+			return err
+		}
+		if err := client.SaveWallet(w); err != nil {
+			return err
+		}
 
 		return nil
 	},
